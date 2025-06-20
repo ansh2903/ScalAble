@@ -1,4 +1,12 @@
 pandas
 numpy
+Flask
+plotly
+transformers
+python-dotenv
+requests
+loguru
+flask-cors
+gunicorn
 
 #-e .

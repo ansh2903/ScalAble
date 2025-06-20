@@ -17,7 +17,7 @@ def get_requirements(file_path: str) ->List[str]:
 
 setup(
     name="ScalAble",
-    version="0.0.1",
+    version="0.1",
     author="Ansh Sharma",
     author_email="anshsharma2903@gmail.com",
     packages=find_packages(),

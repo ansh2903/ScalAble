@@ -1,5 +1,5 @@
 import sys
-from src.logger import logging
+from src.core.logger import logging
 
 def error_message_detail(error,error_detail:sys):
     _,_,exc_tb=error_detail.exc_info() #_ is the first argument, __ is the second argument, and exc_tb is the third argument and it is the traceback object which provides on while file the exception has occured and on which line

@@ -1,4 +1,4 @@
-Agenda
+PHASE 1: Core Project Structure
 
 1- Setup the github{environment}
     - new environment
@@ -6,3 +6,18 @@ Agenda
     - requirements.txt
 
 2- Src folder and build the package
+    - connectors: Handle DB connections (MongoDB, MySQL, Oracle, etc)
+    - core: Central logic or shared utilities
+    - interface: Web and Desktop app UI logic (PyQt5 or tinker)
+    - pipeline: NLP + query + result orchestration
+    - engine: Query execution and visualization
+    - Config files, constants, schema cache
+
+PHASE 2: Finalizing frameworks, packages and optimize layout
+
+    - Backend: Flask
+    - Frontend: Flask templates + Bootstrap + Plotly
+    - Database: MongoDB(first), later MySQL, Oracle
+    - NLP/AI: Local LLMs via Ollama(spider 2, Deepseek R1)
+    - Models: transformers + tokenizer + Spider-style LLMs
+    - Data: pandas, plotly, json
