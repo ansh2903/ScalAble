@@ -1,3 +1,13 @@
+AGENDA:
+
+Make a text to sql interface utilizing a LLM (not yet determined) 
+to create the queries from the user's input. show the queries to the
+user for assessment and evaluation, editing as well if needed before
+running the query on the actual database. after the execution the result
+is showcased to the user along with various integrate visualizations as
+per the user's needs and preferences. streamlining the entire database
+experience in a fast, efficient and user-friendly manner.
+
 PHASE 1: Core Project Structure
 
 1- Setup the github{environment}
@@ -21,3 +31,11 @@ PHASE 2: Finalizing frameworks, packages and optimize layout
     - NLP/AI: Local LLMs via Ollama(spider 2, Deepseek R1)
     - Models: transformers + tokenizer + Spider-style LLMs
     - Data: pandas, plotly, json
+
+PHASE 3: MVP
+
+    - step 1: flask app entry point
+    - step 2: flask routes
+    - step 3: templates
+    - step 4: pipeline
+    - step 5: visualizer
