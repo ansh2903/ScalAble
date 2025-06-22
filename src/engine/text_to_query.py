@@ -25,7 +25,7 @@ def generate_mongo_query_from_nl(nl_query: str, model="BahaSlama/llama3.1-finetu
             'prompt': prompt_text,
             'stream': False 
         }
-        logging.INFO(f"Generating MongoDB query from natural language: {nl_query}")
+        logging.info(f"Generating MongoDB query from natural language: {nl_query}")
 
         response = requests.post("http://localhost:11434/api/generate", json=payload)
         raw = response.json()["response"].strip()

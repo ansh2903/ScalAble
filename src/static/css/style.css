@@ -1,0 +1,56 @@
+body {
+    background-color: #f9f9f9;
+    font-family: 'Segoe UI', sans-serif;
+}
+h2 {
+    margin-bottom: 20px;
+}
+.btn-primary {
+    background-color: #0066cc;
+    border: none;
+}
+/* General styling */
+body.home-body {
+    background-color: #0f1124;
+    color: #fff;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+/* Navbar */
+.navbar {
+    background-color: #141629;
+}
+
+.navbar-brand,
+.nav-link {
+    color: #fff !important;
+}
+
+/* CTA button */
+.hero-btn {
+    background-color: #7c3aed;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.hero-btn:hover {
+    background-color: #6d28d9;
+}
+
+/* Highlighted text */
+.highlight {
+    color: #7c3aed;
+    font-weight: bold;
+}
+
+/* List of databases */
+.database-list {
+    background-color: #1e2137;
+    border: 1px solid #2c2f4a;
+}
+
+/* Footer */
+.footer {
+    font-size: 0.9rem;
+    color: #aaa;
+}
