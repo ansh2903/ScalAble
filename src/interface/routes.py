@@ -1,5 +1,6 @@
-from flask import Blueprint, render_template, request, jsonify, session
+from flask import Blueprint, render_template, jsonify, request, session
 from src.pipeline.query_pipeline import process_query_pipeline
+
 from pymongo.server_api import ServerApi
 from pymongo import MongoClient
 from src.connectors.mongo_connector import MongoDBConnector
@@ -7,12 +8,14 @@ from src.connectors.mongo_connector import MongoDBConnector
 from src.core.exception import CustomException
 from src.core.logger import logging
 
+
 interface_blueprint = Blueprint('interface', __name__)
 
-logging.info("Initializing the interface blueprint for handling routes.")
+# Home page
 @interface_blueprint.route('/')
 def index():
-    return render_template('home.html')
+    return render_template('index.html')
+
 
 @interface_blueprint.route("/list_databases", methods=["POST"])
 def list_databases():

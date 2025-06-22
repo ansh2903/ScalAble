@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request
 from src.interface.routes import interface_blueprint
 from src.interface.auth import auth_blueprint
 from src.config.settings import settings

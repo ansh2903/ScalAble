@@ -1,6 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 import hashlib
-
 auth_blueprint = Blueprint('auth', __name__)
 
 # Dummy in-memory user store (use DB in production)
