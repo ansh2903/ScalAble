@@ -1,57 +1,193 @@
-body {
-    background-color: #f9f9f9;
-    font-family: 'Segoe UI', sans-serif;
-}
-h2 {
-    margin-bottom: 20px;
-}
-.btn-primary {
-    background-color: #0066cc;
-    border: none;
-}
-
-/* General styling */
-body.home-body {
-    background-color: #0f1124;
+/* ...existing code... */
+body.fluent-dark {
+    margin: 0;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #181818;
     color: #fff;
-    font-family: 'Segoe UI', sans-serif;
+    display: flex;
+    min-height: 100vh;
 }
 
-/* Navbar */
-.navbar {
-    background-color: #141629;
+.sidebar {
+    width: 280px;
+    background: #1b1b1b;
+    padding: 32px 0 0 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    transition: left 0.3s;
+    z-index: 1001;
 }
 
-.navbar-brand,
-.nav-link {
-    color: #fff !important;
+.sidebar-header {
+    padding: 0 32px 24px 32px;
 }
 
-/* CTA button */
-.hero-btn {
-    background-color: #7c3aed;
-    border: none;
-    transition: all 0.2s ease;
-}
-
-.hero-btn:hover {
-    background-color: #6d28d9;
-}
-
-/* Highlighted text */
-.highlight {
-    color: #7c3aed;
+.sidebar-title {
+    font-size: 1.5rem;
     font-weight: bold;
+    color: #fff;
+    letter-spacing: 1px;
 }
 
-/* List of databases */
-.database-list {
-    background-color: #1e2137;
-    border: 1px solid #2c2f4a;
+.sidebar-nav {
+    list-style: none;
+    padding: 0 32px;
+    margin: 0;
 }
 
-/* Footer */
-.footer {
-    font-size: 0.9rem;
-    color: #aaa;
+.sidebar-nav li {
+    margin: 16px 0;
 }
+
+.sidebar-nav a {
+    color: #fff;
+    text-decoration: none;
+    font-size: 1.1rem;
+    opacity: 0.85;
+    transition: opacity 0.2s, color 0.2s;
+    border-radius: 6px;
+    padding: 8px 12px;
+    display: block;
+}
+
+.sidebar-nav a:hover,
+.sidebar-nav a:focus {
+    opacity: 1;
+    color: #b4aaff;
+    background: #232323;
+    outline: none;
+}
+
+.sidebar-toggle {
+    display: none;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 2rem;
+    margin-left: 16px;
+    margin-right: 0;
+    cursor: pointer;
+    transition: color 0.2s;
+    align-self: flex-start;
+}
+
+.sidebar-toggle:focus {
+    color: #b4aaff;
+    outline: 2px solid #b4aaff;
+}
+
+@media (max-width: 1024px) {
+    .sidebar {
+        position: absolute;
+        left: -280px;
+        top: 0;
+        height: 100vh;
+        transition: left 0.3s;
+    }
+    .sidebar.open {
+        left: 0;
+    }
+    .sidebar-toggle {
+        display: block;
+    }
+    .main-content {
+        padding-left: 0;
+    }
+}
+
+.main-content {
+    flex: 1;
+    padding: 48px 48px 0 48px;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.main-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 32px;
+    gap: 16px;
+    justify-content: flex-start; /* Move items to the left */
+}
+
+.main-title {
+    font-size: 4rem;
+    font-weight: 700;
+    margin: 0 0 16px 0;
+    letter-spacing: -2px;
+}
+
+.main-subtitle {
+    font-size: 2rem;
+    font-weight: 400;
+    margin: 0 0 32px 0;
+}
+
+.highlight {
+    color: #b4aaff;
+    border: 2px solid #b4aaff;
+    border-radius: 6px;
+    padding: 0 8px;
+    font-weight: 500;
+}
+
+.card-row {
+    display: flex;
+    gap: 32px;
+    margin-top: 48px;
+    flex-wrap: wrap;
+}
+
+.card {
+    background: #232323;
+    border-radius: 18px;
+    padding: 32px 40px;
+    min-width: 260px;
+    box-shadow: 0 2px 16px 0 #0004;
+    flex: 1 1 260px;
+    transition: box-shadow 0.2s;
+}
+
+.card:hover,
+.card:focus-within {
+    box-shadow: 0 4px 24px 0 #b4aaff44;
+}
+
+.card h3 {
+    margin: 0 0 12px 0;
+    font-size: 1.4rem;
+}
+
+.card p {
+    margin: 0;
+    color: #ccc;
+}
+
+fluent-button[appearance="accent"] {
+    margin-top: 24px;
+    margin-bottom: 8px;
+}
+
+@media (max-width: 700px) {
+    .main-content {
+        padding: 24px 8px 0 8px;
+    }
+    .main-title {
+        font-size: 2.2rem;
+    }
+    .main-subtitle {
+        font-size: 1.2rem;
+    }
+    .card-row {
+        flex-direction: column;
+        gap: 16px;
+        margin-top: 24px;
+    }
+    .card {
+        padding: 20px 16px;
+        min-width: unset;
+    }
+}
+/* ...existing code... */

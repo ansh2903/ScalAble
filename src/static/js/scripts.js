@@ -46,31 +46,53 @@ async function fetchCollections() {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
-    const dbSelect = document.getElementById("database");
-    const colSelect = document.getElementById("collection");
+    // Sidebar toggle logic
+    const sidebar = document.querySelector('.sidebar');
+    const toggleBtn = document.getElementById('sidebar-toggle');
 
-    fetch("/api/databases")
-        .then(res => res.json())
-        .then(dbs => {
-            dbs.forEach(db => {
-                let opt = document.createElement("option");
-                opt.value = db;
-                opt.textContent = db;
-                dbSelect.appendChild(opt);
-            });
+    if (toggleBtn && sidebar) {
+        toggleBtn.addEventListener('click', function () {
+            const isOpen = sidebar.classList.toggle('open');
+            toggleBtn.setAttribute('aria-expanded', isOpen);
         });
+    }
 
-    dbSelect.addEventListener("change", function () {
-        colSelect.innerHTML = '';
-        fetch(`/api/collections/${dbSelect.value}`)
+    window.addEventListener('resize', function () {
+        if (window.innerWidth > 1024 && sidebar) {
+            sidebar.classList.remove('open');
+            if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
+        }
+    });
+
+    // Database and collection select logic
+    const dbSelect = document.getElementById("db-select");
+    const colSelect = document.getElementById("collection-select");
+
+    if (dbSelect && colSelect) {
+        fetch("/api/databases")
             .then(res => res.json())
-            .then(cols => {
-                cols.forEach(col => {
+            .then(dbs => {
+                dbSelect.innerHTML = "";
+                dbs.forEach(db => {
                     let opt = document.createElement("option");
-                    opt.value = col;
-                    opt.textContent = col;
-                    colSelect.appendChild(opt);
+                    opt.value = db;
+                    opt.textContent = db;
+                    dbSelect.appendChild(opt);
                 });
             });
-    });
+
+        dbSelect.addEventListener("change", function () {
+            colSelect.innerHTML = '';
+            fetch(`/api/collections/${dbSelect.value}`)
+                .then(res => res.json())
+                .then(cols => {
+                    cols.forEach(col => {
+                        let opt = document.createElement("option");
+                        opt.value = col;
+                        opt.textContent = col;
+                        colSelect.appendChild(opt);
+                    });
+                });
+        });
+    }
 });

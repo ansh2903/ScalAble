@@ -1,77 +1,57 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>ScalAble | Home</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script type="module" src="https://unpkg.com/@fluentui/web-components"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <style>
-        body {
-            background-color: #1b1b1b;
-            font-family: 'Segoe UI', sans-serif;
-        }
-        .highlight {
-            color: #62cdff;
-        }
-        fluent-button {
-            --accent-fill-rest: #62cdff;
-            --accent-foreground-rest: #ffffff;
-            font-weight: 600;
-        }
-        fluent-card {
-            padding: 2rem;
-            margin-top: 2rem;
-            max-width: 500px;
-            background: #2c2c2c;
-            border-radius: 8px;
-        }
-    </style>
 </head>
-<body>
-    <fluent-card style="display: flex; justify-content: space-between; align-items: center;">
-        <div style="font-size: 1.5rem; font-weight: bold; color: white;">ScalAble</div>
-        <div>
-            {% if user %}
-                <span style="color: white; margin-right: 1rem;">Logged in as <strong>{{ user }}</strong></span>
-                <fluent-button appearance="stealth" onclick="location.href='{{ url_for('auth.logout') }}'">Logout</fluent-button>
+
+<body class="fluent-dark">
+    <nav class="sidebar" aria-label="Main sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">ScalAble</span>
+        </div>
+        <ul class="sidebar-nav" role="menu">
+            <li role="none"><a role="menuitem" href="#">Get started</a></li>
+            <li role="none"><a role="menuitem" href="#">Registered Databases</a></li>
+            <li role="none"><a role="menuitem" href="#">Manage Models</a></li>
+        </ul>
+    </nav>
+
+    <div class="main-content">
+        <header class="main-header">
+            <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle sidebar" aria-controls="sidebar" aria-expanded="false">&#9776;</button>
+
+            <div style="flex:1"></div>
+
+            {% if is_authenticated %}
+            <fluent-button appearance="stealth" onclick="location.href='{{ url_for('auth.logout') }}'">Logout</fluent-button>
             {% else %}
-                <fluent-button appearance="stealth" onclick="location.href='{{ url_for('auth.login') }}'">Sign In</fluent-button>
+            <fluent-button appearance="stealth" onclick="location.href='{{ url_for('auth.login') }}'">Login</fluent-button>
             {% endif %}
-        </div>
-    </fluent-card>
+        </header>
 
-    <main style="text-align: center; padding: 4rem 1rem;">
-        <h1 style="font-size: 2.5rem; font-weight: bold; color: white;">Query Your Databases With <span class="highlight">Natural Language</span></h1>
-        <p style="color: #ccc; margin-top: 0.5rem;">Easily connect SQL/NoSQL databases and query them using your own language.</p>
+        <main>
+            <h1 class="main-title">Welcome to<br>ScalAble</h1>
+            <h2 class="main-subtitle">Let your <span class="highlight">AI</span> Handle your Databases</h2>
 
-        <div style="margin-top: 2rem; display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
-            <fluent-button appearance="accent" onclick="location.href='{{ url_for('interface.index') }}'">🔌 Connect & Query</fluent-button>
-            {% if not user %}
-                <fluent-button appearance="outline" onclick="location.href='{{ url_for('auth.login') }}'">🔐 Log in to Save Databases</fluent-button>
-            {% endif %}
-        </div>
-
-        {% if user %}
-            <div style="margin-top: 3rem;">
-                <h4 style="color: white;">📚 Your Connected Databases</h4>
-                {% if databases %}
-                    <ul style="list-style: none; padding: 0; margin-top: 1rem;">
-                        {% for db in databases %}
-                            <li style="color: white; padding: 0.5rem 0; border-bottom: 1px solid #444;">{{ db }}</li>
-                        {% endfor %}
-                    </ul>
-                {% else %}
-                    <p style="color: #aaa; margin-top: 1rem;">No databases connected yet.</p>
-                {% endif %}
-            </div>
-        {% else %}
-            <p style="color: #f5c518; margin-top: 3rem;">You're using ScalAble as a guest. Your databases won't be saved between sessions.</p>
-        {% endif %}
-    </main>
-
-    <footer style="text-align: center; padding-bottom: 2rem; color: #aaa;">
-        ⚡ Built with love for data by ScalAble · <a href="https://github.com/ansh2903/ScalAble" style="color: #62cdff; text-decoration: none;">GitHub</a>
-    </footer>
+            <fluent-button appearance="accent">Check out what's new</fluent-button>
+            
+            <section class="card-row" aria-label="Features">
+                <div class="card">
+                    <h3>Add Database</h3>
+                    <p>Takes 2 minutes</p>
+                </div>
+                <div class="card">
+                    <h3>Query your Database</h3>
+                    <p>Use your desired LLM to Query your Database with Natural Language</p>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
 </body>
 </html>

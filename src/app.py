@@ -23,5 +23,5 @@ def create_app():
 if __name__ == "__main__":
     print("Launching Flask server...")
     app = create_app()
-    print("server started, Host: ", settings.APP_HOST)
-    app.run(debug=settings.DEBUG) # Will run the app twice on launch
+    print(f"Server started on host: {settings.APP_HOST}")
+    app.run(debug=settings.DEBUG)  # Will run the app twice on launch
