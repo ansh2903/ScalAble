@@ -11,5 +11,9 @@ gunicorn
 ollama
 pymongo[srv]>=3.12.0
 dill
+bcrypt
+flask_sqlalchemy
+psycopg2-binary
+flask-bcrypt
 
 # -e .

@@ -16,6 +16,23 @@ interface_blueprint = Blueprint('interface', __name__)
 def index():
     return render_template('index.html')
 
+@interface_blueprint.route('/add-database', methods=['POST'])
+def add_database():
+    pass
+
+@interface_blueprint.route('/connections')
+def connections():
+    pass
+
+@interface_blueprint.route('/chat')
+def chat():
+    pass
+
+@interface_blueprint.route('/settings')
+def settings():
+    pass
+
+
 
 @interface_blueprint.route("/list_databases", methods=["POST"])
 def list_databases():
@@ -75,7 +92,7 @@ def get_collections(db_name):
 def home():
     user = session.get('user')
     if user:
-        user_data = users.get(user)
+        user_data = user.get(user)
         databases = user_data.get('databases', [])
         return render_template('home.html', user=user, databases=databases)
     return render_template('home.html', user=None, databases=[])

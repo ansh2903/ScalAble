@@ -1,3 +1,9 @@
+'''
+This module is responsible for taking in the natural language query from the user
+and converting it into a database query based on the user's choice of database,
+database type and things like schema, tables, etc in the database
+'''
+
 import requests
 import sys
 import ast

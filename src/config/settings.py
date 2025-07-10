@@ -5,6 +5,7 @@ load_dotenv()
 
 class Settings:
     SECRET_KEY = os.getenv("SECRET_KEY", "scalable_secret_key")
+    SQLALCHEMY_URI = os.getenv("SQLALCHEMY_URI")
     DEBUG = os.getenv("DEBUG", "True") == "True"
     OLLAMA_ENDPOINT = os.getenv("OLLAMA_ENDPOINT")
     DEFAULT_MODEL = os.getenv("OLLAMA_LLM")

@@ -1,0 +1,18 @@
+services:
+  postgres:
+    image: postgres:latest
+    container_name: ScalAble_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ScalAble
+      POSTGRES_PASSWORD: Pass
+      POSTGRES_DB: ScalAbleDB
+    
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
