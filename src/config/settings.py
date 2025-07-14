@@ -9,6 +9,7 @@ class Settings:
     DEBUG = os.getenv("DEBUG", "True") == "True"
     OLLAMA_ENDPOINT = os.getenv("OLLAMA_ENDPOINT")
     DEFAULT_MODEL = os.getenv("OLLAMA_LLM")
-    APP_HOST = os.getenv("APP_HOST")
+    APP_HOST = os.getenv("APP_HOST", "127.0.0.1")
+    APP_PORT = int(os.getenv("APP_PORT", 5000))
 
 settings = Settings()

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ScalAble | Add Database</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/database_form.js') }}"></script>
+    
+</head>
+<body class="fluent-dark">
+
+    <div class="main-content">
+        <div class="card-container max-w-4xl mx-auto">
+            <div class="card-header">
+                <h3 class="text-xl font-medium">Add your database</h3>
+                <div id="selected-db-type" class="selected-db hidden">
+                    <span id="selected-db-type-label" class="font-medium text-sm"></span>
+                </div>
+            </div>
+
+            <!-- Stepper Dots -->
+            <div class="step-indicator">
+                <div class="dot active"></div>
+                <div class="line"></div>
+                <div class="dot"></div>
+                <div class="line"></div>
+                <div class="dot"></div>
+                <div class="line"></div>
+                <div class="dot"></div>
+                <div class="line"></div>
+                <div class="dot"></div>
+                <div class="line"></div>
+                <div class="dot"></div>
+            </div>
+
+            <form id="databaseForm" method="POST">
+                <input type="hidden" name="db_type" id="db_type">
+                <div id="db-type-grid" class="db-grid">
+                    {% set db_types = [
+                        ('MySQL', 'mysql', 'AWS managed MySQL'),
+                        ('Microsoft SQL Server', 'mssql', 'Microsoft managed SQL Server'),
+                        ('PostgreSQL', 'postgresql', 'Open source PostgreSQL'),
+                        ('Oracle PL/SQL', 'oracle', 'Oracle Database'),
+                        ('SQLite', 'sqlite', 'File-based SQLite'),
+                        ('Snowflake', 'snowflake', 'Cloud Data Warehouse'),
+                        ('Redshift', 'redshift', 'AWS Redshift'),
+                        ('BigQuery', 'bigquery', 'Google BigQuery'),
+                        ('MariaDB', 'mariadb', 'MariaDB Server'),
+                        ('MongoDB', 'mongodb', 'NoSQL MongoDB'),
+                        ('Clickhouse', 'clickhouse', 'Clickhouse DB'),
+                        ('Other Database', 'other', 'Custom/Other')
+                    ] %}
+                    {% for label, value, desc in db_types %}
+                        <div class="db-type-card" data-dbtype="{{ value }}" data-label="{{ label }}">
+                            <h4 class="label">{{ label }}</h4>
+                            <p class="desc">{{ desc }}</p>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Dynamic DB Config Form -->
+                <div id="form-fields-container" class="db-details hidden"></div>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-container">
+      {% for category, message in messages %}
+        <div class="flash-message flash-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+
+                <!-- Footer Buttons -->
+                <div class="form-footer">
+                    <button type="button" id="back-btn" class="btn-secondary hidden">Back</button>
+                    <button type="submit" id="continue-btn" class="btn-primary hidden">Continue</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</body>
+</html>

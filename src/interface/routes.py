@@ -1,60 +1,74 @@
-from flask import Blueprint, render_template, jsonify, request, session
+from flask import Blueprint, render_template, jsonify, request, session, redirect, url_for, flash
+import importlib
 from src.pipeline.query_pipeline import process_query_pipeline
-
-from pymongo.server_api import ServerApi
-from pymongo import MongoClient
-from src.connectors.mongo_connector import MongoDBConnector
 
 from src.core.exception import CustomException
 from src.core.logger import logging
 
-
 interface_blueprint = Blueprint('interface', __name__)
 
-# Home page
+# Landing page
 @interface_blueprint.route('/')
 def index():
     return render_template('index.html')
 
-@interface_blueprint.route('/add-database', methods=['POST'])
-def add_database():
-    pass
 
+# Home page (for authenticated user)
+@interface_blueprint.route('/home')
+def home():
+    user = session.get('user')
+    databases = session.get('connections', []) if user else []
+    return render_template('home.html', user=user, databases=databases)
+
+# All connections (like /connections)
 @interface_blueprint.route('/connections')
 def connections():
-    pass
+    connections = session.get("connections", [])
+    return render_template('connections.html', connections=connections)
 
-@interface_blueprint.route('/chat')
-def chat():
-    pass
+# Add new database (GET/POST form)
+@interface_blueprint.route('/add-database', methods=['GET', 'POST'])
+def add_database():
+    if request.method == 'POST':
+        form_data = request.form.to_dict()
+        db_type = form_data.get("db_type")
 
+        try:
+            # Dynamically import the correct connector module
+            connector_module = importlib.import_module(f"connectors.{db_type}")
+            status, msg = connector_module.test_connection(form_data)
+        except ModuleNotFoundError:
+            flash(f"Connector for '{db_type}' not implemented.", "error")
+            return redirect(url_for("interface.add_database"))
+        except Exception as e:
+            flash(f"Error during connection test: {str(e)}", "error")
+            return redirect(url_for("interface.add_database"))
+
+        if status:
+            form_data["id"] = len(session.get("connections", [])) + 1
+            connections = session.get("connections", [])
+            connections.append(form_data)
+            session["connections"] = connections
+            flash("Database connected and added!", "success")
+            return redirect(url_for("interface.connections"))
+        else:
+            flash(f"Connection failed: {msg}", "error")
+            return redirect(url_for("interface.add_database"))
+
+    return render_template("connections_new.html")
+
+# App settings
 @interface_blueprint.route('/settings')
 def settings():
-    pass
+    return render_template('settings.html')
 
 
+# Chat page stub (to be built later)
+@interface_blueprint.route('/chat')
+def chat():
+    return render_template('chat.html')
 
-@interface_blueprint.route("/list_databases", methods=["POST"])
-def list_databases():
-    try:
-        uri = request.json["uri"]
-        client = MongoClient(uri, server_api=ServerApi("1"))
-        dbs = client.list_database_names()
-        return jsonify({"databases": dbs})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@interface_blueprint.route("/list_collections", methods=["POST"])
-def list_collections():
-    try:
-        uri = request.json["uri"]
-        db_name = request.json["database"]
-        client = MongoClient(uri, server_api=ServerApi("1"))
-        colls = client[db_name].list_collection_names()
-        return jsonify({"collections": colls})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
+# Run natural language query
 logging.info("Defining the index route for the interface blueprint.")
 @interface_blueprint.route('/run_query', methods=['POST'])
 def run_query():
@@ -76,23 +90,3 @@ def run_query():
     except Exception as e:
         raise CustomException(f"An error occurred while processing the query: {str(e)}") from e
 
-@interface_blueprint.route('/api/databases', methods=['POST'])
-def get_databases():
-    connector = MongoDBConnector()
-    dbs = connector.list_databases()
-    return jsonify(dbs)
-
-@interface_blueprint.route('/api/collections/<db_name>', methods=['GET'])
-def get_collections(db_name):
-    connector = MongoDBConnector()
-    collections = connector.list_collections(db_name)
-    return jsonify(collections)
-
-@interface_blueprint.route('/home')
-def home():
-    user = session.get('user')
-    if user:
-        user_data = user.get(user)
-        databases = user_data.get('databases', [])
-        return render_template('home.html', user=user, databases=databases)
-    return render_template('home.html', user=None, databases=[])

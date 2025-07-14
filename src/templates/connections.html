@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ScalAble | Your Connections</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="fluent-dark">
+    <nav class="sidebar" aria-label="Main sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">ScalAble</span>
+            <button id="sidebar-close" class="sidebar-toggle" aria-label="Close sidebar">&#10005;</button>
+        </div>
+        <ul class="sidebar-nav" role="menu">
+            <li role="none"><a role="menuitem" href="{{ url_for('interface.index') }}">Home</a></li>
+            <li role="none"><a role="menuitem" href="{{ url_for('interface.connections') }}">Databases</a></li>
+            <li role="none"><a role="menuitem" href="#">Manage Models</a></li>
+            <li role="none"><a role="menuitem" href="#">Github</a></li>
+        </ul>
+    </nav>
+
+    <div class="main-content">
+        <h2 class="main-title">Your Database Connections</h2>
+
+        <div class="connection-cards">
+            {% if connections %}
+                {% for conn in connections %}
+                <div class="connection-card">
+                    <div class="connection-header">
+                        <strong>{{ conn.name }}</strong>
+                        <span class="badge">{{ conn.db_type }}</span>
+                    </div>
+                    <div class="connection-body">
+                        <p><strong>Host:</strong> {{ conn.host }}</p>
+                        <p><strong>Port:</strong> {{ conn.port }}</p>
+                        <p><strong>User:</strong> {{ conn.username }}</p>
+                    </div>
+                    <div class="connection-footer">
+                        <a href="#" class="btn btn-sm">Connect</a>
+                        <a href="#" class="btn btn-sm btn-danger">Delete</a>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-muted">No database connections found. <a href="{{ url_for('interface.add_database') }}">Add one now →</a></div>
+            {% endif %}
+        </div>
+
+        <div style="margin-top: 32px;">
+            <a href="{{ url_for('interface.add_database') }}" class="btn btn-primary">➕ Add New Connection</a>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+</body>
+</html>

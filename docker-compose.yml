@@ -1,12 +1,12 @@
 services:
   postgres:
     image: postgres:latest
-    container_name: ScalAble_postgres
+    container_name: scalable_postgres
     restart: always
     environment:
-      POSTGRES_USER: ScalAble
+      POSTGRES_USER: scalable
       POSTGRES_PASSWORD: Pass
-      POSTGRES_DB: ScalAbleDB
+      POSTGRES_DB: scalabledb
     
     ports:
       - "5432:5432"

@@ -1,4 +1,4 @@
-/* ...existing code... */
+/* === Base Styles === */
 body.fluent-dark {
     margin: 0;
     font-family: 'Segoe UI', Arial, sans-serif;
@@ -8,18 +8,23 @@ body.fluent-dark {
     min-height: 100vh;
 }
 
+/* === Sidebar === */
 .sidebar {
     width: 280px;
     background: #1b1b1b;
-    padding: 32px 0 0 0;
+    padding-top: 32px;
     display: flex;
     flex-direction: column;
     min-height: 100vh;
     transition: left 0.3s;
     z-index: 1001;
+    position: relative;
 }
 
 .sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     padding: 0 32px 24px 32px;
 }
 
@@ -66,7 +71,6 @@ body.fluent-dark {
     color: #fff;
     font-size: 2rem;
     margin-left: 16px;
-    margin-right: 0;
     cursor: pointer;
     transition: color 0.2s;
     align-self: flex-start;
@@ -77,13 +81,25 @@ body.fluent-dark {
     outline: 2px solid #b4aaff;
 }
 
+#sidebar-close {
+    position: absolute;
+    top: 30px;
+    right: 30px;
+    font-size: 1.5rem;
+}
+
+@media (min-width: 1025px) {
+    #sidebar-close {
+        display: none;
+    }
+}
+
 @media (max-width: 1024px) {
     .sidebar {
         position: absolute;
         left: -280px;
         top: 0;
         height: 100vh;
-        transition: left 0.3s;
     }
     .sidebar.open {
         left: 0;
@@ -96,6 +112,7 @@ body.fluent-dark {
     }
 }
 
+/* === Main Content === */
 .main-content {
     flex: 1;
     padding: 48px 48px 0 48px;
@@ -109,7 +126,7 @@ body.fluent-dark {
     align-items: center;
     margin-bottom: 32px;
     gap: 16px;
-    justify-content: flex-start; /* Move items to the left */
+    justify-content: flex-start;
 }
 
 .main-title {
@@ -170,6 +187,7 @@ fluent-button[appearance="accent"] {
     margin-bottom: 8px;
 }
 
+/* === Responsive === */
 @media (max-width: 700px) {
     .main-content {
         padding: 24px 8px 0 8px;
@@ -190,4 +208,310 @@ fluent-button[appearance="accent"] {
         min-width: unset;
     }
 }
-/* ...existing code... */
+
+/* === Feature Button === */
+.feature-btn {
+    border: none;
+    background: #232323;
+    border-radius: 18px;
+    padding: 32px 40px;
+    min-width: 260px;
+    box-shadow: 0 2px 16px 0 #0004;
+    flex: 1 1 260px;
+    transition: box-shadow 0.2s, background 0.2s;
+    cursor: pointer;
+    text-align: left;
+    color: #fff;
+    outline: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.feature-btn:hover,
+.feature-btn:focus {
+    box-shadow: 0 4px 24px 0 #b4aaff44;
+    outline: 2px solid #b4aaff;
+}
+
+/* === Chat Page Styles === */
+.chat-box {
+    background: #0f0f0f;
+    border: 1px solid #2a2a2a;
+    border-radius: 12px;
+    padding: 16px;
+    max-width: 600px;
+    margin: 0 auto;
+    box-shadow: 0 0 10px #00000050;
+}
+
+.db-label-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 0.95rem;
+    color: #aaa;
+}
+
+.db-label {
+    margin-right: 8px;
+    white-space: nowrap;
+}
+
+.db-icon {
+    margin-right: 4px;
+}
+
+.db-select {
+    flex: 1;
+    background: #181818;
+    border: 1px solid #333;
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 1rem;
+    outline: none;
+}
+
+.chat-form {
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-form textarea {
+    background: #181818;
+    color: #ddd;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 12px;
+    resize: none;
+    margin-bottom: 12px;
+    font-size: 1rem;
+}
+
+.send-button {
+    align-self: flex-end;
+    background: #7f4fff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.send-button:hover {
+    background: #9e6bff;
+}
+
+/*Connection.html*/
+
+.connection-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
+    margin-top: 32px;
+}
+
+.connection-card {
+    background: #232323;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 16px #0005;
+    transition: all 0.2s ease-in-out;
+}
+
+.connection-card:hover {
+    box-shadow: 0 6px 20px #b4aaff44;
+}
+
+.connection-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.connection-header .badge {
+    background: #b4aaff33;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    color: #b4aaff;
+}
+
+.connection-body p {
+    margin: 6px 0;
+    font-size: 0.95rem;
+    color: #ddd;
+}
+
+.connection-footer {
+    margin-top: 16px;
+    display: flex;
+    gap: 12px;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    border-radius: 6px;
+    text-decoration: none;
+    color: white;
+    background-color: #444;
+    transition: background 0.2s ease;
+}
+
+.btn-sm:hover {
+    background-color: #555;
+}
+
+.btn-danger {
+    background-color: #aa4a4a;
+}
+
+.btn-danger:hover {
+    background-color: #bb3c3c;
+}
+
+/*Connections_new.html*/
+
+.main-content {
+    padding: 48px;
+}
+
+.card-container {
+    background: #1e1e1e;
+    border-radius: 16px;
+    padding: 32px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.selected-db {
+    background-color: #2a2a2a;
+    padding: 4px 12px;
+    border-radius: 24px;
+}
+
+.step-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: start;
+    margin-bottom: 24px;
+}
+
+.dot {
+    width: 10px;
+    height: 10px;
+    background: #b4aaff;
+    border-radius: 50%;
+}
+
+.line {
+    width: 30px;
+    height: 2px;
+    background: #444;
+}
+
+.db-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    margin-bottom: 24px;
+}
+
+.db-type-card {
+    background: #232323;
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid #333;
+    cursor: pointer;
+    transition: background 0.3s, transform 0.2s;
+}
+
+.db-type-card:hover {
+    background: #2c2c2c;
+    transform: translateY(-2px);
+}
+
+.db-type-card .label {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #fff;
+}
+
+.db-type-card .desc {
+    font-size: 0.85rem;
+    color: #aaa;
+}
+
+.db-details label {
+    display: block;
+    margin-top: 12px;
+    font-size: 0.9rem;
+    color: #ccc;
+}
+
+.db-details input {
+    width: 100%;
+    padding: 8px;
+    background: #1a1a1a;
+    color: #fff;
+    border: 1px solid #444;
+    border-radius: 6px;
+    margin-top: 4px;
+}
+
+.form-footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 32px;
+}
+
+.btn-primary {
+    background: #b4aaff;
+    color: #000;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+}
+
+.btn-secondary {
+    background: #333;
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.flash-message {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+.flash-success {
+    background-color: #144c3d;
+    color: #a7f3d0;
+}
+.flash-error {
+    background-color: #4c1d1d;
+    color: #fecaca;
+}
