@@ -6,7 +6,7 @@
 
 ## Features
 
-- 🔌 **Multi-Database Support**:
+- **Multi-Database Support**:
   - PostgreSQL
   - MySQL
   - Microsoft SQL Server
@@ -39,16 +39,6 @@
 | Add Database | Ask a Query | Generated SQL |
 |--------------|-------------|----------------|
 | ![Add DB](./screenshots/add_db.png) | ![Query](./screenshots/query.png) | ![Output](./screenshots/output.png) |
-
----
-
-## Tech Stack
-
-- **Backend**: Flask (Python), psycopg2 / pymssql / pymysql / pymongo
-- **Frontend**: Jinja2, Bootstrap, JavaScript
-- **LLM**: Locally hosted (Ollama-compatible models, e.g., `deepseek`, `sqlcoder`, `spider`)
-- **Database**: PostgreSQL (for user + session storage)
-- **Visualization**: Plotly.js
 
 ---
 
