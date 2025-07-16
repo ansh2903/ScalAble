@@ -15,5 +15,7 @@ bcrypt
 flask_sqlalchemy
 psycopg2-binary
 flask-bcrypt
+pyodbc
+mysql-connector-python
 
 # -e .

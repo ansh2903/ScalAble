@@ -1,5 +1,5 @@
-import psycopg2
-from psycopg2 import OperationalError
+import mysql.connector
+from mysql.connector import Error
 import sys
 
 from src.core.exception import CustomException
@@ -7,56 +7,49 @@ from src.core.logger import logging
 
 def test_connection(config):
     try:
-        conn = psycopg2.connect(
+        conn = mysql.connector.connect(
             host=config['host'],
-            port=config['port'],
+            port=int(config['port']),
             user=config['username'],
             password=config['password'],
-            dbname=config['database'],
-            connect_timeout=5
+            database=config['database'],
+            connection_timeout=5
         )
-        logging.info("Connection successful")
+        logging.info("MySQL connection successful")
         conn.close()
         return True, "Connection successful"
-    except OperationalError as e:
+    except Error as e:
         return False, CustomException(sys, str(e))
-    
+
+
 def connection(config):
     try:
-        conn = psycopg2.connect(
+        conn = mysql.connector.connect(
             host=config['host'],
-            port=config['port'],
+            port=int(config['port']),
             user=config['username'],
             password=config['password'],
-            dbname=config['database'],
-            connect_timeout=5
+            database=config['database'],
+            connection_timeout=5
         )
         cursor = conn.cursor()
 
         db_metadata = {
-            "db_type": "postgresql",
+            "db_type": "mysql",
             "database": config['database'],
             "table_count": 0,
             "total_columns": 0,
             "tables": {}
         }
 
-        # Get all table names in public schema
-        cursor.execute("""
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
-        """)
-        tables = cursor.fetchall()
+        # Get tables
+        cursor.execute("SHOW TABLES;")
+        tables = [row[0] for row in cursor.fetchall()]
         db_metadata["table_count"] = len(tables)
 
-        for (table_name,) in tables:
-            # Get column names and types
-            cursor.execute("""
-                SELECT column_name, data_type 
-                FROM information_schema.columns 
-                WHERE table_name = %s;
-            """, (table_name,))
+        for table_name in tables:
+            # Column names & types
+            cursor.execute(f"SHOW COLUMNS FROM {table_name};")
             columns_info = cursor.fetchall()
             column_names = [col[0] for col in columns_info]
             column_types = {col[0]: col[1] for col in columns_info}
@@ -66,21 +59,21 @@ def connection(config):
             cursor.execute(f"SELECT COUNT(*) FROM {table_name};")
             row_count = cursor.fetchone()[0]
 
-            # Table size
-            cursor.execute("SELECT pg_total_relation_size(%s);", (table_name,))
-            size_bytes = cursor.fetchone()[0]
-
-            # Storage size (formatted)
-            cursor.execute("SELECT pg_size_pretty(pg_total_relation_size(%s));", (table_name,))
-            readable_size = cursor.fetchone()[0]
+            # Storage size
+            cursor.execute(f"""
+                SELECT ROUND((DATA_LENGTH + INDEX_LENGTH) / 1024, 2)
+                FROM information_schema.TABLES
+                WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s;
+            """, (config['database'], table_name))
+            size_kb = cursor.fetchone()[0] or 0
+            size_pretty = f"{size_kb} KB"
 
             # Primary keys
-            cursor.execute("""
-                SELECT a.attname
-                FROM pg_index i
-                JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
-                WHERE i.indrelid = %s::regclass AND i.indisprimary;
-            """, (table_name,))
+            cursor.execute(f"""
+                SELECT COLUMN_NAME
+                FROM information_schema.KEY_COLUMN_USAGE
+                WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s AND CONSTRAINT_NAME = 'PRIMARY';
+            """, (config['database'], table_name))
             pk_columns = [row[0] for row in cursor.fetchall()]
 
             # First and last PK values
@@ -95,46 +88,35 @@ def connection(config):
                 last = cursor.fetchone()
                 last_pk = last[0] if last else None
 
-            # Unique constraints
-            cursor.execute("""
-                SELECT a.attname
-                FROM pg_constraint c
-                JOIN pg_class t ON c.conrelid = t.oid
-                JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(c.conkey)
-                WHERE c.contype = 'u' AND t.relname = %s;
-            """, (table_name,))
+            # Unique keys
+            cursor.execute(f"""
+                SELECT DISTINCT COLUMN_NAME
+                FROM information_schema.STATISTICS
+                WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s AND NON_UNIQUE = 0 AND INDEX_NAME != 'PRIMARY';
+            """, (config['database'], table_name))
             unique_keys = [row[0] for row in cursor.fetchall()]
 
             # Foreign keys
-            cursor.execute("""
-                SELECT
-                    kcu.column_name,
-                    ccu.table_name AS foreign_table_name,
-                    ccu.column_name AS foreign_column_name
-                FROM 
-                    information_schema.table_constraints AS tc 
-                    JOIN information_schema.key_column_usage AS kcu
-                      ON tc.constraint_name = kcu.constraint_name
-                    JOIN information_schema.constraint_column_usage AS ccu
-                      ON ccu.constraint_name = tc.constraint_name
-                WHERE constraint_type = 'FOREIGN KEY' AND tc.table_name = %s;
-            """, (table_name,))
+            cursor.execute(f"""
+                SELECT COLUMN_NAME, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME
+                FROM information_schema.KEY_COLUMN_USAGE
+                WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s AND REFERENCED_TABLE_NAME IS NOT NULL;
+            """, (config['database'], table_name))
             foreign_keys = [{
                 "column": row[0],
                 "references_table": row[1],
                 "references_column": row[2]
             } for row in cursor.fetchall()]
 
-            # Dummy normalization form stub (optional real analysis later)
+            # Normalization form (dummy placeholder)
             norm_form = "3NF (assumed)"
 
-            # Add to metadata
             db_metadata["tables"][table_name] = {
                 "columns": column_names,
                 "column_types": column_types,
                 "row_count": row_count,
-                "size_bytes": size_bytes,
-                "size_pretty": readable_size,
+                "size_kb": size_kb,
+                "size_pretty": size_pretty,
                 "primary_keys": pk_columns,
                 "row_bounds": {
                     "first_pk": first_pk,
@@ -150,7 +132,7 @@ def connection(config):
         conn.close()
         return True, db_metadata
 
-    except OperationalError as e:
+    except Error as e:
         return False, CustomException(sys, str(e))
     except Exception as e:
         return False, CustomException(sys, str(e))

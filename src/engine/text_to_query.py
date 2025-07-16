@@ -12,7 +12,7 @@ from src.core.exception import CustomException
 from src.core.logger import logging
 
 
-def generate_query_from_nl(nl_query: str, db_type, db_metadata: dict = {}, model="BahaSlama/llama3.1-finetuned:latest"):
+def generate_query_from_nl(nl_query: str, db_type, db_metadata: dict = {}, model="qwen2.5-coder:7b"):
 
     """
     Converts natural language query into database-specific query using a local LLM.
@@ -28,16 +28,32 @@ def generate_query_from_nl(nl_query: str, db_type, db_metadata: dict = {}, model
     """
     try:
         prompt_text = f"""
-            You are a {db_type} Database expert.
+            You are a professional {db_type} SQL expert. Your job is to help users query or understand their database using natural language.
 
-            Here's the metadata of the Database {db_metadata}, work accordingly, and with perfection.
+            The following is the database metadata (tables, columns, sample values):
+            {db_metadata}
 
-            Convert the following instruction into a valid {db_type} query:
+            ---
 
-            Instruction: {nl_query}
+            User Instruction:
+            {nl_query}
 
-            Only return the query/queries. Always finish the queries. No comments, No markdown. Unless asked for specifically.
-            """
+            ---
+
+            Instructions:
+            1. If the user is asking to generate a query:
+            - ONLY return the final SQL query.
+            - Use correct SQL syntax for {db_type}.
+            - Do NOT include explanations, comments, or markdown unless explicitly requested.
+            - Ensure valid table and column references based on the metadata above.
+
+            2. If the user is asking a question or inspecting something (like "what is the schema", "list all tables", etc.):
+            - Return a short, accurate natural language response.
+            - If SQL is required, provide the relevant query but explain briefly and clearly.
+
+            Respond accordingly:
+        """
+
 
         payload = {
             'model': model,

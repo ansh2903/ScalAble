@@ -4,13 +4,14 @@
     <title>Login | ScalAble</title>
     <script type="module" src="https://unpkg.com/@fluentui/web-components"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <script type="module" src="https://unpkg.com/@fluentui/web-components"></script>
 </head>
 
 <body class="bg-gray-100 flex items-center justify-center min-h-screen">
     <div class="bg-white p-8 rounded shadow-md w-full max-w-sm">
         <h2 class="text-2xl font-bold mb-4 text-center">Login</h2>
-        <form method="POST">
+
+        <!-- Login form -->
+        <form method="POST" action="{{ url_for('auth.login') }}">
             <div class="mb-4">
                 <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
                 <input type="text" name="email" id="email" required class="w-full border rounded px-3 py-2 mt-1" />
@@ -24,6 +25,17 @@
             </button>
         </form>
 
+        <!-- OR separator -->
+        <div class="text-center my-4 text-gray-500 text-sm">— or —</div>
+
+        <!-- Continue as Guest button -->
+        <form method="POST" action="{{ url_for('auth.guest') }}">
+            <button type="submit" class="w-full bg-gray-200 text-black py-2 rounded hover:bg-gray-300">
+                Continue as Guest
+            </button>
+        </form>
+
+        <!-- Flash messages -->
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
             <div class="mt-4">

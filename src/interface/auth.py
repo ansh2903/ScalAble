@@ -12,6 +12,16 @@ users = {
     }
 }
 
+@auth_blueprint.route('/guest', methods=['POST'])
+def guest():
+    session['user'] = 'guest'
+    session['role'] = 'guest'
+    session['connections'] = []  # start clean
+    session['chat_history'] = []
+    flash("You're now browsing as a guest!", "info")
+    return redirect(url_for('interface.home'))
+
+
 @auth_blueprint.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
