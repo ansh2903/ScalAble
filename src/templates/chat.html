@@ -26,7 +26,7 @@
     <div class="main-content">
         <h2 class="main-title">Ready to explore your data?</h2>
 
-        <div class="chat-box">
+        <form id="messageArea" class="chat-form" method="POST" action="{{ url_for('interface.chat') }}" autocomplete="off">
             <div class="db-label-row">
                 <label class="db-label" for="selected_db">
                     <span class="db-icon">🗄️</span> Database:
@@ -42,10 +42,9 @@
                 </select>
             </div>
 
-            <form id="messageArea" class="chat-form" method="POST" action="{{ url_for('interface.chat') }}" autocomplete="off">
-                <textarea id = "text" name="message" rows="3" placeholder="Ask your database..." required>{{ message or '' }}</textarea>
-                <button type="submit" class="send-button">↑ Send</button>
-            </form>
+            <textarea id="text" name="message" rows="3" placeholder="Ask your database..." required>{{ message or '' }}</textarea>
+            <button type="submit" class="send-button">↑ Send</button>
+        </form>
 
             {% if result_output %}
             <div class="result-output">

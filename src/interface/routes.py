@@ -124,17 +124,27 @@ def chat():
     if request.method == 'POST':
         message = request.form.get('message')
         selected_db_id = request.form.get('selected_db_id')
+        print(selected_db_id)
 
-        try:
-            generated_response = generate_query_from_nl(message)
-            result_output = f"""
-            <div style="background:#111; padding: 1rem; border-radius: 8px; overflow-x:auto;">
-                <strong>LLM Output:</strong>
-                <pre style="color:#0f0; margin-top: 0.5rem;">{generated_response}</pre>
-            </div>
-            """
-        except Exception as e:
-            flash(f"Error: {str(e)}", "error")
+        selected_conn = next(
+            (conn for conn in connections if str(conn['id']) == str(selected_db_id)), None
+        )
+
+        if selected_conn:
+            metadata = selected_conn.get('metadata')
+            print('metadata: ', metadata)
+            db_type = selected_conn.get("db_type")
+            
+            try:
+                generated_response = generate_query_from_nl(message, db_type, metadata)
+                result_output = f"""
+                <div style="background:#111; padding: 1rem; border-radius: 8px; overflow-x:auto;">
+                    <strong>LLM Output:</strong>
+                    <pre style="color:#0f0; margin-top: 0.5rem;">{generated_response}</pre>
+                </div>
+                """
+            except Exception as e:
+                flash(f"Error: {str(e)}", "error")
 
     return render_template('chat.html',
                            databases=databases,

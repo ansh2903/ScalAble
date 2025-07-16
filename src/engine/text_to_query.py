@@ -12,7 +12,7 @@ from src.core.exception import CustomException
 from src.core.logger import logging
 
 
-def generate_query_from_nl(nl_query: str, db_metadata: dict = {}, db_type: str = "generic", model="BahaSlama/llama3.1-finetuned:latest"):
+def generate_query_from_nl(nl_query: str, db_type, db_metadata: dict = {}, model="BahaSlama/llama3.1-finetuned:latest"):
 
     """
     Converts natural language query into database-specific query using a local LLM.
@@ -28,13 +28,15 @@ def generate_query_from_nl(nl_query: str, db_metadata: dict = {}, db_type: str =
     """
     try:
         prompt_text = f"""
-            You are an expert in writing database queries.
+            You are a {db_type} Database expert.
 
-            Convert the following instruction into a valid {db_type.upper()} query:
+            Here's the metadata of the Database {db_metadata}, work accordingly, and with perfection.
+
+            Convert the following instruction into a valid {db_type} query:
 
             Instruction: {nl_query}
 
-            Only return the query. No comments. No markdown.
+            Only return the query/queries. Always finish the queries. No comments, No markdown. Unless asked for specifically.
             """
 
         payload = {
