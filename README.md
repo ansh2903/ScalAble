@@ -1,4 +1,4 @@
-# ScalAble — Natural Language Interface for Your Databases
+# ScalAble — A Natural Language to SQL/NoSQL interface for Your Databases
 
 **ScalAble** is a lightweight, extensible, and user-friendly web application that allows users to interact with their SQL and NoSQL databases using **natural language queries**. Whether you're a developer, analyst, or data scientist, ScalAble bridges the gap between human intent and complex database query logic using LLMs — all while keeping your data private and under your control.
 
