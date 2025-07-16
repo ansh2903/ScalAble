@@ -47,5 +47,5 @@
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/scalable.git
+git clone https://github.com/ansh2903/scalable.git
 cd scalable
