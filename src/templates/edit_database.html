@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ScalAble | Edit Database</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/database_form_edit.js') }}"></script>
+    <script type="module" src="https://unpkg.com/@fluentui/web-components"></script>
+</head>
+
+<body class="fluent-dark">
+    <div class="main-content">
+        <div class="card-container max-w-4xl mx-auto">
+            <div class="card-header">
+                <h3 class="text-xl font-medium">Edit Database</h3>
+                <span class="badge">{{ conn.db_type }}</span>
+            </div>
+
+            <form id="editDatabaseForm" method="POST">
+                <input type="hidden" id="db_type" name="db_type" value="{{ conn.db_type }}">
+                <div id="form-fields-container" class="db-details"></div>
+
+                <div class="form-footer">
+                    <button type="submit" class="btn btn-primary">💾 Save Changes</button>
+                    <a href="{{ url_for('interface.connections') }}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const existingData = {{ conn|tojson }};
+    </script>
+</body>
+</html>

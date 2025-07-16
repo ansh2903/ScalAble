@@ -1,4 +1,4 @@
-from src.engine.text_to_query import generate_mongo_query_from_nl
+from src.engine.text_to_query import generate_query_from_nl
 from src.engine.query_executor import run_mongo_query
 # from src.engine.visualizer import generate_plot
 
@@ -19,7 +19,7 @@ def process_query_pipeline(config: dict, natural_query: str):
     """
     try:
         # Convert natural language query to MongoDB query
-        mongo_query = generate_mongo_query_from_nl(natural_query)
+        mongo_query = generate_query_from_nl(natural_query)
         
         # Execute the MongoDB query and get the results as a DataFrame
         df = run_mongo_query(config, mongo_query)

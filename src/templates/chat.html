@@ -1,47 +1,71 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>ScalAble | Chat with Database</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script type="module" src="https://unpkg.com/@fluentui/web-components"></script>
 </head>
-    <body class="fluent-dark">
-        <nav class="sidebar" aria-label="Main sidebar">
-            <div class="sidebar-header">
-                <span class="sidebar-title">ScalAble</span>
-                <button id="sidebar-close" class="sidebar-toggle" aria-label="Close sidebar">&#10005;</button>
-            </div>
-            <ul class="sidebar-nav" role="menu">
-                <li role="none"><a role="menuitem" href="{{ url_for('interface.index') }}">Home</a></li>
-                <li role="none"><a role="menuitem" href="{{ url_for('interface.connections') }}">Databases</a></li>
-                <li role="none"><a role="menuitem" href="#">Manage Models</a></li>
-                <li role="none"><a role="menuitem" href="#">Github</a></li>
-            </ul>
-        </nav>
 
-        <div class="main-content">
-            <h2 class="main-title">Ready to explore your data?</h2>
-            <div class="chat-box">
-                <div class="db-label-row">
-                    <label class="db-label" for="selected_db">
-                        <span class="db-icon">🗄️</span> Database:
-                    </label>
-                    <select class="db-select" name="selected_db" id="selected_db">
-                        <option selected disabled>Select Database</option>
-                        {% for db in databases %}
-                            <option value="{{ db }}">{{ db }}</option>
-                        {% endfor %}
-                        <option value="configure_db" data-link="{{ url_for('interface.connections') }}">Configure Database</option>
-                    </select>
-                </div>
-
-                <form class="chat-form" method="POST" autocomplete="off">
-                    <textarea name="message" rows="3" placeholder="What is the average order value for orders in the last 30 days?" required></textarea>
-                    <button type="submit" class="send-button">↑ Send</button>
-                </form>
-            </div>
+<body class="fluent-dark">
+    <nav class="sidebar" aria-label="Main sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">ScalAble</span>
+            <button id="sidebar-close" class="sidebar-toggle" aria-label="Close sidebar">&#10005;</button>
         </div>
 
-        <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
-    </body>
+        <ul class="sidebar-nav" role="menu">
+            <li role="none"><a role="menuitem" href="{{ url_for('interface.index') }}">Home</a></li>
+            <li role="none"><a role="menuitem" href="{{ url_for('interface.connections') }}">Databases</a></li>
+            <li role="none"><a role="menuitem" href="#">Manage Models</a></li>
+            <li role="none"><a role="menuitem" href="#">Github</a></li>
+        </ul>
+    </nav>
+
+    <div class="main-content">
+        <h2 class="main-title">Ready to explore your data?</h2>
+
+        <div class="chat-box">
+            <div class="db-label-row">
+                <label class="db-label" for="selected_db">
+                    <span class="db-icon">🗄️</span> Database:
+                </label>
+                <select class="db-select" name="selected_db_id" id="selected_db_id" required>
+                    <option disabled {% if not selected_db_id %}selected{% endif %}>Select Database</option>
+                    {% for conn in connections %}
+                        <option value="{{ conn.id }}" {% if conn.id == selected_db_id|int %}selected{% endif %}>
+                            {{ conn.db_type.capitalize() }} - {{ conn.name }}
+                        </option>
+                    {% endfor %}
+                    <option value="configure_db" data-link="{{ url_for('interface.connections') }}">Configure Database</option>
+                </select>
+            </div>
+
+            <form id="messageArea" class="chat-form" method="POST" action="{{ url_for('interface.chat') }}" autocomplete="off">
+                <textarea id = "text" name="message" rows="3" placeholder="Ask your database..." required>{{ message or '' }}</textarea>
+                <button type="submit" class="send-button">↑ Send</button>
+            </form>
+
+            {% if result_output %}
+            <div class="result-output">
+                <h3>Generated Query</h3>
+                <div class="output-box">
+                    {{ result_output | safe }}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+    <script>
+        document.getElementById('selected_db_id').addEventListener('change', function () {
+            const option = this.options[this.selectedIndex];
+            if (option.value === 'configure_db') {
+                window.location.href = option.getAttribute('data-link');
+            }
+        });
+    </script>
+</body>
 </html>

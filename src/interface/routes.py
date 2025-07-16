@@ -1,6 +1,9 @@
 from flask import Blueprint, render_template, jsonify, request, session, redirect, url_for, flash
 import importlib
 from src.pipeline.query_pipeline import process_query_pipeline
+from src.core.utils import get_connection_by_id
+from src.engine.text_to_query import generate_query_from_nl
+from datetime import datetime
 
 from src.core.exception import CustomException
 from src.core.logger import logging
@@ -12,7 +15,6 @@ interface_blueprint = Blueprint('interface', __name__)
 def index():
     return render_template('index.html')
 
-
 # Home page (for authenticated user)
 @interface_blueprint.route('/home')
 def home():
@@ -20,13 +22,13 @@ def home():
     databases = session.get('connections', []) if user else []
     return render_template('home.html', user=user, databases=databases)
 
-# All connections (like /connections)
+# All connections
 @interface_blueprint.route('/connections')
 def connections():
     connections = session.get("connections", [])
     return render_template('connections.html', connections=connections)
 
-# Add new database (GET/POST form)
+# Add new database
 @interface_blueprint.route('/add-database', methods=['GET', 'POST'])
 def add_database():
     if request.method == 'POST':
@@ -34,28 +36,71 @@ def add_database():
         db_type = form_data.get("db_type")
 
         try:
-            # Dynamically import the correct connector module
             connector_module = importlib.import_module(f"connectors.{db_type}")
+
+            # Step 1: Test connection
             status, msg = connector_module.test_connection(form_data)
+            if not status:
+                flash(f"Connection failed: {msg}", "error")
+                return redirect(url_for("interface.add_database"))
+
+            # Step 2: Fetch metadata (connection = connection + metadata)
+            metadata_status, metadata = connector_module.connection(form_data)
+            if not metadata_status:
+                flash(f"Metadata fetch failed: {metadata}", "error")
+                return redirect(url_for("interface.add_database"))
+
+            # Step 3: Store connection details + metadata
+            form_data["id"] = len(session.get("connections", [])) + 1
+            form_data["created_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            form_data["metadata"] = metadata  # 🔥 metadata embedded here
+
+            connections = session.get("connections", [])
+            connections.append(form_data)
+            session["connections"] = connections
+
+            flash("Database connected and metadata fetched!", "success")
+            return redirect(url_for("interface.connections"))
+
         except ModuleNotFoundError:
             flash(f"Connector for '{db_type}' not implemented.", "error")
             return redirect(url_for("interface.add_database"))
         except Exception as e:
-            flash(f"Error during connection test: {str(e)}", "error")
-            return redirect(url_for("interface.add_database"))
-
-        if status:
-            form_data["id"] = len(session.get("connections", [])) + 1
-            connections = session.get("connections", [])
-            connections.append(form_data)
-            session["connections"] = connections
-            flash("Database connected and added!", "success")
-            return redirect(url_for("interface.connections"))
-        else:
-            flash(f"Connection failed: {msg}", "error")
+            flash(f"Error during database addition: {str(e)}", "error")
             return redirect(url_for("interface.add_database"))
 
     return render_template("connections_new.html")
+
+
+# Delete database
+@interface_blueprint.route('/delete-database/<int:db_id>', methods=['GET'])
+def delete_database(db_id):
+    connections = session.get("connections", [])
+    connections = [conn for conn in connections if conn.get("id") != db_id]
+    session["connections"] = connections
+    flash("Database deleted successfully.", "success")
+    return redirect(url_for('interface.connections'))
+
+# Edit database
+@interface_blueprint.route('/edit-database/<int:db_id>', methods=['GET','POST'])
+def edit_database(db_id):
+    connections = session.get("connections", [])
+    conn = next((c for c in connections if c['id'] == db_id), None)
+
+    if not conn:
+        flash("Database not found.", "error")
+        return redirect(url_for('interface.connections'))
+
+    if request.method == 'POST':
+        updated_data = request.form.to_dict()
+        updated_data['id'] = db_id
+        updated_data['created_at'] = conn.get('created_at')
+        connections = [updated_data if c['id'] == db_id else c for c in connections]
+        session['connections'] = connections
+        flash('Database updated', 'success')
+        return redirect(url_for('interface.connections'))
+
+    return render_template('edit_database.html', conn=conn)
 
 # App settings
 @interface_blueprint.route('/settings')
@@ -63,30 +108,37 @@ def settings():
     return render_template('settings.html')
 
 
-# Chat page stub (to be built later)
-@interface_blueprint.route('/chat')
+@interface_blueprint.route('/chat', methods=['GET', 'POST'])
 def chat():
-    return render_template('chat.html')
+    connections = session.get('connections', [])
+    
+    databases = [
+        f"{conn.get('db_type', 'Unknown').capitalize()} - {conn.get('name', 'Unnamed')} (ID={conn.get('id', '?')})"
+        for conn in connections
+    ]
 
-# Run natural language query
-logging.info("Defining the index route for the interface blueprint.")
-@interface_blueprint.route('/run_query', methods=['POST'])
-def run_query():
-    try:
-        db_config = {
-            'uri': request.form.get('uri'),
-            'database': request.form.get('database'),
-            'collection': request.form.get('collection')
-        }
+    result_output = None
+    selected_db_id = None
+    message = ""
 
-        natural_query = request.form.get('nl_query')
+    if request.method == 'POST':
+        message = request.form.get('message')
+        selected_db_id = request.form.get('selected_db_id')
 
-        result_df, chart_html = process_query_pipeline(db_config, natural_query)
+        try:
+            generated_response = generate_query_from_nl(message)
+            result_output = f"""
+            <div style="background:#111; padding: 1rem; border-radius: 8px; overflow-x:auto;">
+                <strong>LLM Output:</strong>
+                <pre style="color:#0f0; margin-top: 0.5rem;">{generated_response}</pre>
+            </div>
+            """
+        except Exception as e:
+            flash(f"Error: {str(e)}", "error")
 
-        logging.info("Query processed successfully, rendering result page.")
-        return render_template('result.html',
-                               table=result_df.to_html(classes='table table-bordered'),
-                               chart=chart_html)
-    except Exception as e:
-        raise CustomException(f"An error occurred while processing the query: {str(e)}") from e
-
+    return render_template('chat.html',
+                           databases=databases,
+                           connections=connections,
+                           selected_db_id=selected_db_id,
+                           message=message,
+                           result_output=result_output)

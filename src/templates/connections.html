@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <title>ScalAble | Your Connections</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script type="module" src="https://unpkg.com/@fluentui/web-components"></script>
 </head>
+
 <body class="fluent-dark">
     <nav class="sidebar" aria-label="Main sidebar">
         <div class="sidebar-header">
@@ -15,11 +17,23 @@
             <li role="none"><a role="menuitem" href="{{ url_for('interface.index') }}">Home</a></li>
             <li role="none"><a role="menuitem" href="{{ url_for('interface.connections') }}">Databases</a></li>
             <li role="none"><a role="menuitem" href="#">Manage Models</a></li>
-            <li role="none"><a role="menuitem" href="#">Github</a></li>
+            <li role="none"><a role="menuitem" href="https://github.com/ansh2903/ScalAble">Github</a></li>
         </ul>
     </nav>
 
     <div class="main-content">
+        <header class="main-header">
+            <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle sidebar" aria-controls="sidebar" aria-expanded="false">&#9776;</button>
+
+            <div style="flex:1"></div>
+
+            {% if is_authenticated %}
+            <fluent-button appearance="stealth" onclick="location.href='{{ url_for('auth.logout') }}'">Logout</fluent-button>
+            {% else %}
+            <fluent-button appearance="stealth" onclick="location.href='{{ url_for('auth.login') }}'">Login</fluent-button>
+            {% endif %}
+        </header>
+
         <h2 class="main-title">Your Database Connections</h2>
 
         <div class="connection-cards">
@@ -31,20 +45,22 @@
                         <span class="badge">{{ conn.db_type }}</span>
                     </div>
                     <div class="connection-body">
-                        <p><strong>Host:</strong> {{ conn.host }}</p>
-                        <p><strong>Port:</strong> {{ conn.port }}</p>
-                        <p><strong>User:</strong> {{ conn.username }}</p>
+                        <p><strong>Created:</strong> {{ conn.created_at or "N/A" }}</p>
                     </div>
                     <div class="connection-footer">
-                        <a href="#" class="btn btn-sm">Connect</a>
-                        <a href="#" class="btn btn-sm btn-danger">Delete</a>
+                        <a href="{{ url_for('interface.chat') }}?id={{ conn.id }}" class="btn btn-sm">💬 Chat</a>
+                        <a href="{{ url_for('interface.edit_database', db_id=conn.id) }}" class="btn btn-sm">✏️ Edit</a>
+                        <a href="{{ url_for('interface.delete_database', db_id=conn.id) }}" class="btn btn-sm btn-danger">🗑️ Delete</a>
                     </div>
                 </div>
                 {% endfor %}
             {% else %}
-                <div class="text-muted">No database connections found. <a href="{{ url_for('interface.add_database') }}">Add one now →</a></div>
+                <div class="text-muted">
+                    No database connections found. <a href="{{ url_for('interface.add_database') }}">Add one now →</a>
+                </div>
             {% endif %}
         </div>
+
 
         <div style="margin-top: 32px;">
             <a href="{{ url_for('interface.add_database') }}" class="btn btn-primary">➕ Add New Connection</a>

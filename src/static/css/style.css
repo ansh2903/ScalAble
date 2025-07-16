@@ -515,3 +515,20 @@ fluent-button[appearance="accent"] {
     background-color: #4c1d1d;
     color: #fecaca;
 }
+
+/*Chat.html*/
+
+.output-box {
+    background-color: #1e1e1e;
+    color: #00ff99;
+    padding: 1rem;
+    margin-top: 1rem;
+    border-radius: 8px;
+    font-family: monospace;
+    overflow-x: auto;
+    white-space: pre-wrap;
+}
+.result-output h3 {
+    margin-bottom: 0.5rem;
+    color: #fff;
+}

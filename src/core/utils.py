@@ -1,3 +1,4 @@
+from flask import session
 import uuid
 import json
 import dill
@@ -41,3 +42,7 @@ def serialize_object(obj):
 
 def validate_query(query: str) -> bool:
     return isinstance(query, str) and len(query.strip()) > 0
+
+def get_connection_by_id(conn_id):
+    connections = session.get("connections", [])
+    return next((conn for conn in connections if str(conn["id"]) == str(conn_id)), None)
