@@ -1,4 +1,4 @@
-# ScalAble — Natural Language Interface for Your Databases
+# ScalAble — A Natural Language to SQL/NoSQL interface for Your Databases
 
 **ScalAble** is a lightweight, extensible, and user-friendly web application that allows users to interact with their SQL and NoSQL databases using **natural language queries**. Whether you're a developer, analyst, or data scientist, ScalAble bridges the gap between human intent and complex database query logic using LLMs — all while keeping your data private and under your control.
 
@@ -6,7 +6,7 @@
 
 ## Features
 
-- 🔌 **Multi-Database Support**:
+- **Multi-Database Support**:
   - PostgreSQL
   - MySQL
   - Microsoft SQL Server
@@ -42,20 +42,10 @@
 
 ---
 
-## Tech Stack
-
-- **Backend**: Flask (Python), psycopg2 / pymssql / pymysql / pymongo
-- **Frontend**: Jinja2, Bootstrap, JavaScript
-- **LLM**: Locally hosted (Ollama-compatible models, e.g., `deepseek`, `sqlcoder`, `spider`)
-- **Database**: PostgreSQL (for user + session storage)
-- **Visualization**: Plotly.js
-
----
-
 ## Setup Instructions
 
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/scalable.git
+git clone https://github.com/ansh2903/scalable.git
 cd scalable
