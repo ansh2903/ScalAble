@@ -10,6 +10,8 @@
 </head>
 
 <body class="fluent-dark">
+
+    <!-- Sidebar Navigation -->
     <nav class="sidebar" aria-label="Main sidebar">
         <div class="sidebar-header">
             <span class="sidebar-title">ScalAble</span>
@@ -19,42 +21,47 @@
             <li role="none"><a role="menuitem" href="#">Get started</a></li>
             <li role="none"><a role="menuitem" href="/connections">Databases</a></li>
             <li role="none"><a role="menuitem" href="#">Manage Models</a></li>
-            <li role="none"><a role="menuitem" href="https://github.com/ansh2903/ScalAble">Github</a></li>
+            <li role="none"><a role="menuitem" href="https://github.com/ansh2903/ScalAble" target="_blank">GitHub</a></li>
         </ul>
     </nav>
 
+    <!-- Main Content -->
     <div class="main-content">
+
+        <!-- Top Header -->
         <header class="main-header">
-            <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle sidebar" aria-controls="sidebar" aria-expanded="false">&#9776;</button>
-
-            <div style="flex:1"></div>
-
+            <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle sidebar">&#9776;</button>
+            <div style="flex: 1;"></div>
             {% if is_authenticated %}
-            <fluent-button appearance="stealth" onclick="location.href='{{ url_for('auth.logout') }}'">Logout</fluent-button>
+                <fluent-button appearance="stealth" onclick="location.href='{{ url_for('auth.logout') }}'">Logout</fluent-button>
             {% else %}
-            <fluent-button appearance="stealth" onclick="location.href='{{ url_for('auth.login') }}'">Login</fluent-button>
+                <fluent-button appearance="stealth" onclick="location.href='{{ url_for('auth.login') }}'">Login</fluent-button>
             {% endif %}
         </header>
 
+        <!-- Welcome Section -->
         <main>
-            <h1 class="main-title">Welcome to<br>ScalAble</h1>
-            <h2 class="main-subtitle">Let your <span class="highlight">AI</span> Handle your Databases</h2>
+            <section class="welcome-section">
+                <h1 class="main-title">Welcome to<br>ScalAble</h1>
+                <h2 class="main-subtitle">Let your <span class="highlight">AI</span> handle your databases</h2>
 
-            <fluent-button appearance="accent">Check out what's new</fluent-button>
-            
-            <section class="card-row" aria-label="Features">
+                <fluent-button appearance="accent" style="margin-top: 16px;">Check out what's new</fluent-button>
+            </section>
+
+            <!-- Features -->
+            <section class="card-row" aria-label="Features" style="margin-top: 48px;">
                 <button class="card feature-btn" onclick="location.href='/add-database'">
                     <h3>Add Database</h3>
-                    <p>Takes 2 minutes</p>
+                    <p>Configure any SQL or NoSQL connection in just 2 minutes.</p>
                 </button>
                 <button class="card feature-btn" onclick="location.href='/chat'">
                     <h3>Query your Database</h3>
-                    <p>Use your desired LLM to Query your Database with Natural Language</p>
+                    <p>Use natural language to query your database with any integrated LLM.</p>
                 </button>
             </section>
         </main>
     </div>
+
     <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
 </body>
 </html>
-

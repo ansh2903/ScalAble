@@ -4,17 +4,28 @@
 <head>
     <meta charset="UTF-8">
     <title>ScalAble | Chat with Database</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <!-- Fluent UI -->
     <script type="module" src="https://unpkg.com/@fluentui/web-components"></script>
+
+    <!-- Bootstrap & FontAwesome -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github-dark.min.css">
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 
 <body class="fluent-dark">
+    <!-- Sidebar -->
     <nav class="sidebar" aria-label="Main sidebar">
         <div class="sidebar-header">
             <span class="sidebar-title">ScalAble</span>
             <button id="sidebar-close" class="sidebar-toggle" aria-label="Close sidebar">&#10005;</button>
         </div>
-
         <ul class="sidebar-nav" role="menu">
             <li role="none"><a role="menuitem" href="{{ url_for('interface.index') }}">Home</a></li>
             <li role="none"><a role="menuitem" href="{{ url_for('interface.connections') }}">Databases</a></li>
@@ -23,40 +34,75 @@
         </ul>
     </nav>
 
-    <div class="main-content">
-        <h2 class="main-title">Ready to explore your data?</h2>
-
-        <form id="messageArea" class="chat-form" method="POST" action="{{ url_for('interface.chat') }}" autocomplete="off">
-            <div class="db-label-row">
-                <label class="db-label" for="selected_db">
-                    <span class="db-icon">🗄️</span> Database:
-                </label>
-                <select class="db-select" name="selected_db_id" id="selected_db_id" required>
-                    <option disabled {% if not selected_db_id %}selected{% endif %}>Select Database</option>
-                    {% for conn in connections %}
-                        <option value="{{ conn.id }}" {% if conn.id == selected_db_id|int %}selected{% endif %}>
-                            {{ conn.db_type.capitalize() }} - {{ conn.name }}
-                        </option>
-                    {% endfor %}
-                    <option value="configure_db" data-link="{{ url_for('interface.connections') }}">Configure Database</option>
-                </select>
-            </div>
-
-            <textarea id="text" name="message" rows="3" placeholder="Ask your database..." required>{{ message or '' }}</textarea>
-            <button type="submit" class="send-button">↑ Send</button>
-        </form>
-
-            {% if result_output %}
-            <div class="result-output">
-                <h3>Generated Query</h3>
-                <div class="output-box">
-                    {{ result_output | safe }}
-                </div>
-            </div>
+    <!-- Main Content Layout -->
+    <div class="main-content chat-container">
+        <!-- Top Header -->
+        <header class="main-header d-flex align-items-center px-3 py-2">
+            <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle sidebar">&#9776;</button>
+            <div class="flex-grow-1"></div>
+            {% if is_authenticated %}
+                <fluent-button appearance="stealth" onclick="location.href='{{ url_for('auth.logout') }}'">Logout</fluent-button>
+            {% else %}
+                <fluent-button appearance="stealth" onclick="location.href='{{ url_for('auth.login') }}'">Login</fluent-button>
             {% endif %}
+        </header>
+
+        <!-- Chat Body + Input Bar -->
+        <div class="row justify-content-center flex-grow-1 overflow-hidden">
+            <div class="col-md-11 col-xl-8 chat d-flex flex-column position-relative">
+                
+                <!-- Scrollable Messages -->
+                <div id="messageFormeight" class="card-body msg_card_body">
+                    {% if message %}
+                        <!-- User Message -->
+                        <div class="message-row user-msg">
+                            <div class="message-content">
+                                {{ message }}
+                                <span class="msg-time">{{ time or '' }}</span>
+                            </div>
+                            <img src="{{ url_for('static', filename='src/templates/img/istockphoto-1367766076-612x612.png') }}" alt="User" class="avatar">
+                        </div>
+
+                        <!-- LLM Message -->
+                        <div class="message-row llm-msg">
+                            <img src="{{ url_for('static', filename='img/istockphoto-1367766076-612x612.png') }}" alt="LLM" class="avatar">
+                            <div class="message-content llm">
+                                {{ result_output | safe }}
+                                <span class="msg-time">{{ time or '' }}</span>
+                            </div>
+                        </div>
+
+                    {% endif %}
+                </div>
+
+                <!-- Chat Input Bar (Fixed at Bottom) -->
+                <div class="chat-input-bar">
+                    <form id="messageArea" method="POST" action="{{ url_for('interface.chat') }}" autocomplete="off">
+                        <div class="chat-input-container">
+                            <select class="db-select" name="selected_db_id" id="selected_db_id" required>
+                                <option disabled {% if not selected_db_id %}selected{% endif %}>Select Database</option>
+                                {% for conn in connections %}
+                                    <option value="{{ conn.id }}" {% if conn.id == selected_db_id|int %}selected{% endif %}>
+                                        {{ conn.db_type.capitalize() }} - {{ conn.name }}
+                                    </option>
+                                {% endfor %}
+                                <option value="configure_db" data-link="{{ url_for('interface.connections') }}">Configure Database</option>
+                            </select>
+
+                            <input type="text" id="text" name="message" placeholder="Enter your follow-up here..." required />
+
+                            <button class="send-button" type="submit">
+                                <i class="fas fa-arrow-up"></i> Send
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+            </div>
         </div>
     </div>
 
+    <!-- JS Scripts -->
     <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
     <script>
         document.getElementById('selected_db_id').addEventListener('change', function () {
@@ -65,6 +111,23 @@
                 window.location.href = option.getAttribute('data-link');
             }
         });
+
+        function scrollToBottom() {
+            const messageBody = document.getElementById("messageFormeight");
+            messageBody.scrollTop = messageBody.scrollHeight;
+        }
+
+        window.onload = scrollToBottom;
+
+        document.getElementById("messageArea").addEventListener("submit", () => {
+            setTimeout(scrollToBottom, 100);
+        });
     </script>
+
+    <!-- Bootstrap Scripts -->
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js"></script>
 </body>
+
+
 </html>

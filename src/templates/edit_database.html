@@ -9,7 +9,35 @@
 </head>
 
 <body class="fluent-dark">
+
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar" aria-label="Main sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">ScalAble</span>
+            <button id="sidebar-close" class="sidebar-toggle" aria-label="Close sidebar">&#10005;</button>
+        </div>
+        <ul class="sidebar-nav" role="menu">
+            <li role="none"><a role="menuitem" href="/">Home</a></li>
+            <li role="none"><a role="menuitem" href="/connections">Databases</a></li>
+            <li role="none"><a role="menuitem" href="#">Manage Models</a></li>
+            <li role="none"><a role="menuitem" href="https://github.com/ansh2903/ScalAble" target="_blank">GitHub</a></li>
+        </ul>
+    </nav>
+
     <div class="main-content">
+
+        <header class="main-header">
+            <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle sidebar" aria-controls="sidebar" aria-expanded="false">&#9776;</button>
+
+            <div style="flex:1"></div>
+
+            {% if is_authenticated %}
+            <fluent-button appearance="stealth" onclick="location.href='{{ url_for('auth.logout') }}'">Logout</fluent-button>
+            {% else %}
+            <fluent-button appearance="stealth" onclick="location.href='{{ url_for('auth.login') }}'">Login</fluent-button>
+            {% endif %}
+        </header>
+
         <div class="card-container max-w-4xl mx-auto">
             <div class="card-header">
                 <h3 class="text-xl font-medium">Edit Database</h3>
@@ -31,5 +59,6 @@
     <script>
         const existingData = {{ conn|tojson }};
     </script>
+    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
 </body>
 </html>

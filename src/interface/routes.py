@@ -1,9 +1,9 @@
 from flask import Blueprint, render_template, jsonify, request, session, redirect, url_for, flash
 import importlib
-from src.pipeline.query_pipeline import process_query_pipeline
 from src.core.utils import get_connection_by_id
 from src.engine.text_to_query import generate_query_from_nl
 from datetime import datetime
+import html
 
 from src.core.exception import CustomException
 from src.core.logger import logging
@@ -33,6 +33,7 @@ def connections():
 def add_database():
     if request.method == 'POST':
         form_data = request.form.to_dict()
+        print(form_data)
         db_type = form_data.get("db_type")
 
         try:
@@ -111,11 +112,12 @@ def settings():
 @interface_blueprint.route('/chat', methods=['GET', 'POST'])
 def chat():
     connections = session.get('connections', [])
-    
+
     databases = [
         f"{conn.get('db_type', 'Unknown').capitalize()} - {conn.get('name', 'Unnamed')} (ID={conn.get('id', '?')})"
         for conn in connections
     ]
+    print(databases)
 
     result_output = None
     selected_db_id = None
@@ -137,12 +139,21 @@ def chat():
             
             try:
                 generated_response = generate_query_from_nl(message, db_type, metadata)
+                safe_query = html.escape(generated_response.strip())
                 result_output = f"""
-                <div style="background:#111; padding: 1rem; border-radius: 8px; overflow-x:auto;">
-                    <strong>LLM Output:</strong>
-                    <pre style="color:#0f0; margin-top: 0.5rem;">{generated_response}</pre>
+                <div>
+                    <pre class="message-content llm">{safe_query}</pre>
+                    <form method="POST" action="{url_for('interface.chat')}" style="margin-top: 0.5rem;">
+                        <input type="hidden" name="generated_query" value="{safe_query}">
+                        <input type="hidden" name="selected_db_id" value="{selected_db_id}">
+                        <input type="hidden" name="message" value="{html.escape(message)}">
+                        <button class="btn btn-sm btn-outline-light" type="submit" name="run_query" value="1">
+                            <i class="fas fa-play"></i> Run Query
+                        </button>
+                    </form>
                 </div>
                 """
+
             except Exception as e:
                 flash(f"Error: {str(e)}", "error")
 
@@ -152,3 +163,4 @@ def chat():
                            selected_db_id=selected_db_id,
                            message=message,
                            result_output=result_output)
+

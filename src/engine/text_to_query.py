@@ -46,10 +46,12 @@ def generate_query_from_nl(nl_query: str, db_type, db_metadata: dict = {}, model
             - Use correct SQL syntax for {db_type}.
             - Do NOT include explanations, comments, or markdown unless explicitly requested.
             - Ensure valid table and column references based on the metadata above.
+            - Return in a <code> format, HTML friendly.
 
             2. If the user is asking a question or inspecting something (like "what is the schema", "list all tables", etc.):
             - Return a short, accurate natural language response.
             - If SQL is required, provide the relevant query but explain briefly and clearly.
+            - Return in a Markdown format, HTML friendly
 
             Respond accordingly:
         """
