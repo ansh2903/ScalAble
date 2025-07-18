@@ -8,11 +8,10 @@ from src.core.logger import logging
 def test_connection(config):
     try:
         conn_str = (
-            f"DRIVER={{ODBC Driver 17 for SQL Server}};"
-            f"SERVER={config['host']},{config['port']};"
-            f"DATABASE={config['database']};"
-            f"UID={config['username']};"
-            f"PWD={config['password']};"
+            f"Driver={config['driver']};"
+            f"Server={config['server']};"
+            f"Database={config['database']};"
+            f"Trusted_Connection=yes;"
             f"Connection Timeout=5;"
         )
         conn = pyodbc.connect(conn_str)
@@ -20,21 +19,22 @@ def test_connection(config):
         conn.close()
         return True, "Connection successful"
     except Exception as e:
-        return False, CustomException(sys, str(e))
+        return False, CustomException("MSSQL connection failed: " + str(e), sys)
+
 
 
 def connection(config):
     try:
         conn_str = (
-            f"DRIVER={{ODBC Driver 17 for SQL Server}};"
-            f"SERVER={config['host']},{config['port']};"
-            f"DATABASE={config['database']};"
-            f"UID={config['username']};"
-            f"PWD={config['password']};"
+            f"Driver={config['driver']};"
+            f"Server={config['server']};"
+            f"Database={config['database']};"
+            f"Trusted_Connection=yes;"
             f"Connection Timeout=5;"
         )
         conn = pyodbc.connect(conn_str)
         cursor = conn.cursor()
+        logging.info('cursor created')
 
         db_metadata = {
             "db_type": "mssql",
@@ -54,7 +54,6 @@ def connection(config):
         db_metadata["table_count"] = len(tables)
 
         for (table_name,) in tables:
-            # Columns and types
             cursor.execute("""
                 SELECT COLUMN_NAME, DATA_TYPE 
                 FROM INFORMATION_SCHEMA.COLUMNS 
@@ -65,11 +64,9 @@ def connection(config):
             column_types = {col[0]: col[1] for col in columns_info}
             db_metadata["total_columns"] += len(column_names)
 
-            # Row count
             cursor.execute(f"SELECT COUNT(*) FROM [{table_name}]")
             row_count = cursor.fetchone()[0]
 
-            # Size (using sys.dm_db_partition_stats)
             cursor.execute(f"""
                 SELECT SUM(reserved_page_count) * 8 
                 FROM sys.dm_db_partition_stats 
@@ -79,7 +76,6 @@ def connection(config):
             size_bytes = size_kb * 1024
             size_pretty = f"{round(size_kb / 1024, 2)} MB"
 
-            # Primary keys
             cursor.execute("""
                 SELECT c.COLUMN_NAME
                 FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
@@ -89,7 +85,6 @@ def connection(config):
             """, table_name)
             pk_columns = [row[0] for row in cursor.fetchall()]
 
-            # First and last PK
             first_pk, last_pk = None, None
             if pk_columns:
                 pk_col = pk_columns[0]
@@ -101,7 +96,6 @@ def connection(config):
                 last = cursor.fetchone()
                 last_pk = last[0] if last else None
 
-            # Unique keys
             cursor.execute("""
                 SELECT c.COLUMN_NAME
                 FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
@@ -111,7 +105,6 @@ def connection(config):
             """, table_name)
             unique_keys = [row[0] for row in cursor.fetchall()]
 
-            # Foreign keys
             cursor.execute("""
                 SELECT 
                     fk.COLUMN_NAME,
@@ -128,7 +121,6 @@ def connection(config):
                 "references_column": row[2]
             } for row in cursor.fetchall()]
 
-            # Normal form (stub)
             norm_form = "3NF (assumed)"
 
             db_metadata["tables"][table_name] = {
@@ -153,4 +145,4 @@ def connection(config):
         return True, db_metadata
 
     except Exception as e:
-        return False, CustomException(sys, str(e))
+        return False, CustomException("MSSQL connection failed: " + str(e), sys)

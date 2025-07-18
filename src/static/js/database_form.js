@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', function() {
         postgresql: ['name', 'host', 'port', 'username', 'password', 'database'],
         mongodb:    ['name', 'uri'],
         sqlite:     ['name', 'file_path'],
-        mssql:      ['name', 'host', 'port', 'username', 'password', 'database'],
+        mssql:      ['name', 'driver', 'server', 'database'],
         oracle:     ['name', 'host', 'port', 'service_name', 'username', 'password'],
         redshift:   ['name', 'host', 'port', 'username', 'password', 'database'],
         bigquery:   ['name', 'project_id', 'credentials_json'],
