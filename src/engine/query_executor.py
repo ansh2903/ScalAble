@@ -5,27 +5,35 @@ which database the user chose) by the model onto the database
 
 import psycopg2
 
-conn = psycopg2.connect(
-    database="testdb", user='postgres', password = 'admin',
-    host='localhost', port='5432'
-)
+from src.core.exception import CustomException
+from src.core.logger import logging
 
-cursor = conn.cursor()
+def run_query(db_type: str, credentials, query: str):
+    logging.info("run_query() Invoked")
 
-sql = '''Select * from employee; '''
-
-cursor.execute(sql)
-results = cursor.fetchall()
-
-print(results)
-
-conn.commit()
-conn.close()
-
-def run_query(db_type: str, form_data, query: str, ):
     if db_type == 'postgresql':
-        pass
-        
+        logging.info("For database 'postgresql'")
+
+        conn = psycopg2.connect(
+            database=credentials['database'], user=credentials['username'],
+            password=credentials['password'], host=credentials['host'],
+            port=credentials['port']
+        )
+        logging.info("Connection established")
+
+        cursor = conn.cursor()
+        cursor.execute(query)
+
+        logging.info("Query Executed")
+
+        headers = [desc[0] for desc in cursor.description]  # <-- Column names
+        results = cursor.fetchall()
+        conn.commit()
+        conn.close()
+        logging.info("Cursor closed")
+
+        logging.info("Done with run_query()")
+        return [headers] + results
 
 
 if __name__ == "__main__":

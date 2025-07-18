@@ -1,9 +1,15 @@
 from flask import Blueprint, render_template, jsonify, request, session, redirect, url_for, flash
 import importlib
+
 from src.core.utils import get_connection_by_id
 from src.engine.text_to_query import generate_query_from_nl
+from src.engine.query_executor import run_query
+from src.engine.visualizer import render_result_table
+
 from datetime import datetime
 import html
+import json
+import ast
 
 from src.core.exception import CustomException
 from src.core.logger import logging
@@ -32,32 +38,49 @@ def connections():
 @interface_blueprint.route('/add-database', methods=['GET', 'POST'])
 def add_database():
     if request.method == 'POST':
-        form_data = request.form.to_dict()
-        print(form_data)
-        db_type = form_data.get("db_type")
+        raw_form_data = request.form.to_dict()
+        print("Raw Form Data:", raw_form_data)
+        print('')
+
+        db_type = raw_form_data.get("db_type")
 
         try:
             connector_module = importlib.import_module(f"connectors.{db_type}")
 
-            # Step 1: Test connection
-            status, msg = connector_module.test_connection(form_data)
+            # Step 1: Test connection using full form data
+            status, msg = connector_module.test_connection(raw_form_data)
             if not status:
                 flash(f"Connection failed: {msg}", "error")
                 return redirect(url_for("interface.add_database"))
 
-            # Step 2: Fetch metadata (connection = connection + metadata)
-            metadata_status, metadata = connector_module.connection(form_data)
+            # Step 2: Fetch metadata
+            metadata_status, metadata = connector_module.connection(raw_form_data)
             if not metadata_status:
                 flash(f"Metadata fetch failed: {metadata}", "error")
                 return redirect(url_for("interface.add_database"))
 
-            # Step 3: Store connection details + metadata
-            form_data["id"] = len(session.get("connections", [])) + 1
-            form_data["created_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            form_data["metadata"] = metadata  # 🔥 metadata embedded here
+            # Step 3: Build connection object with credentials nested
+            connection_id = len(session.get("connections", [])) + 1
+            created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+            connection_object = {
+                "id": connection_id,
+                "created_at": created_at,
+                "db_type": db_type,
+                "name": raw_form_data.get("name"),  # Optional name/title for display
+                "credentials": {
+                    key: raw_form_data[key]
+                    for key in raw_form_data
+                    if key not in ["id", "created_at", "metadata"]
+                },
+                "metadata": metadata
+            }
+
+            print("\nFinal connection object:", connection_object)
+
+            # Save in session
             connections = session.get("connections", [])
-            connections.append(form_data)
+            connections.append(connection_object)
             session["connections"] = connections
 
             flash("Database connected and metadata fetched!", "success")
@@ -71,6 +94,7 @@ def add_database():
             return redirect(url_for("interface.add_database"))
 
     return render_template("connections_new.html")
+
 
 
 # Delete database
@@ -112,55 +136,91 @@ def settings():
 @interface_blueprint.route('/chat', methods=['GET', 'POST'])
 def chat():
     connections = session.get('connections', [])
-
-    databases = [
-        f"{conn.get('db_type', 'Unknown').capitalize()} - {conn.get('name', 'Unnamed')} (ID={conn.get('id', '?')})"
+    
+    # Prepare the available databases
+    databases = {
+        conn.get('id', '?'): {
+            'name': conn.get('name', 'Unnamed'),
+            'db_type': conn.get('db_type', 'Unknown').capitalize()
+        }
         for conn in connections
-    ]
-    print(databases)
+    }
 
-    result_output = None
+    result_output = ""
     selected_db_id = None
     message = ""
 
     if request.method == 'POST':
-        message = request.form.get('message')
-        selected_db_id = request.form.get('selected_db_id')
-        print(selected_db_id)
+        form = request.form
 
-        selected_conn = next(
-            (conn for conn in connections if str(conn['id']) == str(selected_db_id)), None
-        )
-
-        if selected_conn:
-            metadata = selected_conn.get('metadata')
-            print('metadata: ', metadata)
-            db_type = selected_conn.get("db_type")
-            
+        if "query" in form:
+            # ✅ Run Query was submitted
             try:
+                generated_query = form.get('query')
+                db_type = form.get('db_type')
+                print(generated_query)
+                print('')
+                print(db_type)
+
+                credentials = form.get('credentials')
+                update_credentials = ast.literal_eval(credentials)
+                print(update_credentials)
+                print(type(update_credentials))
+
+                result = run_query(db_type=db_type, credentials=update_credentials, query=generated_query)
+                print(result)
+                print(type(result))
+                print('')
+                result_table_html = render_result_table(result)
+                print(result_table_html)
+
+                result_output = f"""
+                    <div>
+                        <pre class="message-content llm">{html.escape(generated_query)}</pre>
+                        <div class='query-result mt-3'>{result_table_html}</div>
+                    </div>
+                """
+            except Exception as e:
+                result_output = f"<div class='error'>Error running query: {str(e)}</div>"
+  
+        else:
+            # ✅ Generate Query was submitted
+            try:
+                message = form.get('message', '').strip()
+                selected_db_id = form.get('selected_db_id')
+
+                selected_conn = next((c for c in connections if str(c['id']) == str(selected_db_id)), None)
+                if not selected_conn:
+                    raise ValueError("Selected database connection not found.")
+
+                credentials = selected_conn.get('credentials')
+                metadata = selected_conn.get('metadata')
+                db_type = selected_conn.get('db_type')       
                 generated_response = generate_query_from_nl(message, db_type, metadata)
                 safe_query = html.escape(generated_response.strip())
+
                 result_output = f"""
-                <div>
-                    <pre class="message-content llm">{safe_query}</pre>
-                    <form method="POST" action="{url_for('interface.chat')}" style="margin-top: 0.5rem;">
-                        <input type="hidden" name="generated_query" value="{safe_query}">
-                        <input type="hidden" name="selected_db_id" value="{selected_db_id}">
-                        <input type="hidden" name="message" value="{html.escape(message)}">
-                        <button class="btn btn-sm btn-outline-light" type="submit" name="run_query" value="1">
-                            <i class="fas fa-play"></i> Run Query
-                        </button>
-                    </form>
-                </div>
+                    <div>
+                        <pre class="message-content llm">{safe_query}</pre>
+                        <form method="POST" action="{url_for('interface.chat')}">
+                            <input type="hidden" name="query" value="{generated_response}">
+                            <input type="hidden" name="db_type" value="{html.escape(db_type)}">
+                            <input type="hidden" name="credentials" value="{credentials}">
+                            <button class="btn btn-sm btn-outline-light mt-2" type="submit">
+                                <i class="fas fa-play"></i> Run Query
+                            </button>
+                        </form>
+                    </div>
                 """
-
             except Exception as e:
-                flash(f"Error: {str(e)}", "error")
+                result_output = f"<div class='error'>Error generating query: {str(e)}</div>"
 
-    return render_template('chat.html',
-                           databases=databases,
-                           connections=connections,
-                           selected_db_id=selected_db_id,
-                           message=message,
-                           result_output=result_output)
-
+    # Final page render
+    return render_template(
+        'chat.html',
+        databases=databases,
+        connections=connections,
+        selected_db_id=selected_db_id,
+        message=message,
+        result_output=result_output
+    )

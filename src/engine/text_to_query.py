@@ -28,33 +28,40 @@ def generate_query_from_nl(nl_query: str, db_type, db_metadata: dict = {}, model
     """
     try:
         prompt_text = f"""
-            You are a professional {db_type} SQL expert. Your job is to help users query or understand their database using natural language.
+        You are a professional {db_type} query generation expert. Your job is to convert natural language into executable {db_type} queries.
 
-            The following is the database metadata (tables, columns, sample values):
-            {db_metadata}
+        Below is metadata about the user's database (tables, columns, etc.):
+        {db_metadata}
 
-            ---
+        ---
 
-            User Instruction:
-            {nl_query}
+        User Query:
+        {nl_query}
 
-            ---
+        ---
 
-            Instructions:
-            1. If the user is asking to generate a query:
-            - ONLY return the final SQL query.
-            - Use correct SQL syntax for {db_type}.
-            - Do NOT include explanations, comments, or markdown unless explicitly requested.
-            - Ensure valid table and column references based on the metadata above.
-            - Return in a <code> format, HTML friendly.
+        Strict Instructions:
+        - ONLY return the final executable query (no explanations, no markdown, no comments).
+        - Do NOT wrap the query in triple backticks.
+        - Do NOT prefix with language (like "```sql" or "MongoDB query:").
+        - Do NOT add any explanation, text, natural language, or notes.
+        - Your entire response should be a single query string.
 
-            2. If the user is asking a question or inspecting something (like "what is the schema", "list all tables", etc.):
-            - Return a short, accurate natural language response.
-            - If SQL is required, provide the relevant query but explain briefly and clearly.
-            - Return in a Markdown format, HTML friendly
+        Examples:
+        Input: "Get first 5 rows from employee table"
+        Output: SELECT * FROM employee LIMIT 5;
 
-            Respond accordingly:
+        Input: "Show employees with age > 30"
+        Output: SELECT * FROM employee WHERE age > 30;
+
+        Input: "Fetch documents with status 'active'"
+        Output: db.collection.find({{ status: "active" }})
+
+        If unsure, return an empty string.
+
+        Now respond with the query only:
         """
+
 
 
         payload = {

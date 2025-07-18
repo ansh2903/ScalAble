@@ -53,8 +53,9 @@
                 
                 <!-- Scrollable Messages -->
                 <div id="messageFormeight" class="card-body msg_card_body">
+                    {% if message or result_output %}
                     {% if message %}
-                        <!-- User Message -->
+                        <!-- User message -->
                         <div class="message-row user-msg">
                             <div class="message-content">
                                 {{ message }}
@@ -62,22 +63,28 @@
                             </div>
                             <img src="{{ url_for('static', filename='src/templates/img/istockphoto-1367766076-612x612.png') }}" alt="User" class="avatar">
                         </div>
-
-                        <!-- LLM Message -->
-                        <div class="message-row llm-msg">
-                            <img src="{{ url_for('static', filename='img/istockphoto-1367766076-612x612.png') }}" alt="LLM" class="avatar">
-                            <div class="message-content llm">
-                                {{ result_output | safe }}
-                                <span class="msg-time">{{ time or '' }}</span>
-                            </div>
-                        </div>
-
                     {% endif %}
+
+                    <!-- LLM message or result -->
+                    <div class="message-row llm-msg">
+                        <img src="{{ url_for('static', filename='img/istockphoto-1367766076-612x612.png') }}" alt="LLM" class="avatar">
+                        <div>
+                            {{ result_output | safe }}
+                            <span class="msg-time">{{ time or '' }}</span>
+                        </div>
+                    </div>
+                {% endif %}
+
                 </div>
 
                 <!-- Chat Input Bar (Fixed at Bottom) -->
                 <div class="chat-input-bar">
-                    <form id="messageArea" method="POST" action="{{ url_for('interface.chat') }}" autocomplete="off">
+                    <!-- 🔄 Loading Spinner -->
+                    <div id="loading-spinner" style="display:none; color: white; font-style: italic; padding-left: 10px;">
+                        Generating response...
+                    </div>
+
+                    <form id="messageArea" method="POST" action="{{ url_for('interface.chat') }}" autocomplete="off" onsubmit="document.getElementById('loading-spinner').style.display = 'block';">
                         <div class="chat-input-container">
                             <select class="db-select" name="selected_db_id" id="selected_db_id" required>
                                 <option disabled {% if not selected_db_id %}selected{% endif %}>Select Database</option>
@@ -97,7 +104,6 @@
                         </div>
                     </form>
                 </div>
-
             </div>
         </div>
     </div>
@@ -122,6 +128,19 @@
         document.getElementById("messageArea").addEventListener("submit", () => {
             setTimeout(scrollToBottom, 100);
         });
+
+        document.addEventListener("DOMContentLoaded", function () {
+    const form = document.querySelector('form[action="/run_query"]');
+    if (form) {
+      form.addEventListener("submit", function () {
+        const spinner = document.getElementById("loading-spinner");
+        if (spinner) {
+          spinner.style.display = "block";
+        }
+      });
+    }
+  });
+        
     </script>
 
     <!-- Bootstrap Scripts -->
