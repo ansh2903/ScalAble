@@ -34,6 +34,16 @@
 
 ---
 
+- **Ideas so far**:
+  - Database intercommunication
+  - Data Visualization
+  - One prompt for multiple databases
+  - Centralized interface to run user's queries without LLM on their desired database
+
+## Setup Instructions
+
+---
+
 ## UI Preview
 
 | Add Database | Ask a Query | Generated SQL |
@@ -41,8 +51,6 @@
 | ![Add DB](./screenshots/add_db.png) | ![Query](./screenshots/query.png) | ![Output](./screenshots/output.png) |
 
 ---
-
-## Setup Instructions
 
 ### 1. Clone the Repository
 

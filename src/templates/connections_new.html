@@ -8,20 +8,22 @@
     <script type="module" src="https://unpkg.com/@fluentui/web-components"></script>
 </head>
 
-<body class="fluent-dark">
-    <!-- Sidebar Navigation -->
+<!-- Sidebar Navigation -->
     <nav class="sidebar" aria-label="Main sidebar">
         <div class="sidebar-header">
+            <img class="sidebar-brand" src="{{ url_for('static', filename='images/toppng.com-database-icon-white-271x381.png') }}" alt="ScalAble Logo">
             <span class="sidebar-title">ScalAble</span>
             <button id="sidebar-close" class="sidebar-toggle" aria-label="Close sidebar">&#10005;</button>
         </div>
         <ul class="sidebar-nav" role="menu">
-            <li role="none"><a role="menuitem" href="/">Home</a></li>
+            <li role="none"><a role="menuitem" href="#">Get started</a></li>
             <li role="none"><a role="menuitem" href="/connections">Databases</a></li>
             <li role="none"><a role="menuitem" href="#">Manage Models</a></li>
             <li role="none"><a role="menuitem" href="https://github.com/ansh2903/ScalAble" target="_blank">GitHub</a></li>
         </ul>
     </nav>
+
+<body class="fluent-dark">
 
     <div class="main-content">
 

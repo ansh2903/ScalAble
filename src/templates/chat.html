@@ -19,21 +19,22 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 
-<body class="fluent-dark">
-    <!-- Sidebar -->
+<!-- Sidebar Navigation -->
     <nav class="sidebar" aria-label="Main sidebar">
         <div class="sidebar-header">
+            <img class="sidebar-brand" src="{{ url_for('static', filename='images/toppng.com-database-icon-white-271x381.png') }}" alt="ScalAble Logo">
             <span class="sidebar-title">ScalAble</span>
             <button id="sidebar-close" class="sidebar-toggle" aria-label="Close sidebar">&#10005;</button>
         </div>
         <ul class="sidebar-nav" role="menu">
-            <li role="none"><a role="menuitem" href="{{ url_for('interface.index') }}">Home</a></li>
-            <li role="none"><a role="menuitem" href="{{ url_for('interface.connections') }}">Databases</a></li>
+            <li role="none"><a role="menuitem" href="#">Get started</a></li>
+            <li role="none"><a role="menuitem" href="/connections">Databases</a></li>
             <li role="none"><a role="menuitem" href="#">Manage Models</a></li>
-            <li role="none"><a role="menuitem" href="#">Github</a></li>
+            <li role="none"><a role="menuitem" href="https://github.com/ansh2903/ScalAble" target="_blank">GitHub</a></li>
         </ul>
     </nav>
 
+<body class="fluent-dark">
     <!-- Main Content Layout -->
     <div class="main-content chat-container">
         <!-- Top Header -->
@@ -119,7 +120,7 @@
         });
 
         function scrollToBottom() {
-            const messageBody = document.getElementById("messageFormeight");
+            var messageBody = document.getElementById("messageFormeight");
             messageBody.scrollTop = messageBody.scrollHeight;
         }
 
@@ -140,6 +141,46 @@
       });
     }
   });
+
+  $(document).ready(function () {
+        $("#messageArea").on("submit", function (event) {
+          const date = new Date();
+          const hour = date.getHours();
+          const minute = date.getMinutes();
+          const str_time = hour + ":" + minute;
+          var rawText = $("#text").val();
+
+          var userHtml =
+            '<div class="d-flex justify-content-end mb-4"><div class="msg_cotainer_send">' +
+            rawText +
+            '<span class="msg_time_send">' +
+            str_time +
+            '</span></div><div class="img_cont_msg"><img src="https://i.ibb.co/d5b84Xw/Untitled-design.png" class="rounded-circle user_img_msg"></div></div>';
+
+          $("#text").val("");
+          $("#messageFormeight").append(userHtml);
+
+          scrollToBottom();
+
+          $.ajax({
+            data: {
+              msg: rawText,
+            },
+            type: "POST",
+            url: "/get",
+          }).done(function (data) {
+            var botHtml =
+              '<div class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://i.ibb.co/fSNP7Rz/icons8-chatgpt-512.png" class="rounded-circle user_img_msg"></div><div class="msg_cotainer">' +
+              data +
+              '<span class="msg_time">' +
+              str_time +
+              "</span></div></div>";
+            $("#messageFormeight").append($.parseHTML(botHtml));
+            scrollToBottom();
+          });
+          event.preventDefault();
+        });
+      });
         
     </script>
 
