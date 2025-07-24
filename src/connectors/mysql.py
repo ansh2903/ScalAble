@@ -22,7 +22,7 @@ def test_connection(config):
         return False, CustomException(sys, str(e))
 
 
-def connection(config):
+def metadata(config):
     try:
         conn = mysql.connector.connect(
             host=config['host'],

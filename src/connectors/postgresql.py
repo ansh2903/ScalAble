@@ -21,7 +21,7 @@ def test_connection(config):
     except OperationalError as e:
         return False, CustomException(sys, str(e))
     
-def connection(config):
+def metadata(config):
     try:
         conn = psycopg2.connect(
             host=config['host'],

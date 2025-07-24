@@ -54,7 +54,7 @@ def add_database():
                 return redirect(url_for("interface.add_database"))
 
             # Step 2: Fetch metadata
-            metadata_status, metadata = connector_module.connection(raw_form_data)
+            metadata_status, metadata = connector_module.metadata(raw_form_data)
             if not metadata_status:
                 flash(f"Metadata fetch failed: {metadata}", "error")
                 return redirect(url_for("interface.add_database"))
@@ -133,6 +133,7 @@ def settings():
     return render_template('settings.html')
 
 
+# Chat backend
 @interface_blueprint.route('/chat', methods=['GET', 'POST'])
 def chat():
     connections = session.get('connections', [])

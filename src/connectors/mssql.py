@@ -23,7 +23,7 @@ def test_connection(config):
 
 
 
-def connection(config):
+def metadata(config):
     try:
         conn_str = (
             f"Driver={config['driver']};"

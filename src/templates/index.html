@@ -20,6 +20,7 @@
         </div>
         <ul class="sidebar-nav" role="menu">
             <li role="none"><a role="menuitem" href="#">Get started</a></li>
+            <li role="none"><a role="menuitem" href="#">Manual Query</a></li>
             <li role="none"><a role="menuitem" href="/connections">Databases</a></li>
             <li role="none"><a role="menuitem" href="#">Manage Models</a></li>
             <li role="none"><a role="menuitem" href="https://github.com/ansh2903/ScalAble" target="_blank">GitHub</a></li>
@@ -43,13 +44,16 @@
         <!-- Welcome Section -->
         <main>
             <section class="welcome-section">
-                <h1 class="main-title">Welcome to<br>ScalAble</h1>
-                <h2 class="main-subtitle">Let your <span class="highlight">AI</span> handle your databases</h2>
-
-                <fluent-button appearance="accent" style="margin-top: 16px;">Check out what's new</fluent-button>
+                <div class="title-wrapper">
+                    <h2 class="welocome-title">Welcome to</h2>
+                    <h1 class="main-title">ScalAble</h1>
+                    <h2 class="main-subtitle">Let your <span class="highlight">AI</span> handle your databases</h2>
+                    <fluent-button appearance="accent" shape="circular" style="margin-top: 16px;">Check out what's new</fluent-button>
+                </div>
             </section>
 
             <!-- Features -->
+            <div>
             <section class="card-row" aria-label="Features" style="margin-top: 48px;">
                 <button class="card feature-btn" onclick="location.href='/add-database'">
                     <h3>Add Database</h3>
@@ -60,6 +64,7 @@
                     <p>Use natural language to query your database with any integrated LLM.</p>
                 </button>
             </section>
+            </div>
         </main>
     </div>
 

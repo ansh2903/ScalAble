@@ -18,7 +18,7 @@ def test_connection(config):
         return False, CustomException(sys, str(e))
 
 
-def connection(config):
+def metadata(config):
     try:
         uri = config["uri"]
         client = MongoClient(uri, serverSelectionTimeoutMS=5000)
