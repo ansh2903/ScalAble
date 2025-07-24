@@ -82,6 +82,8 @@ def add_database():
             connections = session.get("connections", [])
             connections.append(connection_object)
             session["connections"] = connections
+            print(' ')
+            print(connections)
 
             flash("Database connected and metadata fetched!", "success")
             return redirect(url_for("interface.connections"))
@@ -102,9 +104,13 @@ def add_database():
 def delete_database(db_id):
     connections = session.get("connections", [])
     connections = [conn for conn in connections if conn.get("id") != db_id]
+    for index, conn in enumerate(connections, start=1):
+        conn["id"] = index
+
     session["connections"] = connections
     flash("Database deleted successfully.", "success")
     return redirect(url_for('interface.connections'))
+
 
 # Edit database
 @interface_blueprint.route('/edit-database/<int:db_id>', methods=['GET','POST'])
@@ -123,6 +129,8 @@ def edit_database(db_id):
         connections = [updated_data if c['id'] == db_id else c for c in connections]
         session['connections'] = connections
         flash('Database updated', 'success')
+
+        print(connections)
         return redirect(url_for('interface.connections'))
 
     return render_template('edit_database.html', conn=conn)
@@ -137,7 +145,7 @@ def settings():
 @interface_blueprint.route('/chat', methods=['GET', 'POST'])
 def chat():
     connections = session.get('connections', [])
-    
+
     # Prepare the available databases
     databases = {
         conn.get('id', '?'): {
@@ -159,21 +167,25 @@ def chat():
             try:
                 generated_query = form.get('query')
                 db_type = form.get('db_type')
-                print(generated_query)
-                print('')
-                print(db_type)
-
                 credentials = form.get('credentials')
                 update_credentials = ast.literal_eval(credentials)
-                print(update_credentials)
-                print(type(update_credentials))
 
                 result = run_query(db_type=db_type, credentials=update_credentials, query=generated_query)
-                print(result)
-                print(type(result))
-                print('')
                 result_table_html = render_result_table(result)
-                print(result_table_html)
+
+                # Refresh metadata
+                try:
+                    connector_module = importlib.import_module(f"connectors.{db_type}")
+                    refreshed_status, refreshed_metadata = connector_module.metadata(update_credentials)
+                    if refreshed_status:
+                        # Update session metadata for this connection
+                        for conn in connections:
+                            if str(conn['id']) == str(form.get('selected_db_id')):
+                                conn['metadata'] = refreshed_metadata
+                                break
+                        session['connections'] = connections
+                except Exception as e:
+                    print("Metadata refresh failed:", e)
 
                 result_output = f"""
                     <div>
@@ -183,7 +195,7 @@ def chat():
                 """
             except Exception as e:
                 result_output = f"<div class='error'>Error running query: {str(e)}</div>"
-  
+
         else:
             # ✅ Generate Query was submitted
             try:
@@ -207,6 +219,7 @@ def chat():
                             <input type="hidden" name="query" value="{generated_response}">
                             <input type="hidden" name="db_type" value="{html.escape(db_type)}">
                             <input type="hidden" name="credentials" value="{credentials}">
+                            <input type="hidden" name="selected_db_id" value="{selected_db_id}">
                             <button class="btn btn-sm btn-outline-light mt-2" type="submit">
                                 <i class="fas fa-play"></i> Run Query
                             </button>
@@ -216,7 +229,6 @@ def chat():
             except Exception as e:
                 result_output = f"<div class='error'>Error generating query: {str(e)}</div>"
 
-    # Final page render
     return render_template(
         'chat.html',
         databases=databases,
