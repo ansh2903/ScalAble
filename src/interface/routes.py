@@ -1,15 +1,15 @@
-from flask import Blueprint, render_template, jsonify, request, session, redirect, url_for, flash
+from flask import Blueprint, render_template, render_template_string, jsonify, request, session, redirect, url_for, flash
 import importlib
 
-from src.core.utils import get_connection_by_id
 from src.engine.text_to_query import generate_query_from_nl
 from src.engine.query_executor import run_query
-from src.engine.visualizer import render_result_table
+from src.core.utils import render_result_table
 
 from datetime import datetime
 import html
 import json
 import ast
+import sys
 
 from src.core.exception import CustomException
 from src.core.logger import logging
@@ -19,20 +19,32 @@ interface_blueprint = Blueprint('interface', __name__)
 # Landing page
 @interface_blueprint.route('/')
 def index():
-    return render_template('index.html')
+    try:
+        return render_template('index.html')
+    except Exception as e:
+        logging.error(f"Error loading index page: {str(e)}")
+        return render_template('error.html', error_message="An error occurred while loading the index page.")
 
 # Home page (for authenticated user)
 @interface_blueprint.route('/home')
 def home():
-    user = session.get('user')
-    databases = session.get('connections', []) if user else []
-    return render_template('home.html', user=user, databases=databases)
+    try:
+        user = session.get('user')
+        databases = session.get('connections', []) if user else []
+        return render_template('index.html', user=user, databases=databases)
+    except Exception as e:
+        logging.error(f"Error loading home page: {str(e)}")
+        return render_template('error.html', error_message="An error occurred while loading the home page.")
 
 # All connections
 @interface_blueprint.route('/connections')
 def connections():
-    connections = session.get("connections", [])
-    return render_template('connections.html', connections=connections)
+    try:
+        connections = session.get("connections", [])
+        return render_template('connections.html', connections=connections)
+    except Exception as e:
+        logging.error(f"Error loading connections: {str(e)}")
+        return render_template('error.html', error_message="An error occurred while loading the connections.")
 
 # Add new database
 @interface_blueprint.route('/add-database', methods=['GET', 'POST'])
@@ -47,19 +59,16 @@ def add_database():
         try:
             connector_module = importlib.import_module(f"connectors.{db_type}")
 
-            # Step 1: Test connection using full form data
             status, msg = connector_module.test_connection(raw_form_data)
             if not status:
                 flash(f"Connection failed: {msg}", "error")
                 return redirect(url_for("interface.add_database"))
 
-            # Step 2: Fetch metadata
             metadata_status, metadata = connector_module.metadata(raw_form_data)
             if not metadata_status:
                 flash(f"Metadata fetch failed: {metadata}", "error")
                 return redirect(url_for("interface.add_database"))
 
-            # Step 3: Build connection object with credentials nested
             connection_id = len(session.get("connections", [])) + 1
             created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -67,7 +76,7 @@ def add_database():
                 "id": connection_id,
                 "created_at": created_at,
                 "db_type": db_type,
-                "name": raw_form_data.get("name"),  # Optional name/title for display
+                "name": raw_form_data.get("name"),
                 "credentials": {
                     key: raw_form_data[key]
                     for key in raw_form_data
@@ -76,14 +85,9 @@ def add_database():
                 "metadata": metadata
             }
 
-            print("\nFinal connection object:", connection_object)
-
-            # Save in session
             connections = session.get("connections", [])
             connections.append(connection_object)
             session["connections"] = connections
-            print(' ')
-            print(connections)
 
             flash("Database connected and metadata fetched!", "success")
             return redirect(url_for("interface.connections"))
@@ -91,6 +95,7 @@ def add_database():
         except ModuleNotFoundError:
             flash(f"Connector for '{db_type}' not implemented.", "error")
             return redirect(url_for("interface.add_database"))
+        
         except Exception as e:
             flash(f"Error during database addition: {str(e)}", "error")
             return redirect(url_for("interface.add_database"))
@@ -102,14 +107,18 @@ def add_database():
 # Delete database
 @interface_blueprint.route('/delete-database/<int:db_id>', methods=['GET'])
 def delete_database(db_id):
-    connections = session.get("connections", [])
-    connections = [conn for conn in connections if conn.get("id") != db_id]
-    for index, conn in enumerate(connections, start=1):
-        conn["id"] = index
+    try:
+        connections = session.get("connections", [])
+        connections = [conn for conn in connections if conn.get("id") != db_id]
+        for index, conn in enumerate(connections, start=1):
+            conn["id"] = index
 
-    session["connections"] = connections
-    flash("Database deleted successfully.", "success")
-    return redirect(url_for('interface.connections'))
+        session["connections"] = connections
+        flash("Database deleted successfully.", "success")
+        return redirect(url_for('interface.connections'))
+    except Exception as e:
+        flash(f"Error deleting database: {str(e)}", "error")
+        return redirect(url_for('interface.connections'))
 
 
 # Edit database
@@ -141,99 +150,86 @@ def settings():
     return render_template('settings.html')
 
 
-# Chat backend
 @interface_blueprint.route('/chat', methods=['GET', 'POST'])
 def chat():
     connections = session.get('connections', [])
-
-    # Prepare the available databases
-    databases = {
-        conn.get('id', '?'): {
-            'name': conn.get('name', 'Unnamed'),
-            'db_type': conn.get('db_type', 'Unknown').capitalize()
-        }
-        for conn in connections
-    }
-
-    result_output = ""
+    databases = {conn.get('id'): conn for conn in connections}
     selected_db_id = None
-    message = ""
+    chat_html = ""
 
     if request.method == 'POST':
+        is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
         form = request.form
 
-        if "query" in form:
-            # ✅ Run Query was submitted
-            try:
+        try:
+            if "query" in form:
                 generated_query = form.get('query')
                 db_type = form.get('db_type')
-                credentials = form.get('credentials')
-                update_credentials = ast.literal_eval(credentials)
+                credentials = ast.literal_eval(form.get('credentials'))
 
-                result = run_query(db_type=db_type, credentials=update_credentials, query=generated_query)
-                result_table_html = render_result_table(result)
+                result = run_query(db_type=db_type, credentials=credentials, query=generated_query)
+                result_html = render_result_table(result)
 
-                # Refresh metadata
-                try:
-                    connector_module = importlib.import_module(f"connectors.{db_type}")
-                    refreshed_status, refreshed_metadata = connector_module.metadata(update_credentials)
-                    if refreshed_status:
-                        # Update session metadata for this connection
-                        for conn in connections:
-                            if str(conn['id']) == str(form.get('selected_db_id')):
-                                conn['metadata'] = refreshed_metadata
-                                break
-                        session['connections'] = connections
-                except Exception as e:
-                    print("Metadata refresh failed:", e)
-
-                result_output = f"""
-                    <div>
-                        <pre class="message-content llm">{html.escape(generated_query)}</pre>
-                        <div class='query-result mt-3'>{result_table_html}</div>
+                table_block = render_template_string("""
+                    <div class="message-row llm-msg">
+                        <img src="{{ url_for('static', filename='img/bot-avatar.png') }}" class="avatar">
+                        <div class="message-content">
+                            <pre class="message-content llm">{{ query }}</pre>
+                            <div class='query-result mt-3'>{{ table|safe }}</div>
+                            <span class="msg-time">Just now</span>
+                        </div>
                     </div>
-                """
-            except Exception as e:
-                result_output = f"<div class='error'>Error running query: {str(e)}</div>"
+                """, query=generated_query, table=result_html)
 
-        else:
-            # ✅ Generate Query was submitted
-            try:
-                message = form.get('message', '').strip()
-                selected_db_id = form.get('selected_db_id')
+                chat_html += table_block
 
+            else:
+                message = form.get("message")
+                selected_db_id = form.get("selected_db_id")
                 selected_conn = next((c for c in connections if str(c['id']) == str(selected_db_id)), None)
+
                 if not selected_conn:
-                    raise ValueError("Selected database connection not found.")
+                    raise ValueError("Invalid database selection.")
 
-                credentials = selected_conn.get('credentials')
-                metadata = selected_conn.get('metadata')
-                db_type = selected_conn.get('db_type')       
-                generated_response = generate_query_from_nl(message, db_type, metadata)
-                safe_query = html.escape(generated_response.strip())
+                db_type = selected_conn.get("db_type")
+                credentials = selected_conn.get("credentials")
+                metadata = selected_conn.get("metadata")
 
-                result_output = f"""
-                    <div>
-                        <pre class="message-content llm">{safe_query}</pre>
-                        <form method="POST" action="{url_for('interface.chat')}">
-                            <input type="hidden" name="query" value="{generated_response}">
-                            <input type="hidden" name="db_type" value="{html.escape(db_type)}">
-                            <input type="hidden" name="credentials" value="{credentials}">
-                            <input type="hidden" name="selected_db_id" value="{selected_db_id}">
-                            <button class="btn btn-sm btn-outline-light mt-2" type="submit">
-                                <i class="fas fa-play"></i> Run Query
-                            </button>
-                        </form>
+                generated_query = generate_query_from_nl(message, db_type, metadata)
+                query_escaped = html.escape(generated_query.strip())
+
+                user_block = render_template_string("""
+                    <div class="message-row user-msg">
+                        <div class="message-content">{{ message }}</div>
+                        <img src="{{ url_for('static', filename='img/user-avatar.png') }}" class="avatar">
                     </div>
-                """
-            except Exception as e:
-                result_output = f"<div class='error'>Error generating query: {str(e)}</div>"
+                """, message=message)
 
-    return render_template(
-        'chat.html',
-        databases=databases,
-        connections=connections,
-        selected_db_id=selected_db_id,
-        message=message,
-        result_output=result_output
-    )
+                query_block = render_template_string("""
+                    <div class="message-row llm-msg">
+                        <img src="{{ url_for('static', filename='img/bot-avatar.png') }}" class="avatar">
+                        <div class="message-content">
+                            <pre class="message-content llm">{{ query }}</pre>
+                            <form class="d-inline-block" method="POST">
+                                <input type="hidden" name="query" value="{{ generated_query }}">
+                                <input type="hidden" name="db_type" value="{{ db_type }}">
+                                <input type="hidden" name="credentials" value="{{ credentials }}">
+                                <input type="hidden" name="selected_db_id" value="{{ selected_db_id }}">
+                                <button class="btn btn-sm btn-outline-light mt-2 run-query-btn" type="submit">
+                                    <i class="fas fa-play"></i> Run Query
+                                </button>
+                            </form>
+                            <span class="msg-time">Just now</span>
+                        </div>
+                    </div>
+                """, query=query_escaped, db_type=db_type, credentials=credentials, selected_db_id=selected_db_id, generated_query=generated_query)
+
+                chat_html += user_block + query_block
+
+            if is_ajax:
+                return jsonify({"chat_html": chat_html})
+
+        except Exception as e:
+            return jsonify({"chat_html": f"<div class='error'>Error: {str(e)}</div>"}), 500
+
+    return render_template("chat.html", connections=connections, selected_db_id=selected_db_id)

@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ScalAble | Chat with Database</title>
 
     <!-- Fluent UI -->
@@ -11,15 +11,17 @@
     <!-- Bootstrap & FontAwesome -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css">
+    
+    <!-- Syntax Highlighting -->
     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github-dark.min.css">
     <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
-    <script>hljs.highlightAll();</script>
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 
-<!-- Sidebar Navigation -->
+<body class="fluent-dark">
+    <!-- Sidebar Navigation -->
     <nav class="sidebar" aria-label="Main sidebar">
         <div class="sidebar-header">
             <img class="sidebar-brand" src="{{ url_for('static', filename='images/toppng.com-database-icon-white-271x381.png') }}" alt="ScalAble Logo">
@@ -27,80 +29,83 @@
             <button id="sidebar-close" class="sidebar-toggle" aria-label="Close sidebar">&#10005;</button>
         </div>
         <ul class="sidebar-nav" role="menu">
-            <li role="none"><a role="menuitem" href='{{ url_for('interface.index')}}'>Home</a></li>
-            <li role="none"><a role="menuitem" href="/connections">Databases</a></li>
-            <li role="none"><a role="menuitem" href="#">Manage Models</a></li>
+            <li role="none"><a role="menuitem" href="{{ url_for('interface.home') }}">Home</a></li>
+            <li role="none"><a role="menuitem" href="{{ url_for('interface.connections') }}">Databases</a></li>
+            <li role="none" class="active"><a role="menuitem" href="{{ url_for('interface.chat') }}">Chat</a></li>
+            <li role="none"><a role="menuitem" href="{{ url_for('interface.settings') }}">Settings</a></li>
             <li role="none"><a role="menuitem" href="https://github.com/ansh2903/ScalAble" target="_blank">GitHub</a></li>
         </ul>
     </nav>
 
-<body class="fluent-dark">
     <!-- Main Content Layout -->
     <div class="main-content chat-container">
         <!-- Top Header -->
         <header class="main-header d-flex align-items-center px-3 py-2">
             <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle sidebar">&#9776;</button>
+            <h5 class="mb-0 ml-3">Database Chat Assistant</h5>
             <div class="flex-grow-1"></div>
-            {% if is_authenticated %}
+            {% if session.get('user') %}
+                <span class="mr-3">{{ session.get('user') }}</span>
                 <fluent-button appearance="stealth" onclick="location.href='{{ url_for('auth.logout') }}'">Logout</fluent-button>
             {% else %}
                 <fluent-button appearance="stealth" onclick="location.href='{{ url_for('auth.login') }}'">Login</fluent-button>
             {% endif %}
         </header>
 
-        <!-- Chat Body + Input Bar -->
+        <!-- Chat Body -->
         <div class="row justify-content-center flex-grow-1 overflow-hidden">
             <div class="col-md-11 col-xl-8 chat d-flex flex-column position-relative">
                 
-                <!-- Scrollable Messages -->
-                <div id="messageFormeight" class="card-body msg_card_body">
-                    {% if message or result_output %}
-                    {% if message %}
-                        <!-- User message -->
-                        <div class="message-row user-msg">
-                            <div class="message-content">
-                                {{ message }}
-                                <span class="msg-time">{{ time or '' }}</span>
-                            </div>
-                            <img src="{{ url_for('static', filename='src/templates/img/istockphoto-1367766076-612x612.png') }}" alt="User" class="avatar">
-                        </div>
-                    {% endif %}
-
-                    <!-- LLM message or result -->
-                    <div class="message-row llm-msg">
-                        <img src="{{ url_for('static', filename='img/istockphoto-1367766076-612x612.png') }}" alt="LLM" class="avatar">
-                        <div>
-                            {{ result_output | safe }}
-                            <span class="msg-time">{{ time or '' }}</span>
-                        </div>
-                    </div>
-                {% endif %}
-
+                <!-- Messages Container -->
+                <div id="messageContainer" class="card-body msg_card_body">
+                    <!-- Messages will be dynamically inserted here -->
                 </div>
 
-                <!-- Chat Input Bar (Fixed at Bottom) -->
+                <!-- Chat Input Bar -->
                 <div class="chat-input-bar">
-                    <!-- 🔄 Loading Spinner -->
-                    <div id="loading-spinner" style="display:none; color: white; font-style: italic; padding-left: 10px;">
-                        Generating response...
+                    <!-- Loading Indicator -->
+                    <div id="loading-spinner" class="loading-indicator" style="display: none;">
+                        <fluent-progress-ring></fluent-progress-ring>
+                        <span>Generating response...</span>
                     </div>
 
-                    <form id="messageArea" method="POST" action="{{ url_for('interface.chat') }}" autocomplete="off" onsubmit="document.getElementById('loading-spinner').style.display = 'block';">
+                    <!-- Input Form -->
+                    <form id="chatForm" method="POST" autocomplete="off">
                         <div class="chat-input-container">
+                            <!-- Database Selector -->
                             <select class="db-select" name="selected_db_id" id="selected_db_id" required>
-                                <option disabled {% if not selected_db_id %}selected{% endif %}>Select Database</option>
+                                <option value="" disabled {% if not selected_db_id %}selected{% endif %}>Select Database</option>
                                 {% for conn in connections %}
-                                    <option value="{{ conn.id }}" {% if conn.id == selected_db_id|int %}selected{% endif %}>
+                                    <option value="{{ conn.id }}"
+                                            {% if selected_db_id and conn.id == selected_db_id|int %}selected{% endif %}
+                                            data-db-type="{{ conn.db_type }}"
+                                            data-name="{{ conn.name }}">
                                         {{ conn.db_type.capitalize() }} - {{ conn.name }}
                                     </option>
                                 {% endfor %}
                                 <option value="configure_db" data-link="{{ url_for('interface.connections') }}">Configure Database</option>
+                                {% if not connections %}
+                                    <option value="" disabled>No databases configured</option>
+                                {% endif %}
                             </select>
 
-                            <input type="text" id="text" name="message" placeholder="Enter your follow-up here..." required />
+                            <!-- Add Database Button -->
+                            <a href="{{ url_for('interface.add_database') }}" class="btn btn-sm btn-outline-primary ml-2" title="Add new database">
+                                <i class="fas fa-plus"></i>
+                            </a>
 
-                            <button class="send-button" type="submit">
-                                <i class="fas fa-arrow-up"></i> Send
+                            <!-- Message Input -->
+                            <input type="text" 
+                                   id="messageInput" 
+                                   name="message" 
+                                   class="form-control flex-grow-1 mx-2"
+                                   placeholder="Ask a question about your data..." 
+                                   {% if not connections %}disabled{% endif %}
+                                   required />
+
+                            <!-- Send Button -->
+                            <button class="send-button btn btn-primary" id="sendMessageBtn" type="submit">
+                                <i class="fas fa-paper-plane"></i>
                             </button>
                         </div>
                     </form>
@@ -109,85 +114,94 @@
         </div>
     </div>
 
-    <!-- JS Scripts -->
+    <!-- JavaScript -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js"></script>
     <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+
     <script>
-        document.getElementById('selected_db_id').addEventListener('change', function () {
-            const option = this.options[this.selectedIndex];
-            if (option.value === 'configure_db') {
-                window.location.href = option.getAttribute('data-link');
+    function scrollToBottom() {
+        const container = document.getElementById("messageContainer");
+        container.scrollTop = container.scrollHeight;
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const dbSelect = document.getElementById("selected_db_id");
+
+        dbSelect.addEventListener("change", function () {
+            const selectedOption = dbSelect.options[dbSelect.selectedIndex];
+            const value = selectedOption.value;
+
+            if (value === "configure_db") {
+                const link = selectedOption.getAttribute("data-link");
+                if (link) {
+                    window.location.href = link;
+                }
             }
         });
+    });
 
-        function scrollToBottom() {
-            var messageBody = document.getElementById("messageFormeight");
-            messageBody.scrollTop = messageBody.scrollHeight;
-        }
 
-        window.onload = scrollToBottom;
+    document.getElementById("chatForm").addEventListener("submit", function(e) {
+        e.preventDefault();
 
-        document.getElementById("messageArea").addEventListener("submit", () => {
-            setTimeout(scrollToBottom, 100);
-        });
+        const dbId = document.getElementById("selected_db_id").value;
+        const message = document.getElementById("messageInput").value;
 
-        document.addEventListener("DOMContentLoaded", function () {
-    const form = document.querySelector('form[action="/run_query"]');
-    if (form) {
-      form.addEventListener("submit", function () {
-        const spinner = document.getElementById("loading-spinner");
-        if (spinner) {
-          spinner.style.display = "block";
-        }
-      });
-    }
-  });
+        if (!dbId || !message) return;
 
-  $(document).ready(function () {
-        $("#messageArea").on("submit", function (event) {
-          const date = new Date();
-          const hour = date.getHours();
-          const minute = date.getMinutes();
-          const str_time = hour + ":" + minute;
-          var rawText = $("#text").val();
+        const loading = document.getElementById("loading-spinner");
+        loading.style.display = "flex";
 
-          var userHtml =
-            '<div class="d-flex justify-content-end mb-4"><div class="msg_cotainer_send">' +
-            rawText +
-            '<span class="msg_time_send">' +
-            str_time +
-            '</span></div><div class="img_cont_msg"><img src="https://i.ibb.co/d5b84Xw/Untitled-design.png" class="rounded-circle user_img_msg"></div></div>';
-
-          $("#text").val("");
-          $("#messageFormeight").append(userHtml);
-
-          scrollToBottom();
-
-          $.ajax({
-            data: {
-              msg: rawText,
+        fetch("{{ url_for('interface.chat') }}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "X-Requested-With": "XMLHttpRequest"
             },
-            type: "POST",
-            url: "/get",
-          }).done(function (data) {
-            var botHtml =
-              '<div class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://i.ibb.co/fSNP7Rz/icons8-chatgpt-512.png" class="rounded-circle user_img_msg"></div><div class="msg_cotainer">' +
-              data +
-              '<span class="msg_time">' +
-              str_time +
-              "</span></div></div>";
-            $("#messageFormeight").append($.parseHTML(botHtml));
+            body: new URLSearchParams({
+                message: message,
+                selected_db_id: dbId
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById("messageContainer").innerHTML += data.chat_html;
+            document.getElementById("messageInput").value = "";
+            loading.style.display = "none";
             scrollToBottom();
-          });
-          event.preventDefault();
+        })
+        .catch(err => {
+            alert("Error: " + err);
+            loading.style.display = "none";
         });
-      });
-        
+    });
+
+    document.addEventListener("click", function(e) {
+        if (e.target.closest("button.run-query-btn")) {
+            e.preventDefault();
+
+            const btn = e.target.closest("button.run-query-btn");
+            const form = btn.closest("form");
+            const formData = new FormData(form);
+
+            fetch("{{ url_for('interface.chat') }}", {
+                method: "POST",
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest"
+                },
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById("messageContainer").innerHTML += data.chat_html;
+                scrollToBottom();
+            })
+            .catch(err => {
+                alert("Error running query: " + err);
+            });
+        }
+    });
     </script>
-
-    <!-- Bootstrap Scripts -->
-    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js"></script>
 </body>
-
-
 </html>

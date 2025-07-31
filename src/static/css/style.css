@@ -554,10 +554,10 @@ fluent-button[appearance="accent"] {
 /* Scrollable Message Area */
 .msg_card_body {
     flex: 1 1 auto;
+    max-height: 80vh; /* Or fixed px like 400px */
     overflow-y: auto;
     background-color: #1e1e1e;
-    padding: 16px;
-    padding-bottom: 100px; /* So messages don’t get hidden under input */
+    padding: 16px 16px 100px 16px;
     border-radius: 12px 12px 0 0;
     scroll-behavior: smooth;
 }
