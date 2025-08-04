@@ -17,5 +17,6 @@ psycopg2-binary
 flask-bcrypt
 pyodbc
 mysql-connector-python
+markdown2
 
 # -e .

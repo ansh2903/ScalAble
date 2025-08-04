@@ -11,6 +11,10 @@ body.fluent-dark {
     min-height: 100vh;
 }
 
+[contenteditable="true"]:focus {
+    outline: none;
+}
+
 /* === Sidebar === */
 .sidebar {
     width: 320px;
@@ -554,7 +558,7 @@ fluent-button[appearance="accent"] {
 /* Scrollable Message Area */
 .msg_card_body {
     flex: 1 1 auto;
-    max-height: 80vh; /* Or fixed px like 400px */
+    max-height: 80vh;
     overflow-y: auto;
     background-color: #1e1e1e;
     padding: 16px 16px 100px 16px;
@@ -592,7 +596,7 @@ fluent-button[appearance="accent"] {
 
 /* Message Bubbles */
 .message-content {
-    background-color: #0078d4;
+    background-color: #2a2b2b;
     color: white;
     padding: 10px 14px;
     border-radius: 14px;
@@ -668,13 +672,15 @@ fluent-button[appearance="accent"] {
     position: fixed;
     bottom: 0;
     left: 0;
-    right: 0;
     background-color: #1e1e1e;
     padding: 0.75rem 1rem;
     border-top: 1px solid #2a2a2a;
     z-index: 2;
     border-radius: 0 0 12px 12px;
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+    
+    margin-left: 320px; /* align with content */
+    width: calc(100% - 320px); /* prevent overflow */
 }
 
 /* Input container */

@@ -10,6 +10,7 @@ import html
 import json
 import ast
 import sys
+import markdown2
 
 from src.core.exception import CustomException
 from src.core.logger import logging
@@ -172,11 +173,9 @@ def chat():
 
                 table_block = render_template_string("""
                     <div class="message-row llm-msg">
-                        <img src="{{ url_for('static', filename='img/bot-avatar.png') }}" class="avatar">
+                        <img class="sidebar-brand" src="{{ url_for('static', filename='images/logo.png') }}" alt="ScalAble Logo">
                         <div class="message-content">
-                            <pre class="message-content llm">{{ query }}</pre>
                             <div class='query-result mt-3'>{{ table|safe }}</div>
-                            <span class="msg-time">Just now</span>
                         </div>
                     </div>
                 """, query=generated_query, table=result_html)
@@ -196,20 +195,42 @@ def chat():
                 metadata = selected_conn.get("metadata")
 
                 generated_query = generate_query_from_nl(message, db_type, metadata)
+
                 query_escaped = html.escape(generated_query.strip())
+
+                time = datetime.now().strftime("%H:%M:%S")
 
                 user_block = render_template_string("""
                     <div class="message-row user-msg">
-                        <div class="message-content">{{ message }}</div>
-                        <img src="{{ url_for('static', filename='img/user-avatar.png') }}" class="avatar">
+                        <div class="message-content">
+                            {{ message }}
+                            <span class="msg-time">{{ time }}</span>
+                        </div>
+                        <fluent-avatar>
+                        <svg
+                            fill="currentColor"
+                            aria-hidden="true"
+                            width="2em"
+                            height="2em"
+                            viewBox="0 0 20 20"
+                            xmlns="http://www.w3.org/2000/svg"
+                        >
+                            <path
+                            d="M10 3a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM7.5 4.5a2.5 2.5 0 115 0 2.5 2.5 0 01-5 0zm8-.5a1 1 0 100 2 1 1 0 000-2zm-2 1a2 2 0 114 0 2 2 0 01-4 0zm-10 0a1 1 0 112 0 1 1 0 01-2 0zm1-2a2 2 0 100 4 2 2 0 000-4zm.6 12H5a2 2 0 01-2-2V9.25c0-.14.11-.25.25-.25h1.76c.04-.37.17-.7.37-1H3.25C2.56 8 2 8.56 2 9.25V13a3 3 0 003.4 2.97 4.96 4.96 0 01-.3-.97zm9.5.97A3 3 0 0018 13V9.25C18 8.56 17.44 8 16.75 8h-2.13c.2.3.33.63.37 1h1.76c.14 0 .25.11.25.25V13a2 2 0 01-2.1 2c-.07.34-.17.66-.3.97zM7.25 8C6.56 8 6 8.56 6 9.25V14a4 4 0 008 0V9.25C14 8.56 13.44 8 12.75 8h-5.5zM7 9.25c0-.14.11-.25.25-.25h5.5c.14 0 .25.11.25.25V14a3 3 0 11-6 0V9.25z"
+                            fill="currentColor"
+                            ></path>
+                        </svg>
+                        </fluent-avatar>
                     </div>
-                """, message=message)
+                """, message=message, time=time)
 
                 query_block = render_template_string("""
                     <div class="message-row llm-msg">
-                        <img src="{{ url_for('static', filename='img/bot-avatar.png') }}" class="avatar">
+                        <img class="sidebar-brand" src="{{ url_for('static', filename='images/logo.png') }}" alt="ScalAble Logo">
                         <div class="message-content">
-                            <pre class="message-content llm">{{ query }}</pre>
+                            <div contenteditable="true">
+                                <pre class="message-content llm">{{ query }}</pre>
+                            </div>
                             <form class="d-inline-block" method="POST">
                                 <input type="hidden" name="query" value="{{ generated_query }}">
                                 <input type="hidden" name="db_type" value="{{ db_type }}">
@@ -219,7 +240,6 @@ def chat():
                                     <i class="fas fa-play"></i> Run Query
                                 </button>
                             </form>
-                            <span class="msg-time">Just now</span>
                         </div>
                     </div>
                 """, query=query_escaped, db_type=db_type, credentials=credentials, selected_db_id=selected_db_id, generated_query=generated_query)

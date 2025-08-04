@@ -59,10 +59,9 @@ def generate_query_from_nl(nl_query: str, db_type, db_metadata: dict = {}, model
 
         If unsure, return an empty string.
 
+        
         Now respond with the query only:
         """
-
-
 
         payload = {
             'model': model,
