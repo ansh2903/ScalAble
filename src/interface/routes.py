@@ -189,9 +189,9 @@ def chat():
                 <div class="message-row llm-msg">
                     <img class="sidebar-brand" src="{{ url_for('static', filename='images/logo.png') }}" alt="ScalAble Logo">
                     <div class="message-content">
-                        <div class='query-result mt-3'>{{ table|safe }}</div>
+                        <div class='data-table mt-3'>{{ table|safe }}</div>
                         <button class="btn btn-sm btn-outline-light mt-2 visualize-data-btn" data-url="{{ visualize_url }}">
-                            <i class="fas fa-chart-bar"></i> Visualize Data
+                            <i class="fas fa-chart-bar"></i> Analyse Data
                         </button>
                     </div>
                 </div>
@@ -277,9 +277,11 @@ def chat():
                 "chat_html": f"<div class='error'>Error: {error_message}</div>"
             }), 500
 
-
-
     return render_template("chat.html", connections=connections, selected_db_id=selected_db_id, table_block=table_block if 'table_block' in locals() else "")
+
+@interface_blueprint.route('/upload_file', methods=['POST'])
+def upload_file():
+    pass
 
 @interface_blueprint.route('/visualize_data', methods=['GET','POST'])
 def visualize_data():
@@ -293,7 +295,6 @@ def visualize_data():
     if not html_data:
         return render_template('visualize_data.html', no_data=True)
 
-    # Convert query results to CSV format for the visualization
     data = query_results.get('data', [])
     data = [list(row) if isinstance(row, tuple) else row for row in data]
     csv_data = ""
@@ -302,3 +303,8 @@ def visualize_data():
         csv_data += ",".join(map(str, row)) + "\n"
     
     return render_template('visualize_data.html', csv_data=csv_data, query_info=query_results, html_data=html_data)
+
+
+@interface_blueprint.route('/model_settings', methods=['GET', 'POST'])
+def model_settings():
+    pass 
