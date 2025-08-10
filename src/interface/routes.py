@@ -10,7 +10,6 @@ import html
 import json
 import ast
 import sys
-import markdown2
 
 from src.core.exception import CustomException
 from src.core.logger import logging
@@ -150,7 +149,7 @@ def edit_database(db_id):
 def settings():
     return render_template('settings.html')
 
-
+# chat interface
 @interface_blueprint.route('/chat', methods=['GET', 'POST'])
 def chat():
     connections = session.get('connections', [])
@@ -167,19 +166,39 @@ def chat():
                 generated_query = form.get('query')
                 db_type = form.get('db_type')
                 credentials = ast.literal_eval(form.get('credentials'))
-
                 result = run_query(db_type=db_type, credentials=credentials, query=generated_query)
+
+                if isinstance(result, dict) and "error" in result:
+                    return jsonify({
+                        "chat_html": f"<div class='error'>Error: {result['error']}</div>"
+                    }), 500
+
                 result_html = render_result_table(result)
+                
+                # Store query results in session for visualization
+                session['last_query_results'] = {
+                    'query': generated_query,
+                    'data': result,
+                    'html_data': result_html
+                }
+                print(session['last_query_results'])
+
+                visualize_url = url_for('interface.visualize_data')
 
                 table_block = render_template_string("""
-                    <div class="message-row llm-msg">
-                        <img class="sidebar-brand" src="{{ url_for('static', filename='images/logo.png') }}" alt="ScalAble Logo">
-                        <div class="message-content">
-                            <div class='query-result mt-3'>{{ table|safe }}</div>
-                        </div>
+                <div class="message-row llm-msg">
+                    <img class="sidebar-brand" src="{{ url_for('static', filename='images/logo.png') }}" alt="ScalAble Logo">
+                    <div class="message-content">
+                        <div class='query-result mt-3'>{{ table|safe }}</div>
+                        <button class="btn btn-sm btn-outline-light mt-2 visualize-data-btn" data-url="{{ visualize_url }}">
+                            <i class="fas fa-chart-bar"></i> Visualize Data
+                        </button>
                     </div>
-                """, query=generated_query, table=result_html)
-
+                </div>
+                <!-- Iframe Container -->
+                <div id="iframe-container" class="iframe-container">
+                    <!-- Iframe will be dynamically inserted here -->
+                """, query=generated_query, table=result_html, visualize_url=visualize_url)
                 chat_html += table_block
 
             else:
@@ -195,8 +214,6 @@ def chat():
                 metadata = selected_conn.get("metadata")
 
                 generated_query = generate_query_from_nl(message, db_type, metadata)
-
-                query_escaped = html.escape(generated_query.strip())
 
                 time = datetime.now().strftime("%H:%M:%S")
 
@@ -242,7 +259,7 @@ def chat():
                             </form>
                         </div>
                     </div>
-                """, query=query_escaped, db_type=db_type, credentials=credentials, selected_db_id=selected_db_id, generated_query=generated_query)
+                """, query=generated_query, db_type=db_type, credentials=credentials, selected_db_id=selected_db_id, generated_query=generated_query)
 
                 chat_html += user_block + query_block
 
@@ -250,6 +267,38 @@ def chat():
                 return jsonify({"chat_html": chat_html})
 
         except Exception as e:
-            return jsonify({"chat_html": f"<div class='error'>Error: {str(e)}</div>"}), 500
+            error_message = ""
+            if isinstance(e, dict) and "error" in e:
+                error_message = e["error"]
+            else:
+                error_message = str(e)
 
-    return render_template("chat.html", connections=connections, selected_db_id=selected_db_id)
+            return jsonify({
+                "chat_html": f"<div class='error'>Error: {error_message}</div>"
+            }), 500
+
+
+
+    return render_template("chat.html", connections=connections, selected_db_id=selected_db_id, table_block=table_block if 'table_block' in locals() else "")
+
+@interface_blueprint.route('/visualize_data', methods=['GET','POST'])
+def visualize_data():
+    # Get the last query results from session
+    query_results = session.get('last_query_results')
+    
+    if not query_results:
+        return render_template('visualize_data.html', no_data=True)
+    
+    html_data = query_results.get('html_data')
+    if not html_data:
+        return render_template('visualize_data.html', no_data=True)
+
+    # Convert query results to CSV format for the visualization
+    data = query_results.get('data', [])
+    data = [list(row) if isinstance(row, tuple) else row for row in data]
+    csv_data = ""
+    
+    for row in data:
+        csv_data += ",".join(map(str, row)) + "\n"
+    
+    return render_template('visualize_data.html', csv_data=csv_data, query_info=query_results, html_data=html_data)

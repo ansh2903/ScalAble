@@ -753,3 +753,21 @@ fluent-button[appearance="accent"] {
 ::-webkit-scrollbar-thumb:hover {
     background: #777;
 }
+
+/* Iframe container */
+#iframe-container {
+    
+    left: 320px;
+    bottom: 60px;
+    width: calc(100% - 80px);
+    background-color: #1e1e1e;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+}
+
+
+#iframe-container iframe {
+    width: 100%;
+    border: none;
+}

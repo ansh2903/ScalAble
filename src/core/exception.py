@@ -10,9 +10,9 @@ def error_message_detail(error,error_detail:sys):
     return error_message
 
 class CustomException(Exception):
-    def __init__(self,error_message,error_detail:sys):
-        super().__init__(error_message)
-        self.error_message = error_message_detail(error_message,error_detail=error_detail)
-    
+    def __init__(self, sys_module, original_exception):
+        super().__init__(str(original_exception))
+        self.original_exception = original_exception
+
     def __str__(self):
-        return self.error_message
+        return f"{self.original_exception}"

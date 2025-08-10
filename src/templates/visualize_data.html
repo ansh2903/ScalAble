@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScalAble | Data Visualizer</title>
+    
+    <!-- Chart.js for visualizations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-date-fns/2.0.0/chartjs-adapter-date-fns.bundle.min.js"></script>
+    
+    <!-- Bootstrap & FontAwesome -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css">
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script type="module" src="https://unpkg.com/@fluentui/web-components"></script>
+    <style>
+        
+        .container-fluid {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .controls-panel {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            height: 500px;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 100%;
+            width: 100%;
+        }
+
+        .btn-custom {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 25px;
+            padding: 10px 20px;
+            color: white;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            color: white;
+        }
+
+        .btn-custom.active {
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            box-shadow: 0 3px 10px rgba(79, 172, 254, 0.5);
+        }
+
+        .form-control {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            color: white;
+            padding: 10px 15px;
+        }
+
+        .form-control::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .form-control:focus {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: #4facfe;
+            color: white;
+            box-shadow: 0 0 10px rgba(79, 172, 254, 0.3);
+        }
+
+        .data-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(45deg, rgba(79, 172, 254, 0.2), rgba(0, 242, 254, 0.2));
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            border: 1px solid rgba(79, 172, 254, 0.3);
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #4facfe;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 60px 20px;
+            opacity: 0.7;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading i {
+            font-size: 2rem;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .data-table {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .data-table table {
+            width: 100%;
+            color: white;
+        }
+
+        .data-table th {
+            background: rgba(79, 172, 254, 0.3);
+            padding: 12px;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+
+        .data-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .data-table tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+    </style>
+</head>
+
+<body class="fluent-dark">
+    <div class="container-fluid">
+        <!-- Controls Panel -->
+        <div class="controls-panel">
+            <div class="row">
+                <div class="col-md-8">
+                    <h5>Sample Data Input</h5>
+                    <textarea id="dataInput" class="form-control" rows="4" placeholder="Paste your CSV data here or use the sample data below...">
+                        {{ csv_data | safe }}    
+                    </textarea>
+                    <button id="loadData" class="btn btn-custom mt-2">
+                        <i class="fas fa-upload"></i> Load Data
+                    </button>
+                </div>
+                <div class="col-md-4">
+                    <h5>Chart Type</h5>
+                    <div class="btn-group-vertical d-block">
+                        <button class="btn btn-custom chart-type-btn active" data-type="bar">
+                            <i class="fas fa-chart-bar"></i> Bar Chart
+                        </button>
+                        <button class="btn btn-custom chart-type-btn" data-type="line">
+                            <i class="fas fa-chart-line"></i> Line Chart
+                        </button>
+                        <button class="btn btn-custom chart-type-btn" data-type="pie">
+                            <i class="fas fa-chart-pie"></i> Pie Chart
+                        </button>
+                        <button class="btn btn-custom chart-type-btn" data-type="scatter">
+                            <i class="fas fa-braille"></i> Scatter Plot
+                        </button>
+                        <button class="btn btn-custom chart-type-btn" data-type="doughnut">
+                            <i class="fas fa-dot-circle"></i> Doughnut Chart
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-3">
+                <div class="col-md-4">
+                    <label>X-Axis Column:</label>
+                    <select id="xAxisSelect" class="form-control">
+                        <option value="">Select column...</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label>Y-Axis Column:</label>
+                    <select id="yAxisSelect" class="form-control">
+                        <option value="">Select column...</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label>Group By (optional):</label>
+                    <select id="groupBySelect" class="form-control">
+                        <option value="">No grouping</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Statistics -->
+        <div id="dataStats" class="data-stats" style="display: none;"></div>
+
+        <!-- Chart Container -->
+        <div class="chart-container">
+            <div class="chart-wrapper">
+                <canvas id="dataChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div id="dataTable" class="data-table" style="display: none;"></div>
+    </div>
+</body>
+
+<script src="{{ url_for('static', filename='js/visualizer.js') }}"></script>
+</html>

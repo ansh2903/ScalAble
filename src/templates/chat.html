@@ -200,6 +200,35 @@
                 alert("Error running query: " + err);
             });
         }
+
+        if (e.target && e.target.matches(".visualize-data-btn")) {
+            const url = e.target.getAttribute("data-url");
+            const container = document.getElementById("iframe-container");
+
+            // Clear existing iframe
+            container.innerHTML = "";
+
+            // Create iframe
+            const iframe = document.createElement("iframe");
+            iframe.src = url;
+            iframe.style.width = "100%";
+            iframe.style.border = "none";
+
+            // Append and auto-resize
+            iframe.onload = function () {
+                try {
+                    // Try to access the iframe's body height
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    iframe.style.height = iframeDoc.body.scrollHeight + "px";
+                } catch (err) {
+                    console.warn("Cross-origin iframe, can't resize:", err);
+                    // fallback height
+                    iframe.style.height = "600px";
+                }
+            };
+
+            container.appendChild(iframe);
+        }
     });
     </script>
 </body>

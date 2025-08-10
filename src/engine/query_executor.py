@@ -2,8 +2,9 @@
 This module is responsible for executing the query generated(based on
 which database the user chose) by the model onto the database
 '''
-
 import psycopg2 #postgresql
+from psycopg2 import OperationalError, DatabaseError
+
 from pymongo import MongoClient #mongodb
 import pyodbc #mssql
 
@@ -15,6 +16,7 @@ from src.core.logger import logging
 def run_query(db_type: str, credentials, query: str, database: None = None, collection: None = None):
     logging.info("run_query() Invoked")
 
+    # PostgreSQL
     if db_type == 'postgresql':
         try:
             logging.info("For database 'postgresql'")
@@ -42,10 +44,20 @@ def run_query(db_type: str, credentials, query: str, database: None = None, coll
             else:
                 conn.commit()
                 return [['Message'],['Query executed successfully']]
-
+        
+        except OperationalError as e:
+            logging.error(f"OperationalError: {e}")
+            return {"error": str(CustomException(sys, e))}
+        
+        except DatabaseError as e:
+            logging.error(f"DatabaseError: {e}")
+            return {"error": str(CustomException(sys, e))}
+        
         except Exception as e:
-            raise CustomException(sys, e)
+            return {"error": str(CustomException(sys, e))}
+
     
+    # MongoDB
     if db_type == 'mongodb':
         try:
             logging.info("for database 'mongodb'")
@@ -62,7 +74,8 @@ def run_query(db_type: str, credentials, query: str, database: None = None, coll
 
         except Exception as e:
             raise CustomException(sys, e)
-        
+    
+    # MSSQL
     if db_type == 'mssql':
         try:
             logging.info("for database 'mssql")
