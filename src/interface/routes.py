@@ -20,7 +20,7 @@ interface_blueprint = Blueprint('interface', __name__)
 @interface_blueprint.route('/')
 def index():
     try:
-        return render_template('index.html')
+        return render_template('New_index.html')
     except Exception as e:
         logging.error(f"Error loading index page: {str(e)}")
         return render_template('error.html', error_message="An error occurred while loading the index page.")
