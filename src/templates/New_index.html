@@ -5,7 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ScalAble Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
     <style>
+
+        /*Base Theme*/
         * {
             margin: 0;
             padding: 0;
@@ -13,9 +16,13 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: #f8fafc;
             color: #1e293b;
+        }
+
+        .theme {
+            background: linear-gradient(-9deg, #C9D4EA, #F6DAC5);
         }
 
         .dashboard {
@@ -23,20 +30,7 @@
             min-height: 100vh;
         }
 
-        .sidebar {
-            width: 280px;
-            height: 100vh; /* Full viewport height */
-            position: fixed;
-            z-index: 1;
-            top: 0;
-            left: 0;
-            display: flex;             /* Enable flex layout */
-            flex-direction: column;    /* Stack children vertically */
-            background: white;
-            border-right: 1px solid #e2e8f0;
-            padding: 2rem;
-        }
-
+        /* Logo */
         .logo {
             display: flex;
             align-items: center;
@@ -61,6 +55,21 @@
             font-size: 24px;
             font-weight: 700;
             color: #1e293b;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            height: 100vh; /* Full viewport height */
+            position: fixed;
+            z-index: 1;
+            top: 0;
+            left: 0;
+            display: flex;             /* Enable flex layout */
+            flex-direction: column;    /* Stack children vertically */
+            background: white;
+            border-right: 1px solid #e2e8f0;
+            padding: 2rem;
         }
 
         .sidebar-nav {
@@ -138,18 +147,66 @@
             height: 100%;
         }
 
+        /* Main Content */
         .main-content {
             flex: 1;
-            margin-left: 280px; /* Adjust for sidebar width */
+            /*margin-left: 280px; /* Adjust for sidebar width */
             padding: 2rem;
         }
 
+        /* Header */
         .header {
+            position: fixed;
+            left: 50%;
+            transform: translateX(-50%);
+            height: 80px;
+            width: calc(100% - 25%); /* leave 20px margin on each side */
             display: flex;
-            justify-content: space-between;
+            justify-content: right;
             align-items: center;
-            margin-bottom: 2rem;
+            padding: 0 2rem;
+            backdrop-filter: blur(10px);
+            border-bottom-left-radius: 15px; /* rounded corners */
+            border-bottom-right-radius: 15px;
+            z-index: 1000;
         }
+
+        .header-list {
+            display: flex;
+            align-items: center;
+            gap: 20px; /* spacing between items */
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .header-item {
+            display: flex;
+            align-items: center;
+            gap: 8px; /* space between icon and text */
+            text-decoration: none;
+            color: inherit; /* inherit from header's text color */
+            padding: 6px 10px;
+            border-radius: 8px;
+            transition: background-color 0.2s ease;
+        }
+
+        .header-item:hover {
+            background-color: rgba(0, 0, 0, 0.05); /* subtle hover background */
+        }
+
+        .header-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-icon img,
+        .header-icon svg {
+            width: 20px;
+            height: 20px;
+        }
+
 
         .breadcrumb {
             color: #64748b;
@@ -352,125 +409,84 @@
             font-size: 12px;
             cursor: help;
         }
+
+        .index-logo {
+            margin-left: 210px;
+            margin-top: 120px;
+        }
+
+        .image-1 {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100%;
+            height: auto;
+            max-width: 600px;
+            margin-top: 140px;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 32px;
+            margin-left: 210px;
+            margin-top: 1rem;
+            margin-bottom: 100px;
+        }
+
+        .card{
+            background: #C9D4EA;
+            border-radius: 64px;
+            width: 348px;
+            padding: 1.5rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border-color: transparent;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
     </style>
 </head>
-<body>
+
+<body class="theme">
     <div class="dashboard">
-        <div class="sidebar">
-            <div class="logo">
-                <div class="logo-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 2L2 7V17L12 22L22 17V7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-                        <path d="M12 22V12" stroke="currentColor" stroke-width="2"/>
-                        <path d="M22 7L12 12L2 7" stroke="currentColor" stroke-width="2"/>
-                    </svg>
-                </div>
-                <span class="logo-text">ScalAble</span>
-            </div>
-            
-            <nav class="sidebar-nav" role="navigation" aria-label="Main navigation">
-                <ul class="nav-list" role="menu">
-                    <li role="none">
-                        <a role="menuitem" href="#" class="nav-item active" aria-current="page">
-                            <div class="nav-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <rect x="3" y="3" width="7" height="7" stroke="currentColor" stroke-width="2" rx="1"/>
-                                    <rect x="14" y="3" width="7" height="7" stroke="currentColor" stroke-width="2" rx="1"/>
-                                    <rect x="14" y="14" width="7" height="7" stroke="currentColor" stroke-width="2" rx="1"/>
-                                    <rect x="3" y="14" width="7" height="7" stroke="currentColor" stroke-width="2" rx="1"/>
-                                </svg>
-                            </div>
-                            <span>Get Started</span>
-                        </a>
-                    </li>
-                    <li role="none">
-                        <a role="menuitem" href="#" class="nav-item">
-                            <div class="nav-icon">
-                                <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/Chat icon.png') }}" alt="Logo">
-                            </div>
-                            <span>Manual Query</span>
-                        </a>
-                    </li>
-                    <li role="none">
-                        <a role="menuitem" href="/connections" class="nav-item">
-                            <div class="nav-icon">
-                                <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/Database icon.png') }}" alt="Logo">
-                            </div>
-                            <span>Databases</span>
-                        </a>
-                    </li>
-                    <li role="none">
-                        <a role="menuitem" href="#" class="nav-item">
-                            <div class="nav-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M12.89 1.45L8 5.6C7.11 6.27 6.6 7.33 6.6 8.45V14.45C6.6 15.57 7.11 16.63 8 17.3L12.89 21.45C11.3 22.5 9.1 22.5 7.51 21.45L2.62 17.3C1.73 16.63 1.22 15.57 1.22 14.45V8.45C1.22 7.33 1.73 6.27 2.62 5.6L7.51 1.45C9.1 0.4 11.3 0.4 12.89 1.45Z" fill="currentColor"/>
-                                    <path d="M22.78 9.55V15.55C22.78 16.67 22.27 17.73 21.38 18.4L16.49 22.55C14.9 23.6 12.7 23.6 11.11 22.55L16 18.4C16.89 17.73 17.4 16.67 17.4 15.55V9.55C17.4 8.43 16.89 7.37 16 6.7L11.11 2.55C12.7 1.5 14.9 1.5 16.49 2.55L21.38 6.7C22.27 7.37 22.78 8.43 22.78 9.55Z" fill="currentColor"/>
-                                </svg>
-                            </div>
-                            <span>Manage Models</span>
-                        </a>
-                    </li>
-                    <li role="none">
-                        <a role="menuitem" href="https://github.com/ansh2903/ScalAble" target="_blank" rel="noopener noreferrer" class="nav-item">
-                            <div class="nav-icon">
-                                <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/github icon.png') }}" alt="Logo">
-                            </div>
-                            <span>GitHub</span>
-                        </a>
-                    </li>
-                    <li role="none">
-                        <a role="menuitem" href="https://www.linkedin.com/in/asharma2903/" target="_blank" rel="noopener noreferrer" class="nav-item">
-                            <div class="nav-icon">
-                                <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/linkedin icon.png') }}" alt="Logo">
-                            </div>
-                            <span>LinkedIn</span>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
 
-            <nav class ="sidebar-footer" role="navigation" aria-label="Footer navigation">
-                <ul class="nav-list" role="menu">
-                    <li role="none">
-                        <a role="menuitem" href="#" class="nav-item">
-                            <div class="nav-icon">
-                                <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/Settings icon.png') }}" alt="Logo">
-                            </div>
-                            <span>Settings</span>
-                        </a>
-                    </li>
+        <div class="header">
+            <ul class="header-list" role="menu">
+                <li role="none">
+                    <a role="menuitem" href="#" class="header-item">
+                        <div class="header-icon">
+                            <img class="header-icon" src="{{ url_for('static', filename='images/Icons/Settings icon.png') }}" alt="Logo">
+                        </div>
+                        <span>Settings</span>
+                    </a>
+                </li>
 
-                    <li role="none">
-                        <a role="menuitem" href="#" class="nav-item">
-                            <div class="nav-icon">
-                                <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/Help icon.png') }}" alt="Logo">
-                            </div>
-                            <span>Help</span>
-                        </a>
-                    </li>
-
-                    <li role="none">
-                        <a role="menuitem" href="#" class="nav-item">
-                            <div class="nav-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20Z" fill="currentColor"/>
-                                    <path d="M11,15H13V17H11V15Z" fill="currentColor"/>
-                                    <path d="M11,9H13V13H11V9Z" fill="currentColor"/>
-                                </svg>
-                            </div>
-                            <span>Account</span>
-                        </a>
-                    </li>
-
-                <span class="version">v0.6</span>
-                <span class="copyright">&copy; 2023 ScalAble</span>
-            </nav>
+                <li role="none">
+                    <a role="menuitem" href="https://github.com/ansh2903/ScalAble" target="_blank" class="header-item">
+                        <div class="header-icon">
+                            <img class="header-icon" src="{{ url_for('static', filename='images/Icons/GitHub icon.png') }}" alt="Help">
+                        </div>
+                        <span>GitHub</span>
+                    </a>
+                </li>
+            </ul>
         </div>
 
         <div class="main-content">
-            <div class="header">
-                <div class="breadcrumb">Home Light Dashboard</div>
-                <div class="user-avatar">A</div>
+            <div>
+                <img class='index-logo' src="{{ url_for('static', filename='images/Extras/ScalAble.png') }}" alt="ScalAble Logo">
+                <img class='image-1' src="{{ url_for('static', filename='images/Extras/Image 1.png') }}" alt="Image 1">
+            </div>
+
+            <div class="btn-row">
+                <button class="card header-icon" onclick="location.href='/add-database'">
+                    <img class='header-icon' src="{{ url_for('static', filename='images/Icons/Add database icon.png') }}" alt="Add Database">
+                    <h3>Add Database</h3>
+                </button>
+
+                <button class="card header-icon" onclick="location.href='/chat'">
+                    <img class='header-icon' src="{{ url_for('static', filename='images/Icons/Query database icon.png') }}" alt="Chat">
+                    <h3>Query your Database</h3>
+                </button>
             </div>
 
             <div class="metrics-grid">
