@@ -277,7 +277,7 @@ def chat():
                 "chat_html": f"<div class='error'>Error: {error_message}</div>"
             }), 500
 
-    return render_template("chat.html", connections=connections, selected_db_id=selected_db_id, table_block=table_block if 'table_block' in locals() else "")
+    return render_template("New_chat.html", connections=connections, selected_db_id=selected_db_id, table_block=table_block if 'table_block' in locals() else "")
 
 @interface_blueprint.route('/upload_file', methods=['POST'])
 def upload_file():
