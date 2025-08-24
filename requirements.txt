@@ -18,5 +18,6 @@ flask-bcrypt
 pyodbc
 mysql-connector-python
 markdown2
+sqlparse
 
 # -e .

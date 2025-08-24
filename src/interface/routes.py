@@ -6,6 +6,7 @@ from src.engine.query_executor import run_query
 from src.core.utils import render_result_table
 
 from datetime import datetime
+import uuid
 import html
 import json
 import ast
@@ -144,11 +145,6 @@ def edit_database(db_id):
 
     return render_template('edit_database.html', conn=conn)
 
-# App settings
-@interface_blueprint.route('/settings')
-def settings():
-    return render_template('settings.html')
-
 # chat interface
 @interface_blueprint.route('/chat', methods=['GET', 'POST'])
 def chat():
@@ -166,39 +162,50 @@ def chat():
                 generated_query = form.get('query')
                 db_type = form.get('db_type')
                 credentials = ast.literal_eval(form.get('credentials'))
+                unique_id = form.get('unique_id')
+
                 result = run_query(db_type=db_type, credentials=credentials, query=generated_query)
-
                 if isinstance(result, dict) and "error" in result:
-                    return jsonify({
-                        "chat_html": f"<div class='error'>Error: {result['error']}</div>"
-                    }), 500
+                    return jsonify({"error": result["error"]}), 500
 
-                result_html = render_result_table(result)
-                
-                # Store query results in session for visualization
+                result_html, row_count, column_count = render_result_table(result)
+
+                print("Result HTML:", result_html)
+
                 session['last_query_results'] = {
                     'query': generated_query,
                     'data': result,
-                    'html_data': result_html
+                    'html_data': result_html,
+                    'db_type': db_type
                 }
-                print(session['last_query_results'])
 
-                visualize_url = url_for('interface.visualize_data')
+                analyse_url = url_for('interface.analyse')
 
                 table_block = render_template_string("""
-                <div class="message-row llm-msg">
-                    <img class="sidebar-brand" src="{{ url_for('static', filename='images/logo.png') }}" alt="ScalAble Logo">
                     <div class="message-content">
-                        <div class='data-table mt-3'>{{ table|safe }}</div>
-                        <button class="btn btn-sm btn-outline-light mt-2 visualize-data-btn" data-url="{{ visualize_url }}">
-                            <i class="fas fa-chart-bar"></i> Analyse Data
-                        </button>
+                        <div class="result-header">
+                            <div class="result-count">
+                                Showing <strong>{{ rows_count }}</strong> rows, <strong>{{ column_count }}</strong> columns
+                            </div>
+                        </div>
+
+                        <div class='table-scroll'>{{ table|safe }}</div>
+                        
+                        <div class="btn-group">
+                            <button class="analyse-btn" data-url="{{ analyse_url }}">
+                                Analyse Data
+                            </button>
+                        </div>
                     </div>
-                </div>
-                <!-- Iframe Container -->
-                <div id="iframe-container" class="iframe-container">
-                    <!-- Iframe will be dynamically inserted here -->
-                """, query=generated_query, table=result_html, visualize_url=visualize_url)
+                """, table=result_html, analyse_url=analyse_url, rows_count=row_count, column_count=column_count)
+
+                if is_ajax:
+                    return jsonify({
+                        "unique_id": unique_id,
+                        "table_html": table_block,
+                        "success": True
+                    })
+
                 chat_html += table_block
 
             else:
@@ -213,54 +220,76 @@ def chat():
                 credentials = selected_conn.get("credentials")
                 metadata = selected_conn.get("metadata")
 
-                generated_query = generate_query_from_nl(message, db_type, metadata)
+                print(metadata)
+
+                generated_query, generated_comment = generate_query_from_nl(message, db_type, metadata)
 
                 time = datetime.now().strftime("%H:%M:%S")
 
+                # Generate unique ID for this query block
+                unique_id = str(uuid.uuid4())[:8]
+
                 user_block = render_template_string("""
-                    <div class="message-row user-msg">
-                        <div class="message-content">
-                            {{ message }}
-                            <span class="msg-time">{{ time }}</span>
-                        </div>
-                        <fluent-avatar>
-                        <svg
-                            fill="currentColor"
-                            aria-hidden="true"
-                            width="2em"
-                            height="2em"
-                            viewBox="0 0 20 20"
-                            xmlns="http://www.w3.org/2000/svg"
-                        >
-                            <path
-                            d="M10 3a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM7.5 4.5a2.5 2.5 0 115 0 2.5 2.5 0 01-5 0zm8-.5a1 1 0 100 2 1 1 0 000-2zm-2 1a2 2 0 114 0 2 2 0 01-4 0zm-10 0a1 1 0 112 0 1 1 0 01-2 0zm1-2a2 2 0 100 4 2 2 0 000-4zm.6 12H5a2 2 0 01-2-2V9.25c0-.14.11-.25.25-.25h1.76c.04-.37.17-.7.37-1H3.25C2.56 8 2 8.56 2 9.25V13a3 3 0 003.4 2.97 4.96 4.96 0 01-.3-.97zm9.5.97A3 3 0 0018 13V9.25C18 8.56 17.44 8 16.75 8h-2.13c.2.3.33.63.37 1h1.76c.14 0 .25.11.25.25V13a2 2 0 01-2.1 2c-.07.34-.17.66-.3.97zM7.25 8C6.56 8 6 8.56 6 9.25V14a4 4 0 008 0V9.25C14 8.56 13.44 8 12.75 8h-5.5zM7 9.25c0-.14.11-.25.25-.25h5.5c.14 0 .25.11.25.25V14a3 3 0 11-6 0V9.25z"
-                            fill="currentColor"
-                            ></path>
-                        </svg>
-                        </fluent-avatar>
+                    <div class="message user">
+                        <div class="msg-text">{{ message }}</div>
+                        <span class="msg-time">{{ time }}</span>
                     </div>
                 """, message=message, time=time)
 
                 query_block = render_template_string("""
-                    <div class="message-row llm-msg">
-                        <img class="sidebar-brand" src="{{ url_for('static', filename='images/logo.png') }}" alt="ScalAble Logo">
-                        <div class="message-content">
-                            <div contenteditable="true">
-                                <pre class="message-content llm">{{ query }}</pre>
-                            </div>
-                            <form class="d-inline-block" method="POST">
-                                <input type="hidden" name="query" value="{{ generated_query }}">
-                                <input type="hidden" name="db_type" value="{{ db_type }}">
-                                <input type="hidden" name="credentials" value="{{ credentials }}">
-                                <input type="hidden" name="selected_db_id" value="{{ selected_db_id }}">
-                                <button class="btn btn-sm btn-outline-light mt-2 run-query-btn" type="submit">
-                                    <i class="fas fa-play"></i> Run Query
+                    <div class="message bot" data-query-id="{{ unique_id }}">
+                                                     
+                        {% if comment %}
+                        <div class="msg-comment">{{ comment|safe }}</div>
+                        {% endif %}
+                        
+                        {% if query %}                                                     
+                        <div class="db-type">
+                            {{ db_type }}
+                        </div>
+
+                        <div class="message-bot-query">
+                                                                                 
+                            <pre id="queryText_{{ unique_id }}" class="msg-text">{{ query }}</pre>
+                            
+                            <div class="edit-btn-container">
+                                <button class="edit-btn" onclick="toggleEdit('{{ unique_id }}')">
+                                    <i class="fas fa-edit"></i> Edit
                                 </button>
-                            </form>
+                            </div>
+                                                     
+                            <div class="edit-controls" id="editControls_{{ unique_id }}" style="display: none;">
+                                <button class="save-btn" onclick="saveEdit('{{ unique_id }}')">
+                                    Save
+                                </button>
+                                    
+                                <button class="cancel-btn" onclick="cancelEdit('{{ unique_id }}')">
+                                    Cancel
+                                </button>
+
+                            </div>
+
+                              <div class="btn-group">
+                                <form class="run-query-form" method="POST" onsubmit="return false;">
+                                    <input type="hidden" name="unique_id" value="{{ unique_id }}">
+                                    <input type="hidden" name="query" id="hiddenQuery_{{ unique_id }}" value="{{ generated_query }}">
+                                    <input type="hidden" name="db_type" value="{{ db_type }}">
+                                    <input type="hidden" name="credentials" value="{{ credentials }}">
+                                    <input type="hidden" name="selected_db_id" value="{{ selected_db_id }}">
+                                    <button class="run-query-btn" type="button" data-uid="{{ unique_id }}">
+                                        Execute
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="table-container" id="tableContainer_{{ unique_id }}">
+                            <!-- Query results will be injected here -->
                         </div>
                     </div>
-                """, query=generated_query, db_type=db_type, credentials=credentials, selected_db_id=selected_db_id, generated_query=generated_query)
-
+                """, query=generated_query, comment = generated_comment, db_type=db_type, credentials=credentials, selected_db_id=selected_db_id, generated_query=generated_query, unique_id=unique_id)
+                                
                 chat_html += user_block + query_block
 
             if is_ajax:
@@ -277,23 +306,19 @@ def chat():
                 "chat_html": f"<div class='error'>Error: {error_message}</div>"
             }), 500
 
-    return render_template("New_chat.html", connections=connections, selected_db_id=selected_db_id, table_block=table_block if 'table_block' in locals() else "")
+    return render_template("chat.html", connections=connections, selected_db_id=selected_db_id, table_block=table_block if 'table_block' in locals() else "")
 
-@interface_blueprint.route('/upload_file', methods=['POST'])
-def upload_file():
-    pass
-
-@interface_blueprint.route('/visualize_data', methods=['GET','POST'])
-def visualize_data():
+@interface_blueprint.route('/analyse', methods=['GET','POST'])
+def analyse():
     # Get the last query results from session
     query_results = session.get('last_query_results')
     
     if not query_results:
-        return render_template('visualize_data.html', no_data=True)
+        return render_template('analyse.html', no_data=True)
     
     html_data = query_results.get('html_data')
     if not html_data:
-        return render_template('visualize_data.html', no_data=True)
+        return render_template('analyse.html', no_data=True)
 
     data = query_results.get('data', [])
     data = [list(row) if isinstance(row, tuple) else row for row in data]
@@ -302,9 +327,18 @@ def visualize_data():
     for row in data:
         csv_data += ",".join(map(str, row)) + "\n"
     
-    return render_template('visualize_data.html', csv_data=csv_data, query_info=query_results, html_data=html_data)
+    return render_template('analyse.html', csv_data=csv_data, query_info=query_results, html_data=html_data)
 
 
 @interface_blueprint.route('/model_settings', methods=['GET', 'POST'])
 def model_settings():
     pass 
+
+@interface_blueprint.route('/upload_file', methods=['POST'])
+def upload_file():
+    pass
+
+# App settings
+@interface_blueprint.route('/settings')
+def settings():
+    return render_template('settings.html')

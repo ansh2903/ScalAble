@@ -12,7 +12,7 @@ from src.core.exception import CustomException
 from src.core.logger import logging
 
 
-def generate_query_from_nl(nl_query: str, db_type, db_metadata: dict = {}, model="qwen2.5-coder:7b"):
+def generate_query_from_nl(nl_query: str, db_type, db_metadata: dict = {}, model="qwen2.5-coder:1.5b"):
 
     """
     Converts natural language query into database-specific query using a local LLM.
@@ -28,7 +28,7 @@ def generate_query_from_nl(nl_query: str, db_type, db_metadata: dict = {}, model
     """
     try:
         prompt_text = f"""
-        You are a professional {db_type} query generation expert. Your job is to convert natural language into executable {db_type} queries.
+        You are a professional {db_type} query generation expert. Your job is to convert natural language into executable {db_type} queries and also behave like a friendly assistant.
 
         Below is metadata about the user's database (tables, columns, etc.):
         {db_metadata}
@@ -40,27 +40,28 @@ def generate_query_from_nl(nl_query: str, db_type, db_metadata: dict = {}, model
 
         ---
 
-        Strict Instructions:
-        - ONLY return the final executable query (no explanations, no markdown, no comments).
-        - Do NOT wrap the query in triple backticks.
-        - Do NOT prefix with language (like "```sql" or "MongoDB query:").
-        - Do NOT add any explanation, text, natural language, or notes.
-        - Your entire response should be a single query string.
+        ### Strict Instructions:
+        - Always return output in **strict JSON**.
+        - JSON must contain:
+        - "query": (string) The final executable {db_type} query.  
+            - MUST be a valid query string.  
+            - Do NOT wrap in backticks or markdown.  
+            - Do NOT include explanations, comments, or text.
+            - SQL comments (`-- ...` or `/* ... */`) inside the query.
+            - NUST ADD line breaks (`\n`) in the query wherever needed for readability.
+  
+        - "comment": (string) An optional **Markdown-formatted note** about the query, a friendly, human-style reply or explanation.
+            - If you want to explain filtering, joins, or tips, do it here.  
+            - Leave empty ("") if no comment is needed.  
 
-        Examples:
-        Input: "Get first 5 rows from employee table"
-        Output: SELECT * FROM employee LIMIT 5;
+        - Do NOT enclose the output in ('''json ''')
+        - "query" is stricly for the executable query string. No explanations or comments should be included here.
+        - "comment" is for any additional information or tips about the query or just as a chatbot like responses. The comment should feel Natural and helpful.
+        - Do NOT include any other fields or metadata.
 
-        Input: "Show employees with age > 30"
-        Output: SELECT * FROM employee WHERE age > 30;
+        ---
 
-        Input: "Fetch documents with status 'active'"
-        Output: db.collection.find({{ status: "active" }})
-
-        If unsure, return an empty string.
-
-        
-        Now respond with the query only:
+        Now return ONLY the JSON object as per the rules above:
         """
 
         payload = {
@@ -69,9 +70,18 @@ def generate_query_from_nl(nl_query: str, db_type, db_metadata: dict = {}, model
             'stream': False 
         }
 
-        response = requests.post("http://localhost:11434/api/generate", json=payload)
-        query = response.json()["response"].strip()
-        return query
+        output = requests.post("http://localhost:11434/api/generate", json=payload)
+        response = output.json()["response"].strip()
+
+        if '```json' in response:
+            response = response.strip('``` json')
+
+        json_formatted_output = json.loads(response)
+
+        query = json_formatted_output.get('query')
+        comment = json_formatted_output.get("comment", "")
+
+        return query, comment
 
     except Exception as e:
         raise CustomException(e, sys)

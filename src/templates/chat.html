@@ -3,375 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ScalAble | Chat with Database</title>
-
-    <!-- Fluent UI -->
-    <script type="module" src="https://unpkg.com/@fluentui/web-components"></script>
-
-    <!-- Bootstrap & FontAwesome -->
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css">
-    
-    <!-- Syntax Highlighting -->
-    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github-dark.min.css">
+    <title>Chat</title>
     <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
-
-    <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f8fafc;
-            color: #1e293b;
-        }
-
-        .dashboard {
-            display: flex;
-            min-height: 100vh;
-        }
-
-        .sidebar {
-            width: 280px;
-            height: 100vh; /* Full viewport height */
-            position: fixed;
-            z-index: 1;
-            top: 0;
-            left: 0;
-            display: flex;             /* Enable flex layout */
-            flex-direction: column;    /* Stack children vertically */
-            background: white;
-            border-right: 1px solid #e2e8f0;
-            padding: 2rem;
-        }
-
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            margin-bottom: 3rem;
-        }
-
-        .logo-icon {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, #06d6a0, #1fb8cd);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 20px;
-        }
-
-        .logo-text {
-            font-size: 24px;
-            font-weight: 700;
-            color: #1e293b;
-        }
-
-        .sidebar-nav {
-            flex: 1;
-        }
-
-        .sidebar-footer {
-            padding: 1rem 0;
-            border-top: 1px solid #e2e8f0;
-            text-align: center;
-            font-size: 14px;
-            color: #64748b;
-        }
-
-        .nav-list {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-        }
-
-        .nav-list li {
-            margin-bottom: 0.25rem;
-        }
-
-        .nav-item {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 0.875rem 1rem;
-            border-radius: 12px;
-            color: #64748b;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            position: relative;
-        }
-
-        .nav-item:hover {
-            background: #f8fafc;
-            color: #374151;
-            transform: translateX(2px);
-        }
-
-        .nav-item.active {
-            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
-            color: #0369a1;
-            font-weight: 600;
-        }
-
-        .nav-item.active::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 3px;
-            height: 24px;
-            background: linear-gradient(180deg, #06d6a0, #1fb8cd);
-            border-radius: 0 2px 2px 0;
-        }
-
-        .nav-icon {
-            width: 20px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: currentColor;
-            flex-shrink: 0;
-        }
-
-        .nav-icon svg {
-            width: 100%;
-            height: 100%;
-        }
-
-        .main-content {
-            flex: 1;
-            margin-left: 280px; /* Adjust for sidebar width */
-            padding: 2rem;
-        }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-        }
-
-        .breadcrumb {
-            color: #64748b;
-            font-size: 14px;
-        }
-
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #f59e0b, #f97316);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 600;
-        }
-
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .metric-card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 16px;
-            border: 1px solid #e2e8f0;
-            position: relative;
-        }
-
-        .metric-header {
-            display: flex;
-            justify-content: between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-
-        .metric-title {
-            font-size: 14px;
-            color: #64748b;
-            margin-bottom: 0.5rem;
-        }
-
-        .metric-value {
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-        }
-
-        .metric-change {
-            font-size: 12px;
-            color: #64748b;
-        }
-
-        .metric-change.positive {
-            color: #16a34a;
-        }
-
-        .metric-change.negative {
-            color: #dc2626;
-        }
-
-        .progress-bar {
-            height: 8px;
-            background: #f1f5f9;
-            border-radius: 4px;
-            margin-top: 1rem;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .progress-fill {
-            height: 100%;
-            border-radius: 4px;
-            transition: width 0.3s ease;
-        }
-
-        .progress-fill.blue { background: linear-gradient(90deg, #3b82f6, #06b6d4); }
-        .progress-fill.orange { background: linear-gradient(90deg, #f59e0b, #f97316); }
-        .progress-fill.purple { background: linear-gradient(90deg, #8b5cf6, #a855f7); }
-
-        .charts-grid {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .chart-card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 16px;
-            border: 1px solid #e2e8f0;
-        }
-
-        .chart-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-
-        .chart-title {
-            font-size: 18px;
-            font-weight: 600;
-        }
-
-        .revenue-display {
-            text-align: center;
-            margin-bottom: 1rem;
-        }
-
-        .revenue-amount {
-            font-size: 32px;
-            font-weight: 700;
-            color: #1e293b;
-        }
-
-        .revenue-period {
-            font-size: 14px;
-            color: #64748b;
-        }
-
-        .legend {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
-            font-size: 12px;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .legend-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-        }
-
-        .bottom-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1.5rem;
-        }
-
-        .heatmap {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 2px;
-            margin-top: 1rem;
-        }
-
-        .heatmap-cell {
-            aspect-ratio: 1;
-            border-radius: 4px;
-        }
-
-        .heatmap-legend {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 1rem;
-            font-size: 12px;
-            color: #64748b;
-        }
-
-        .chart-container {
-            position: relative;
-            height: 300px;
-            margin-top: 1rem;
-        }
-
-        .chart-container-small {
-            position: relative;
-            height: 200px;
-            margin-top: 1rem;
-        }
-
-        .radar-container {
-            position: relative;
-            height: 250px;
-            margin-top: 1rem;
-        }
-
-        .info-icon {
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background: #e2e8f0;
-            color: #64748b;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            cursor: help;
-        }
-    </style>
 </head>
 
-<body class="fluent-dark">
-    <!-- Sidebar Navigation -->
-    <div class="sidebar">
+<body class="theme">
+    <div class="dashboard">
+        <!-- Sidebar Navigation -->
+        <div class="sidebar">
             <div class="logo">
                 <div class="logo-icon">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -380,9 +20,8 @@
                         <path d="M22 7L12 12L2 7" stroke="currentColor" stroke-width="2"/>
                     </svg>
                 </div>
-                <span class="logo-text">ScalAble</span>
             </div>
-            
+                
             <nav class="sidebar-nav" role="navigation" aria-label="Main navigation">
                 <ul class="nav-list" role="menu">
                     <li role="none">
@@ -395,7 +34,6 @@
                                     <rect x="3" y="14" width="7" height="7" stroke="currentColor" stroke-width="2" rx="1"/>
                                 </svg>
                             </div>
-                            <span>Get Started</span>
                         </a>
                     </li>
                     <li role="none">
@@ -403,7 +41,6 @@
                             <div class="nav-icon">
                                 <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/Chat icon.png') }}" alt="Logo">
                             </div>
-                            <span>Manual Query</span>
                         </a>
                     </li>
                     <li role="none">
@@ -411,7 +48,6 @@
                             <div class="nav-icon">
                                 <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/Database icon.png') }}" alt="Logo">
                             </div>
-                            <span>Databases</span>
                         </a>
                     </li>
                     <li role="none">
@@ -422,7 +58,6 @@
                                     <path d="M22.78 9.55V15.55C22.78 16.67 22.27 17.73 21.38 18.4L16.49 22.55C14.9 23.6 12.7 23.6 11.11 22.55L16 18.4C16.89 17.73 17.4 16.67 17.4 15.55V9.55C17.4 8.43 16.89 7.37 16 6.7L11.11 2.55C12.7 1.5 14.9 1.5 16.49 2.55L21.38 6.7C22.27 7.37 22.78 8.43 22.78 9.55Z" fill="currentColor"/>
                                 </svg>
                             </div>
-                            <span>Manage Models</span>
                         </a>
                     </li>
                     <li role="none">
@@ -430,7 +65,6 @@
                             <div class="nav-icon">
                                 <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/github icon.png') }}" alt="Logo">
                             </div>
-                            <span>GitHub</span>
                         </a>
                     </li>
                     <li role="none">
@@ -438,12 +72,11 @@
                             <div class="nav-icon">
                                 <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/linkedin icon.png') }}" alt="Logo">
                             </div>
-                            <span>LinkedIn</span>
                         </a>
                     </li>
                 </ul>
             </nav>
-
+            
             <nav class ="sidebar-footer" role="navigation" aria-label="Footer navigation">
                 <ul class="nav-list" role="menu">
                     <li role="none">
@@ -451,7 +84,6 @@
                             <div class="nav-icon">
                                 <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/Settings icon.png') }}" alt="Logo">
                             </div>
-                            <span>Settings</span>
                         </a>
                     </li>
 
@@ -460,7 +92,6 @@
                             <div class="nav-icon">
                                 <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/Help icon.png') }}" alt="Logo">
                             </div>
-                            <span>Help</span>
                         </a>
                     </li>
 
@@ -473,7 +104,6 @@
                                     <path d="M11,9H13V13H11V9Z" fill="currentColor"/>
                                 </svg>
                             </div>
-                            <span>Account</span>
                         </a>
                     </li>
                 </ul>
@@ -482,78 +112,98 @@
             </nav>
         </div>
 
-    <!-- Main Content Layout -->
-    <div class="main-content chat-container">
-        <!-- Top Header -->
-        <header class="main-header d-flex align-items-center px-3 py-2">
-            <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle sidebar">&#9776;</button>
-            <div class="flex-grow-1"></div>
-            {% if session.get('user') %}
-                <span class="mr-3">{{ session.get('user') }}</span>
-                <fluent-button appearance="stealth" onclick="location.href='{{ url_for('auth.logout') }}'">Logout</fluent-button>
-            {% else %}
-                <fluent-button appearance="stealth" onclick="location.href='{{ url_for('auth.login') }}'">Login</fluent-button>
-            {% endif %}
-        </header>
+        <div class="header">
+            <ul class="header-list" role="menu">
+                <li role="none">
+                    <a role="menuitem" href="#" class="header-item">
+                        <div class="header-icon">
+                            <img class="header-icon" src="{{ url_for('static', filename='images/Icons/Settings icon.png') }}" alt="Logo">
+                        </div>
+                        <span>Settings</span>
+                    </a>
+                </li>
 
-        <!-- Chat Body -->
-        <div class="row justify-content-center flex-grow-1 overflow-hidden">
-            <div class="col-md-11 col-xl-8 chat d-flex flex-column position-relative">
-                
-                <!-- Messages Container -->
-                <div id="messageContainer" class="card-body msg_card_body">
-                    <!-- Messages will be dynamically inserted here -->
+                <li role="none">
+                    <a role="menuitem" href="https://github.com/ansh2903/ScalAble" target="_blank" class="header-item">
+                        <div class="header-icon">
+                            <img class="header-icon" src="{{ url_for('static', filename='images/Icons/GitHub icon.png') }}" alt="Help">
+                        </div>
+                        <span>GitHub</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Main Content Layout -->
+        <div class="main-content chat-container">
+            <!-- Messages Container -->
+            <div id="messageContainer" class="chat-content">
+                <!-- Empty state -->
+                <div class="chat-empty">
+                    <img class="empty-icon" src="{{ url_for('static', filename='images/Extras/chat-empty.png') }}" alt="Empty Chat Icon">
                 </div>
 
-                <!-- Chat Input Bar -->
-                <div class="chat-input-bar">
-                    <!-- Loading Indicator -->
-                    <div id="loading-spinner" class="loading-indicator" style="display: none;">
-                        <fluent-progress-ring></fluent-progress-ring>
-                        <span>Generating response...</span>
-                    </div>
+                <!-- Messages container -->
+                <div class="chat-messages">
+                    <!-- Example message -->    
+                </div>
+            </div>
 
-                    <!-- Input Form -->
-                    <form id="chatForm" method="POST" autocomplete="off">
-                        <div class="chat-input-container">
-                            <!-- Database Selector -->
+            <!-- Chat Input Bar -->
+            <div class="chat-input-container">
+                <!-- Input Form -->
+                <form id="chatForm" method="POST" autocomplete="off">
+                    <div class="chat-input-bar">
+
+                        <!-- Database Select -->
+                        <div class="chat-input db-select-container">
                             <select class="db-select" name="selected_db_id" id="selected_db_id" required>
-                                <option value="" disabled {% if not selected_db_id %}selected{% endif %}>Select Database</option>
+                                <option value="" disabled {% if not selected_db_id %}selected{% endif %}>
+                                    Select Database
+                                </option>
+
                                 {% for conn in connections %}
-                                    <option value="{{ conn.id }}"
-                                            {% if selected_db_id and conn.id == selected_db_id|int %}selected{% endif %}
-                                            data-db-type="{{ conn.db_type }}"
-                                            data-name="{{ conn.name }}">
-                                        {{ conn.db_type.capitalize() }} - {{ conn.name }}
-                                    </option>
+                                <option value="{{ conn.id }}"
+                                    {% if selected_db_id and conn.id == selected_db_id|int %}selected{% endif %}
+                                        data-db-type="{{ conn.db_type }}"
+                                        data-name="{{ conn.name }}">
+                                    {{ conn.db_type.capitalize() }} - {{ conn.name }}
+                                </option>
                                 {% endfor %}
-                                <option value="configure_db" data-link="{{ url_for('interface.connections') }}">Configure Database</option>
+
+                                <option value="configure_db" data-link="{{ url_for('interface.connections') }}">
+                                    Configure Database
+                                </option>
+
                                 {% if not connections %}
-                                    <option value="" disabled>No databases configured</option>
+                                <option value="" disabled>No databases configured</option>
                                 {% endif %}
                             </select>
+                            <img class="btn-icon" src="{{ url_for('static', filename='images/Icons/arrow up icon.png') }}" alt="arrow-up">
+                        </div>
 
-                            <!-- Add Database Button -->
-                            <a href="{{ url_for('interface.chat') }}" class="btn btn-sm btn-outline-primary ml-2" title="Add new database">
-                                <i class="fas fa-plus"></i>
-                            </a>
+                        <!-- File Input -->
+                        <div class="chat-input file-input">
+                            <!-- Future: Add file button -->
+                        </div>
 
-                            <!-- Message Input -->
+                        <!-- Text Input -->
+                        <div class="chat-input text-input-container">
                             <input type="text" 
-                                   id="messageInput" 
-                                   name="message" 
-                                   class="form-control flex-grow-1 mx-2"
-                                   placeholder="Ask a question about your data..." 
-                                   {% if not connections %}disabled{% endif %}
-                                   required />
+                                id="messageInput" 
+                                name="message" 
+                                class="text-input form-control"
+                                placeholder="Ask a question about your data..." 
+                                {% if not connections %}disabled{% endif %}
+                                required />
 
                             <!-- Send Button -->
-                            <button class="send-button btn btn-primary" id="sendMessageBtn" type="submit">
-                                <i class="fas fa-paper-plane"></i>
+                            <button class="send-button" id="sendMessageBtn" type="submit">
+                                <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/send icon.png') }}" alt="send">    
                             </button>
                         </div>
-                    </form>
-                </div>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -564,117 +214,422 @@
     <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
 
     <script>
-    function scrollToBottom() {
-        const container = document.getElementById("messageContainer");
-        container.scrollTop = container.scrollHeight;
-    }
+        function toggleChatState() {
+            const chatEmpty = document.querySelector('.chat-empty');
+            const chatMessages = document.querySelector('.chat-messages');
 
-    document.addEventListener("DOMContentLoaded", function () {
-        const dbSelect = document.getElementById("selected_db_id");
-
-        dbSelect.addEventListener("change", function () {
-            const selectedOption = dbSelect.options[dbSelect.selectedIndex];
-            const value = selectedOption.value;
-
-            if (value === "configure_db") {
-                const link = selectedOption.getAttribute("data-link");
-                if (link) {
-                    window.location.href = link;
-                }
+            if (chatMessages.children.length === 0) {
+                chatEmpty.style.display = 'block';
+                chatMessages.style.display = 'none';
+            } else {
+                chatEmpty.style.display = 'none';
+                chatMessages.style.display = 'flex';
+                chatMessages.style.flexDirection = 'column';
             }
+        }
+
+        // Call it once on load
+        toggleChatState();
+
+        // Call it again whenever a new message is added
+        function addMessage(text, sender = 'user', id = null) {
+            const msg = document.createElement('div');
+            msg.classList.add('message', sender);
+            if (id) msg.id = id; // assign id if provided
+            msg.textContent = text;
+            document.querySelector('.chat-messages').appendChild(msg);
+            toggleChatState();
+        }
+
+        function scrollToBottom() {
+            const chatContent = document.querySelector('.chat-content');
+            if (!chatContent) return;
+
+            // Wait one animation frame (ensures DOM updates/layout)
+            requestAnimationFrame(() => {
+                // extra tiny delay for images/fonts (optional)
+                setTimeout(() => {
+                    chatContent.scrollTop = chatContent.scrollHeight;
+                }, 20);
+            });
+        }
+
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const dbSelect = document.getElementById("selected_db_id");
+
+            dbSelect.addEventListener("change", function () {
+                const selectedOption = dbSelect.options[dbSelect.selectedIndex];
+                const value = selectedOption.value;
+
+                if (value === "configure_db") {
+                    const link = selectedOption.getAttribute("data-link");
+                    if (link) {
+                        window.location.href = link;
+                    }
+                }
+            });
         });
-    });
 
-
-    document.getElementById("chatForm").addEventListener("submit", function(e) {
-        e.preventDefault();
-
-        const dbId = document.getElementById("selected_db_id").value;
-        const message = document.getElementById("messageInput").value;
-
-        if (!dbId || !message) return;
-
-        const loading = document.getElementById("loading-spinner");
-        loading.style.display = "flex";
-
-        fetch("{{ url_for('interface.chat') }}", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-                "X-Requested-With": "XMLHttpRequest"
-            },
-            body: new URLSearchParams({
-                message: message,
-                selected_db_id: dbId
-            })
-        })
-        .then(res => res.json())
-        .then(data => {
-            document.getElementById("messageContainer").innerHTML += data.chat_html;
-            document.getElementById("messageInput").value = "";
-            loading.style.display = "none";
-            scrollToBottom();
-        })
-        .catch(err => {
-            alert("Error: " + err);
-            loading.style.display = "none";
-        });
-    });
-
-    document.addEventListener("click", function(e) {
-        if (e.target.closest("button.run-query-btn")) {
+        document.getElementById("chatForm").addEventListener("submit", function(e) {
             e.preventDefault();
 
-            const btn = e.target.closest("button.run-query-btn");
-            const form = btn.closest("form");
-            const formData = new FormData(form);
+            const dbId = document.getElementById("selected_db_id").value;
+            const inputEl = document.getElementById("messageInput");
+            const message = inputEl.value.trim();
+
+            if (!dbId || !message) return;
+
+            // Clear input immediately
+            inputEl.value = "";
+
+            // Create a temporary user message bubble instantly
+            const tempId = "temp-" + Date.now();
+            addMessage(message, 'user', tempId);
+            
+            // Show typing indicator instead of the old loading spinner
+            showTypingIndicator();
 
             fetch("{{ url_for('interface.chat') }}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "X-Requested-With": "XMLHttpRequest"
+                },
+                body: new URLSearchParams({
+                    message: message,
+                    selected_db_id: dbId
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                // Remove temp bubble
+                const tempBubble = document.getElementById(tempId);
+                if (tempBubble) tempBubble.remove();
+
+                // Replace typing indicator with Flask-rendered response
+                replaceTypingWithResponse(data.chat_html);
+            })
+            .catch(err => {
+                // Remove typing indicator and show error
+                const typingIndicator = document.getElementById('typing-indicator');
+                if (typingIndicator) {
+                    typingIndicator.remove();
+                }
+                
+                addMessage("Sorry, there was an error processing your request.", 'bot');
+                console.error("Error:", err);
+            });
+        });
+
+
+        function insertTableHtmlForUid(uid, html) {
+            const container = document.getElementById(`tableContainer_${uid}`);
+            if (container) {
+                container.innerHTML = html;
+                container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                return true;
+            }
+            return false;
+            }
+
+            document.addEventListener("click", function(e) {
+            const runBtnEl = e.target.closest("button.run-query-btn");
+            if (runBtnEl) {
+                e.preventDefault();
+
+                const form = runBtnEl.closest("form");
+                if (!form) return alert("Form not found");
+
+                let uid = runBtnEl.dataset.uid || "";
+                if (!uid) {
+                const uidInput = form.querySelector('input[name="unique_id"]');
+                if (uidInput) uid = uidInput.value;
+                }
+
+                updateQueryBeforeSubmit(uid);
+
+                const queryInput = form.querySelector('input[name="query"]');
+                const dbTypeInput = form.querySelector('input[name="db_type"]');
+                const credentialsInput = form.querySelector('input[name="credentials"]');
+                
+                if (!queryInput || !dbTypeInput || !credentialsInput) {
+                return alert("Required form fields not found");
+                }
+
+                const formData = new FormData();
+                formData.append('query', queryInput.value);
+                formData.append('db_type', dbTypeInput.value);
+                formData.append('credentials', credentialsInput.value);
+                formData.append('unique_id', uid);
+
+                setButtonLoading(runBtnEl, true);
+
+                fetch("{{ url_for('interface.chat') }}", {
                 method: "POST",
                 headers: {
                     "X-Requested-With": "XMLHttpRequest"
                 },
                 body: formData
-            })
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById("messageContainer").innerHTML += data.chat_html;
-                scrollToBottom();
-            })
-            .catch(err => {
-                alert("Error running query: " + err);
+                })
+                .then(async (res) => {
+                setButtonLoading(runBtnEl, false);
+                if (!res.ok) {
+                    let errText = res.statusText;
+                    try {
+                    const errObj = await res.json();
+                    errText = errObj.error || errObj.chat_html || JSON.stringify(errObj);
+                    } catch(_) {}
+                    throw new Error(errText);
+                }
+                return res.json();
+                })
+                .then(data => {
+                console.log('Server response:', data); // Debug log
+                
+                const returnedUid = data.unique_id || uid;
+                const tableHtml = data.table_html || data.chat_html || "";
+
+                if (returnedUid && tableHtml) {
+                    const container = document.getElementById(`tableContainer_${returnedUid}`);
+                    if (container) {
+                    container.innerHTML = tableHtml;
+                    container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    } else {
+                    console.warn(`Container tableContainer_${returnedUid} not found`);
+                    const chatMessages = document.querySelector('.chat-messages');
+                    if (chatMessages) {
+                        chatMessages.insertAdjacentHTML('beforeend', tableHtml);
+                        toggleChatState();
+                        scrollToBottom();
+                    }
+                    }
+                } else {
+                    console.error('Missing unique_id or table_html in response:', data);
+                }
+                })
+                .catch(err => {
+                setButtonLoading(runBtnEl, false);
+                console.error("Error running query:", err);
+                
+                if (uid) {
+                    const container = document.getElementById(`tableContainer_${uid}`);
+                    if (container) {
+                    container.innerHTML = `<div class="error">Error running query: ${err.message}</div>`;
+                    }
+                }
+                
+                alert("Error running query: " + err.message);
+                });
+
+                return;
+            }
+            });
+
+            document.addEventListener("click", function(e) {
+                if (e.target && e.target.matches(".analyse-btn")) {
+                    const url = e.target.getAttribute("data-url");
+                    window.location.href = url; // navigate directly
+                }
+            });
+
+            function setButtonLoading(button, isLoading) {
+            if (isLoading) {
+                button.disabled = true;
+                button.textContent = 'Running...';
+                button.style.opacity = '0.6';
+            } else {
+                button.disabled = false;
+                button.textContent = 'Execute';
+                button.style.opacity = '1';
+            }
+            }
+        // Store editing states for multiple query blocks
+        const editingStates = {};
+
+        function toggleEdit(queryId) {
+            const queryText = document.getElementById(`queryText_${queryId}`);
+            const editBtn = document.querySelector(`[data-query-id="${queryId}"] .edit-btn`);
+            const editControls = document.getElementById(`editControls_${queryId}`);
+            
+            if (!editingStates[queryId] || !editingStates[queryId].isEditing) {
+                // Start editing
+                editingStates[queryId] = {
+                    isEditing: true,
+                    originalQuery: queryText.textContent.trim()
+                };
+                
+                queryText.contentEditable = 'true';
+                queryText.classList.add('editing');
+                queryText.focus();
+                
+                // Hide the edit button while editing
+                editBtn.style.display = 'none';
+                
+                // Show save + cancel controls
+                editControls.style.display = 'block';
+                
+                // Place cursor at end
+                const range = document.createRange();
+                const selection = window.getSelection();
+                range.selectNodeContents(queryText);
+                range.collapse(false);
+                selection.removeAllRanges();
+                selection.addRange(range);
+                
+                addEventListeners(queryId);
+            }
+        }
+
+        function saveEdit(queryId) {
+            const queryText = document.getElementById(`queryText_${queryId}`);
+            const hiddenQuery = document.getElementById(`hiddenQuery_${queryId}`);
+            const editBtn = document.querySelector(`[data-query-id="${queryId}"] .edit-btn`);
+            const editControls = document.getElementById(`editControls_${queryId}`);
+            
+            const newQuery = queryText.textContent.trim();
+            hiddenQuery.value = newQuery;
+            
+            queryText.contentEditable = 'false';
+            queryText.classList.remove('editing');
+            
+            // Restore edit button
+            editBtn.style.display = 'inline-block';
+            
+            editControls.style.display = 'none';
+            
+            editingStates[queryId] = {
+                isEditing: false,
+                originalQuery: newQuery
+            };
+            
+            showFeedback('Query updated successfully!', 'success');
+        }
+
+        function cancelEdit(queryId) {
+            const queryText = document.getElementById(`queryText_${queryId}`);
+            const editBtn = document.querySelector(`[data-query-id="${queryId}"] .edit-btn`);
+            const editControls = document.getElementById(`editControls_${queryId}`);
+            
+            if (editingStates[queryId]) {
+                queryText.textContent = editingStates[queryId].originalQuery;
+                queryText.contentEditable = 'false';
+                queryText.classList.remove('editing');
+                
+                // Restore edit button
+                editBtn.style.display = 'inline-block';
+                
+                editControls.style.display = 'none';
+                
+                editingStates[queryId].isEditing = false;
+            }
+        }
+
+        function updateQueryBeforeSubmit(queryId) {
+            // Ensure the hidden input is updated before form submission
+            if (editingStates[queryId] && editingStates[queryId].isEditing) {
+                const queryText = document.getElementById(`queryText_${queryId}`);
+                const hiddenQuery = document.getElementById(`hiddenQuery_${queryId}`);
+                hiddenQuery.value = queryText.textContent.trim();
+            }
+        }
+
+        function addEventListeners(queryId) {
+            const queryText = document.getElementById(`queryText_${queryId}`);
+            
+            // Remove existing listeners to avoid duplicates
+            queryText.removeEventListener('keydown', handleKeydown);
+            queryText.removeEventListener('input', handleInput);
+            
+            // Add new listeners
+            queryText.addEventListener('keydown', function(e) {
+                handleKeydown(e, queryId);
+            });
+            
+            queryText.addEventListener('input', function() {
+                handleInput(queryId);
             });
         }
 
-        if (e.target && e.target.matches(".visualize-data-btn")) {
-            const url = e.target.getAttribute("data-url");
-            const container = document.getElementById("iframe-container");
-
-            // Clear existing iframe
-            container.innerHTML = "";
-
-            // Create iframe
-            const iframe = document.createElement("iframe");
-            iframe.src = url;
-            iframe.style.width = "100%";
-            iframe.style.border = "none";
-
-            // Append and auto-resize
-            iframe.onload = function () {
-                try {
-                    // Try to access the iframe's body height
-                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                    iframe.style.height = iframeDoc.body.scrollHeight + "px";
-                } catch (err) {
-                    console.warn("Cross-origin iframe, can't resize:", err);
-                    // fallback height
-                    iframe.style.height = "600px";
+        function handleKeydown(e, queryId) {
+            if (editingStates[queryId] && editingStates[queryId].isEditing) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    saveEdit(queryId);
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    cancelEdit(queryId);
                 }
-            };
-
-            container.appendChild(iframe);
+            }
         }
-    });
+
+        function handleInput(queryId) {
+            if (editingStates[queryId] && editingStates[queryId].isEditing) {
+                const queryText = document.getElementById(`queryText_${queryId}`);
+                const hiddenQuery = document.getElementById(`hiddenQuery_${queryId}`);
+                hiddenQuery.value = queryText.textContent.trim();
+            }
+        }
+
+        function showFeedback(message, type) {
+            // Create a temporary feedback element
+            const feedback = document.createElement('div');
+            feedback.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+            feedback.style.top = '20px';
+            feedback.style.right = '20px';
+            feedback.style.zIndex = '9999';
+            feedback.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+            `;
+            
+            document.body.appendChild(feedback);
+            
+            // Auto-remove after 3 seconds
+            setTimeout(() => {
+                if (feedback.parentElement) {
+                    feedback.remove();
+                }
+            }, 3000);
+        }
+
+        function showTypingIndicator() {
+            const chatMessages = document.querySelector('.chat-messages');
+            if (!chatMessages) return;
+
+            // Remove existing typing indicator
+            const existing = document.getElementById('typing-indicator');
+            if (existing) existing.remove();
+
+            // Create typing indicator bubble
+            const typingDiv = document.createElement('div');
+            typingDiv.id = 'typing-indicator';
+            typingDiv.className = 'message bot typing-indicator';
+            typingDiv.innerHTML = `
+                <div class="typing-dots">
+                    <span></span><span></span><span></span>
+                </div>
+            `;
+            chatMessages.appendChild(typingDiv);
+
+            toggleChatState(); // show/hide empty state
+            scrollToBottom();
+        }
+
+        function replaceTypingWithResponse(htmlContent) {
+            const typingIndicator = document.getElementById('typing-indicator');
+            const msgContainer = document.querySelector(".chat-messages");
+
+            // Remove typing indicator if present
+            if (typingIndicator) typingIndicator.remove();
+
+            // Insert the server-rendered HTML
+            msgContainer.insertAdjacentHTML("beforeend", htmlContent);
+
+            toggleChatState();
+            // small delay to let browser render the new content then scroll
+            setTimeout(() => { scrollToBottom(); }, 30);
+        }
     </script>
 </body>
 </html>

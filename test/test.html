@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Split Pane</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        .split-container {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        .pane {
+            padding: 20px;
+            overflow: auto;
+        }
+
+        .left-pane {
+            background-color: #f0f0f0;
+            width: 50%;
+            min-width: 200px;
+        }
+
+        .right-pane {
+            background-color: #e0e0e0;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .gutter {
+            width: 10px;
+            background-color: #ccc;
+            cursor: col-resize;
+            position: relative;
+            border-left: 1px solid #bbb;
+            border-right: 1px solid #bbb;
+            transition: background-color 0.2s;
+            user-select: none;
+        }
+
+        .gutter:hover {
+            background-color: #aaa;
+        }
+
+        .gutter::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 3px;
+            height: 30px;
+            background: repeating-linear-gradient(
+                to bottom,
+                #888 0px,
+                #888 2px,
+                transparent 2px,
+                transparent 4px
+            );
+            pointer-events: none;
+        }
+
+        .gutter.dragging {
+            background-color: #999;
+        }
+
+        .split-container.dragging {
+            cursor: col-resize;
+        }
+
+        .split-container.dragging .pane {
+            pointer-events: none;
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="split-container">
+        <div class="pane left-pane">
+            <h3>Left Pane</h3>
+            <p>This is the left pane content. You can drag the gutter to resize the panes.</p>
+            <p>The gutter is now clearly visible and fully functional!</p>
+            <ul>
+                <li>Drag the vertical divider to resize</li>
+                <li>Minimum width of 200px enforced</li>
+                <li>Hover effects on the gutter</li>
+                <li>Visual grip indicator in the center</li>
+            </ul>
+        </div>
+        
+        <div class="gutter" id="gutter"></div>
+        
+        <div class="pane right-pane">
+            <h3>Right Pane</h3>
+            <p>This is the right pane content.</p>
+            <p>Try dragging the vertical divider between the panes to resize them.</p>
+            <p>The implementation is pure HTML, CSS, and JavaScript - no external dependencies!</p>
+        </div>
+    </div>
+
+    <script>
+        const gutter = document.getElementById('gutter');
+        const container = document.querySelector('.split-container');
+        const leftPane = document.querySelector('.left-pane');
+        const rightPane = document.querySelector('.right-pane');
+        
+        let isResizing = false;
+
+        gutter.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            container.classList.add('dragging');
+            gutter.classList.add('dragging');
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            
+            const containerRect = container.getBoundingClientRect();
+            const containerWidth = containerRect.width;
+            const gutterWidth = gutter.offsetWidth;
+            
+            // Calculate the new left pane width
+            let newLeftWidth = e.clientX - containerRect.left;
+            
+            // Enforce minimum widths
+            const minWidth = 200;
+            const maxLeftWidth = containerWidth - minWidth - gutterWidth;
+            
+            newLeftWidth = Math.max(minWidth, Math.min(newLeftWidth, maxLeftWidth));
+            
+            // Update the left pane width
+            const percentage = (newLeftWidth / containerWidth) * 100;
+            leftPane.style.width = percentage + '%';
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                container.classList.remove('dragging');
+                gutter.classList.remove('dragging');
+            }
+        });
+
+        // Handle touch events for mobile
+        gutter.addEventListener('touchstart', (e) => {
+            isResizing = true;
+            container.classList.add('dragging');
+            gutter.classList.add('dragging');
+            e.preventDefault();
+        });
+
+        document.addEventListener('touchmove', (e) => {
+            if (!isResizing) return;
+            
+            const touch = e.touches[0];
+            const containerRect = container.getBoundingClientRect();
+            const containerWidth = containerRect.width;
+            const gutterWidth = gutter.offsetWidth;
+            
+            let newLeftWidth = touch.clientX - containerRect.left;
+            
+            const minWidth = 200;
+            const maxLeftWidth = containerWidth - minWidth - gutterWidth;
+            
+            newLeftWidth = Math.max(minWidth, Math.min(newLeftWidth, maxLeftWidth));
+            
+            const percentage = (newLeftWidth / containerWidth) * 100;
+            leftPane.style.width = percentage + '%';
+            
+            e.preventDefault();
+        });
+
+        document.addEventListener('touchend', () => {
+            if (isResizing) {
+                isResizing = false;
+                container.classList.remove('dragging');
+                gutter.classList.remove('dragging');
+            }
+        });
+    </script>
+</body>
+</html>

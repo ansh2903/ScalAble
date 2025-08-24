@@ -40,6 +40,7 @@ def serialize_object(obj):
     """
     return dill.dumps(obj)
 
+
 def validate_query(query: str) -> bool:
     '''
     Validate if the provided query is a non-empty string.
@@ -59,7 +60,7 @@ def get_connection_by_id(conn_id):
 def render_result_table(result):
     if not result:
         return "<p>No results found.</p>"
-
+    
     if isinstance(result[0], (list, tuple)):
         headers = result[0]
         rows = result[1:]
@@ -69,13 +70,19 @@ def render_result_table(result):
     else:
         return "<p>Unknown result format.</p>"
 
+    rows_count = 0
+    column_count = len(headers)
+
     table_html = "<table class='table table-bordered table-sm table-hover table-striped'>"
     # Header row
-    table_html += "<thead class='thead-dark'><tr>" + "".join(f"<th>{h}</th>" for h in headers) + "</tr></thead>"
+    table_html += "<thead class='thead'><tr>" + "".join(f"<th>{h}</th>" for h in headers) + "</tr></thead>"
     # Data rows
     table_html += "<tbody>"
     for row in rows:
         table_html += "<tr>" + "".join(f"<td>{cell}</td>" for cell in row) + "</tr>"
+        rows_count += 1
+
     table_html += "</tbody></table>"
 
-    return table_html
+    return table_html, rows_count, column_count
+

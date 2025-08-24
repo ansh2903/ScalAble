@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>ScalAble | New Analysis</title>
+        
+        <!-- Chart.js for visualizations -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-date-fns/2.0.0/chartjs-adapter-date-fns.bundle.min.js"></script>
+                
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+        <style>
+            
+        </style>
+    </head>
+
+    <body>
+        <div class="theme">
+            <div class="dashboard">
+                <!-- Sidebar Navigation -->
+                <div class="sidebar">
+                    <div class="logo">
+                        <div class="logo-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 2L2 7V17L12 22L22 17V7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                <path d="M12 22V12" stroke="currentColor" stroke-width="2"/>
+                                <path d="M22 7L12 12L2 7" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                        </div>
+                    </div>
+                        
+                    <nav class="sidebar-nav" role="navigation" aria-label="Main navigation">
+                        <ul class="nav-list" role="menu">
+                            <li role="none">
+                                <a role="menuitem" href="#" class="nav-item active" aria-current="page">
+                                    <div class="nav-icon">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <rect x="3" y="3" width="7" height="7" stroke="currentColor" stroke-width="2" rx="1"/>
+                                            <rect x="14" y="3" width="7" height="7" stroke="currentColor" stroke-width="2" rx="1"/>
+                                            <rect x="14" y="14" width="7" height="7" stroke="currentColor" stroke-width="2" rx="1"/>
+                                            <rect x="3" y="14" width="7" height="7" stroke="currentColor" stroke-width="2" rx="1"/>
+                                        </svg>
+                                    </div>
+                                </a>
+                            </li>
+                            <li role="none">
+                                <a role="menuitem" href="#" class="nav-item">
+                                    <div class="nav-icon">
+                                        <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/Chat icon.png') }}" alt="Logo">
+                                    </div>
+                                </a>
+                            </li>
+                            <li role="none">
+                                <a role="menuitem" href="/connections" class="nav-item">
+                                    <div class="nav-icon">
+                                        <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/Database icon.png') }}" alt="Logo">
+                                    </div>
+                                </a>
+                            </li>
+                            <li role="none">
+                                <a role="menuitem" href="#" class="nav-item">
+                                    <div class="nav-icon">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M12.89 1.45L8 5.6C7.11 6.27 6.6 7.33 6.6 8.45V14.45C6.6 15.57 7.11 16.63 8 17.3L12.89 21.45C11.3 22.5 9.1 22.5 7.51 21.45L2.62 17.3C1.73 16.63 1.22 15.57 1.22 14.45V8.45C1.22 7.33 1.73 6.27 2.62 5.6L7.51 1.45C9.1 0.4 11.3 0.4 12.89 1.45Z" fill="currentColor"/>
+                                            <path d="M22.78 9.55V15.55C22.78 16.67 22.27 17.73 21.38 18.4L16.49 22.55C14.9 23.6 12.7 23.6 11.11 22.55L16 18.4C16.89 17.73 17.4 16.67 17.4 15.55V9.55C17.4 8.43 16.89 7.37 16 6.7L11.11 2.55C12.7 1.5 14.9 1.5 16.49 2.55L21.38 6.7C22.27 7.37 22.78 8.43 22.78 9.55Z" fill="currentColor"/>
+                                        </svg>
+                                    </div>
+                                </a>
+                            </li>
+                            <li role="none">
+                                <a role="menuitem" href="https://github.com/ansh2903/ScalAble" target="_blank" rel="noopener noreferrer" class="nav-item">
+                                    <div class="nav-icon">
+                                        <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/github icon.png') }}" alt="Logo">
+                                    </div>
+                                </a>
+                            </li>
+                            <li role="none">
+                                <a role="menuitem" href="https://www.linkedin.com/in/asharma2903/" target="_blank" rel="noopener noreferrer" class="nav-item">
+                                    <div class="nav-icon">
+                                        <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/linkedin icon.png') }}" alt="Logo">
+                                    </div>
+                                </a>
+                            </li>
+                        </ul>
+                    </nav>
+                    
+                    <nav class ="sidebar-footer" role="navigation" aria-label="Footer navigation">
+                        <ul class="nav-list" role="menu">
+                            <li role="none">
+                                <a role="menuitem" href="#" class="nav-item">
+                                    <div class="nav-icon">
+                                        <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/Settings icon.png') }}" alt="Logo">
+                                    </div>
+                                </a>
+                            </li>
+
+                            <li role="none">
+                                <a role="menuitem" href="#" class="nav-item">
+                                    <div class="nav-icon">
+                                        <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/Help icon.png') }}" alt="Logo">
+                                    </div>
+                                </a>
+                            </li>
+
+                            <li role="none">
+                                <a role="menuitem" href="#" class="nav-item">
+                                    <div class="nav-icon">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20Z" fill="currentColor"/>
+                                            <path d="M11,15H13V17H11V15Z" fill="currentColor"/>
+                                            <path d="M11,9H13V13H11V9Z" fill="currentColor"/>
+                                        </svg>
+                                    </div>
+                                </a>
+                            </li>
+                        </ul>
+                        <span class="version">v0.6</span>
+                        <span class="copyright">&copy; 2023 ScalAble</span>
+                    </nav>
+                </div>
+
+                <div class="split">
+                    <div id="left-pane" class="left-pane">Left Pane</div>
+                    <div id="right-pane" class="right-pane">Right Pane</div>
+                </div>
+
+            </div>
+        </div>
+    </body>
+
+    <script type="module">
+        import Split from 'https://unpkg.com/split.js/dist/split.esm.js';
+
+        Split(['#left-pane', '#right-pane'], {
+            sizes: [50, 50], // default width ratio
+            minSize: 200,
+            gutterSize: 6,
+        });
+    </script>
+
+</html>
