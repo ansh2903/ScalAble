@@ -3,6 +3,7 @@ import importlib
 
 from src.engine.text_to_query import generate_query_from_nl
 from src.engine.query_executor import run_query
+from src.engine.visualizer import analyse_query_results
 from src.core.utils import render_result_table
 
 from datetime import datetime
@@ -103,8 +104,6 @@ def add_database():
 
     return render_template("connections_new.html")
 
-
-
 # Delete database
 @interface_blueprint.route('/delete-database/<int:db_id>', methods=['GET'])
 def delete_database(db_id):
@@ -176,10 +175,9 @@ def chat():
                     'query': generated_query,
                     'data': result,
                     'html_data': result_html,
-                    'db_type': db_type
+                    'db_type': db_type,
+                    'unique_id': unique_id
                 }
-
-                analyse_url = url_for('interface.analyse')
 
                 table_block = render_template_string("""
                     <div class="message-content">
@@ -192,12 +190,16 @@ def chat():
                         <div class='table-scroll'>{{ table|safe }}</div>
                         
                         <div class="btn-group">
-                            <button class="analyse-btn" data-url="{{ analyse_url }}">
-                                Analyse Data
-                            </button>
+                            <form class="execute-query-form" method="POST" onsubmit="return false;">
+                                <input type="hidden" name="unique_id" value="{{ unique_id }}">
+                                <input type="hidden" name="table" value="{{ table }}">
+                                <button class="analyse-btn" type="button" data-uid="{{ unique_id }}">
+                                    Analyse Data
+                                </button>
+                            </form>
                         </div>
                     </div>
-                """, table=result_html, analyse_url=analyse_url, rows_count=row_count, column_count=column_count)
+                """, table=result_html, rows_count=row_count, column_count=column_count, unique_id=unique_id)
 
                 if is_ajax:
                     return jsonify({
@@ -207,6 +209,16 @@ def chat():
                     })
 
                 chat_html += table_block
+
+            elif "table" in form:
+                data = session.get('last_query_results').get('data')
+                html_data = session['last_query_results'].get('html_data')
+
+                if is_ajax:
+                    return jsonify({
+                        "data": data,
+                        "html_data": html_data
+                    })
 
             else:
                 message = form.get("message")
@@ -307,28 +319,6 @@ def chat():
             }), 500
 
     return render_template("chat.html", connections=connections, selected_db_id=selected_db_id, table_block=table_block if 'table_block' in locals() else "")
-
-@interface_blueprint.route('/analyse', methods=['GET','POST'])
-def analyse():
-    # Get the last query results from session
-    query_results = session.get('last_query_results')
-    
-    if not query_results:
-        return render_template('analyse.html', no_data=True)
-    
-    html_data = query_results.get('html_data')
-    if not html_data:
-        return render_template('analyse.html', no_data=True)
-
-    data = query_results.get('data', [])
-    data = [list(row) if isinstance(row, tuple) else row for row in data]
-    csv_data = ""
-    
-    for row in data:
-        csv_data += ",".join(map(str, row)) + "\n"
-    
-    return render_template('analyse.html', csv_data=csv_data, query_info=query_results, html_data=html_data)
-
 
 @interface_blueprint.route('/model_settings', methods=['GET', 'POST'])
 def model_settings():

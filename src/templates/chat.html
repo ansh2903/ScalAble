@@ -112,98 +112,114 @@
             </nav>
         </div>
 
-        <div class="header">
-            <ul class="header-list" role="menu">
-                <li role="none">
-                    <a role="menuitem" href="#" class="header-item">
-                        <div class="header-icon">
-                            <img class="header-icon" src="{{ url_for('static', filename='images/Icons/Settings icon.png') }}" alt="Logo">
-                        </div>
-                        <span>Settings</span>
-                    </a>
-                </li>
-
-                <li role="none">
-                    <a role="menuitem" href="https://github.com/ansh2903/ScalAble" target="_blank" class="header-item">
-                        <div class="header-icon">
-                            <img class="header-icon" src="{{ url_for('static', filename='images/Icons/GitHub icon.png') }}" alt="Help">
-                        </div>
-                        <span>GitHub</span>
-                    </a>
-                </li>
-            </ul>
-        </div>
-
-        <!-- Main Content Layout -->
-        <div class="main-content chat-container">
-            <!-- Messages Container -->
-            <div id="messageContainer" class="chat-content">
-                <!-- Empty state -->
-                <div class="chat-empty">
-                    <img class="empty-icon" src="{{ url_for('static', filename='images/Extras/chat-empty.png') }}" alt="Empty Chat Icon">
+        <div class="split-container">
+            <div class="pane left-pane">
+                <div class="btn-container">
+                    <button class="analyse-data-btn tab-btn" data-target="html_data" role="tab" aria-selected="true">Data</button>
+                    <button class="analyse-analyse-btn tab-btn" data-target="analysis_results" role="tab" aria-selected="false">Analyse</button>
+                    <button class="analyse-export-btn tab-btn" data-target="export_section" role="tab" aria-selected="false">Export</button>
                 </div>
 
-                <!-- Messages container -->
-                <div class="chat-messages">
-                    <!-- Example message -->    
+                <div class="data-controls">
+                    <div class="data-toolbar">
+                        <div class="actions">
+                            <button class="download-btn">Download</button>
+                        </div>
+                    </div>
+
+                    <div id="html_data" class="data-container">
+
+                    </div>
+                    <div class="table-footer">
+                        <button class="page-btn">&larr;</button>
+                        <button class="page-btn active">1</button>
+                    </div>
+                </div>
+
+                <div id="analysis_results" class="data-container">
+                    <h3>Analysis Results</h3>
+                    <p>This section will display the results of the data analysis.</p>
+                    <div id="chart-container">
+                        <canvas id="analysisChart"></canvas>
+                    </div>
+
+                    <div class="runable-python-code">
+                        <h4>Generated Python Code</h4>
+                        <div id="codeOutput" class="code-output"></div>
+                        <pre><code id="pythonCode"># Python code will be displayed here</code></pre>
+                        <button id="copyCodeBtn">Copy Code</button>
+                        <button id="runCodeBtn">Run Code</button>
+                    </div>
+                </div>
+
+                <div class="data-container" id="export_section" >
+                    <h3>Export Data</h3>
+                    <p>This section will allow you to export the data in various formats.</p>
+                    <button id="exportCsvBtn">Export as CSV</button>
+                    <button id="exportJsonBtn">Export as JSON</button>
                 </div>
             </div>
 
-            <!-- Chat Input Bar -->
-            <div class="chat-input-container">
-                <!-- Input Form -->
-                <form id="chatForm" method="POST" autocomplete="off">
-                    <div class="chat-input-bar">
+            <div class="gutter">
+                <div id="gutter" class="gutter-handle"></div>
+            </div>
 
-                        <!-- Database Select -->
-                        <div class="chat-input db-select-container">
-                            <select class="db-select" name="selected_db_id" id="selected_db_id" required>
-                                <option value="" disabled {% if not selected_db_id %}selected{% endif %}>
-                                    Select Database
-                                </option>
+            <div class="pane right-pane">
+                <!-- Main Content Layout -->
+                <div class="main-content chat-container">
+                    <!-- Messages Container -->
+                    <div id="messageContainer" class="chat-content">
+                        <!-- Empty state -->
+                        <div class="chat-empty">
+                            <img class="empty-icon" src="{{ url_for('static', filename='images/Extras/chat-empty.png') }}" alt="Empty Chat Icon">
+                        </div>
 
+                        <!-- Messages container -->
+                        <div class="chat-messages">
+                            <!-- Example message -->    
+                        </div>
+                    </div>
+
+                    <!-- Chat Input Bar (placed inside .right-pane so it moves with the pane) -->
+                    <div class="chat-input-wrapper">
+                        <form id="chatForm" method="POST" autocomplete="off" class="chat-input-form">
+                            <div class="chat-input-left">
+                                <!-- small chips / tools like in your mockup -->
+                                <button type="button" class="chip" title="Tools">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                    <path d="M6 12h12M12 6v12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    </svg>
+                                    <span>Tools</span>
+                                </button>
+
+                            </div>
+
+                            <div class="chat-input-center">
+                                <textarea id="messageInput" name="message" class="text-input" rows="1"
+                                    placeholder="What's on your mind?" required></textarea>
+                            </div>
+
+                            <div class="chat-input-right">
+                            <select class="db-select" name="selected_db_id" id="selected_db_id" aria-label="Select database" required>
+                                <option value="" disabled {% if not selected_db_id %}selected{% endif %}>Select Database</option>
                                 {% for conn in connections %}
                                 <option value="{{ conn.id }}"
                                     {% if selected_db_id and conn.id == selected_db_id|int %}selected{% endif %}
-                                        data-db-type="{{ conn.db_type }}"
-                                        data-name="{{ conn.name }}">
-                                    {{ conn.db_type.capitalize() }} - {{ conn.name }}
+                                    data-db-type="{{ conn.db_type }}" data-name="{{ conn.name }}">
+                                {{ conn.db_type.capitalize() }} - {{ conn.name }}
                                 </option>
                                 {% endfor %}
-
-                                <option value="configure_db" data-link="{{ url_for('interface.connections') }}">
-                                    Configure Database
-                                </option>
-
-                                {% if not connections %}
-                                <option value="" disabled>No databases configured</option>
-                                {% endif %}
+                                <option value="configure_db" data-link="{{ url_for('interface.connections') }}">Configure Database</option>
+                                {% if not connections %}<option value="" disabled>No databases configured</option>{% endif %}
                             </select>
-                            <img class="btn-icon" src="{{ url_for('static', filename='images/Icons/arrow up icon.png') }}" alt="arrow-up">
-                        </div>
 
-                        <!-- File Input -->
-                        <div class="chat-input file-input">
-                            <!-- Future: Add file button -->
-                        </div>
-
-                        <!-- Text Input -->
-                        <div class="chat-input text-input-container">
-                            <input type="text" 
-                                id="messageInput" 
-                                name="message" 
-                                class="text-input form-control"
-                                placeholder="Ask a question about your data..." 
-                                {% if not connections %}disabled{% endif %}
-                                required />
-
-                            <!-- Send Button -->
-                            <button class="send-button" id="sendMessageBtn" type="submit">
-                                <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/send icon.png') }}" alt="send">    
-                            </button>
-                        </div>
+                            <!-- circular send button -->
+                            <button class="send-button" id="sendMessageBtn" type="submit" aria-label="Send message">
+                                <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/send icon.png') }}" alt="send">                            </button>
+                            </div>
+                        </form>
                     </div>
-                </form>
+                </div>
             </div>
         </div>
     </div>
@@ -214,6 +230,149 @@
     <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
 
     <script>
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+        const ta = document.getElementById('messageInput');
+        if (!ta) return;
+
+        const MAX_HEIGHT = 220; // match CSS max-height (px)
+
+        // Resize utility
+        function autoResize(el) {
+            el.style.height = 'auto';               // reset height
+            const needed = el.scrollHeight;         // required height
+            const newHeight = Math.min(needed, MAX_HEIGHT);
+            el.style.height = newHeight + 'px';
+
+            if (needed > MAX_HEIGHT) {
+            el.classList.add('scrolled');         // allow overflow-y auto
+            el.style.overflowY = 'auto';
+            } else {
+            el.classList.remove('scrolled');
+            el.style.overflowY = 'hidden';
+            }
+        }
+
+        // init size (useful if textarea has pre-filled value)
+        autoResize(ta);
+
+        // events
+        ta.addEventListener('input', () => autoResize(ta));
+        ta.addEventListener('paste', () => {
+            // run after paste has inserted text
+            requestAnimationFrame(() => autoResize(ta));
+        });
+
+        // Optional: submit on Ctrl+Enter while preserving Enter for new lines
+        ta.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            // submit the form
+            const form = ta.closest('form');
+            if (form) form.requestSubmit(); // modern, or form.submit() if needed
+            }
+        });
+
+        });
+
+        document.addEventListener("DOMContentLoaded", () => {
+        const container = document.querySelector('.split-container');
+        const leftPane = document.querySelector('.left-pane');
+        const rightPane = document.querySelector('.right-pane');
+        const gutter = document.getElementById('gutter');
+        let isResizing = false;
+
+        // --- Open / Close ---
+        function openLeftPane(percentage = 40) {
+            container.classList.add('left-open');
+
+            percentage = Math.max(10, Math.min(90, percentage));
+            leftPane.style.width = percentage + '%';
+            rightPane.style.width = (100 - percentage) + '%';
+
+            gutter.parentElement.style.display = 'block';
+        }
+
+        function closeLeftPane() {
+            container.classList.remove('left-open');
+            leftPane.style.width = '0';
+            rightPane.style.width = '100%';
+            gutter.parentElement.style.display = 'none';
+        }
+
+        // collapse initially
+        closeLeftPane();
+
+        // --- Drag Resize ---
+        gutter.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            container.classList.add('dragging');
+            gutter.classList.add('dragging');
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            const rect = container.getBoundingClientRect();
+            const gutterWidth = gutter.offsetWidth;
+
+            let newLeftWidth = e.clientX - rect.left;
+            const minWidth = 200;
+            const maxLeftWidth = rect.width - minWidth - gutterWidth;
+            newLeftWidth = Math.max(minWidth, Math.min(newLeftWidth, maxLeftWidth));
+
+            const percentage = (newLeftWidth / rect.width) * 100;
+            leftPane.style.width = percentage + '%';
+            rightPane.style.width = (100 - percentage) + '%';
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+            isResizing = false;
+            container.classList.remove('dragging');
+            gutter.classList.remove('dragging');
+            }
+        });
+
+        // --- Touch support ---
+        gutter.addEventListener('touchstart', (e) => {
+            isResizing = true;
+            container.classList.add('dragging');
+            gutter.classList.add('dragging');
+            e.preventDefault();
+        });
+
+        document.addEventListener('touchmove', (e) => {
+            if (!isResizing) return;
+            const touch = e.touches[0];
+            const rect = container.getBoundingClientRect();
+            const gutterWidth = gutter.offsetWidth;
+
+            let newLeftWidth = touch.clientX - rect.left;
+            const minWidth = 200;
+            const maxLeftWidth = rect.width - minWidth - gutterWidth;
+            newLeftWidth = Math.max(minWidth, Math.min(newLeftWidth, maxLeftWidth));
+
+            const percentage = (newLeftWidth / rect.width) * 100;
+            leftPane.style.width = percentage + '%';
+            rightPane.style.width = (100 - percentage) + '%';
+            e.preventDefault();
+        });
+
+        document.addEventListener('touchend', () => {
+            if (isResizing) {
+            isResizing = false;
+            container.classList.remove('dragging');
+            gutter.classList.remove('dragging');
+            }
+        });
+
+        // Expose functions globally if needed
+        window.openLeftPane = openLeftPane;
+        window.closeLeftPane = closeLeftPane;
+        });
+
+
         function toggleChatState() {
             const chatEmpty = document.querySelector('.chat-empty');
             const chatMessages = document.querySelector('.chat-messages');
@@ -426,14 +585,79 @@
             }
             });
 
-            document.addEventListener("click", function(e) {
-                if (e.target && e.target.matches(".analyse-btn")) {
-                    const url = e.target.getAttribute("data-url");
-                    window.location.href = url; // navigate directly
-                }
-            });
+        document.addEventListener("click", function (e) {
+        const analyseBtn = e.target.closest(".analyse-btn");
+        if (!analyseBtn) return;
 
-            function setButtonLoading(button, isLoading) {
+        e.preventDefault();
+
+        // open left pane
+        openLeftPane(60);
+
+        // get unique id (button has data-uid)
+        const uid = analyseBtn.dataset.uid || analyseBtn.getAttribute("data-uid") || "";
+
+        // Build FormData for the POST. The backend checks for "table" in request.form.
+        const formData = new FormData();
+        formData.append("table", "1");          // presence of this key triggers backend branch
+        if (uid) formData.append("unique_id", uid);
+
+        // Send to same endpoint your chat form uses
+        fetch(window.location.pathname, {
+            method: "POST",
+            headers: {
+            "X-Requested-With": "XMLHttpRequest" // helps backend detect AJAX
+            },
+            body: formData
+        })
+        .then(async (res) => {
+            if (!res.ok) {
+            const errText = await res.text().catch(()=>res.statusText);
+            throw new Error(errText || 'Request failed');
+            }
+            return res.json();
+        })
+        .then(result => {
+            // Expecting result to have either 'html_data' or 'data'
+            const container = document.querySelector(".left-pane #html_data");
+            if (!container) {
+            console.warn("Left pane html_data container not found");
+            return;
+            }
+
+        if (result.html_data) {
+            container.innerHTML = result.html_data;
+
+            // switch tab to Data panel if the helper exists
+            if (typeof setAnalysisTab === 'function') {
+            setAnalysisTab('html_data');
+            } else if (typeof setActiveTab === 'function') {
+            setActiveTab('html_data'); // fallback name
+            }
+
+            // focus first meaningful element
+            const first = container.querySelector('table, button, a, input, textarea, select');
+            if (first) first.focus();
+            return;
+        }
+
+            if (result.data) {
+            // If backend returned raw data rows, build a table
+            return;
+            }
+
+            // Fallback
+            container.innerHTML = "<div class='info'>No data returned from server.</div>";
+        })
+        .catch(err => {
+            console.error("Failed to fetch analysis data:", err);
+            const container = document.querySelector(".left-pane #html_data");
+            if (container) container.innerHTML = `<div class="error">Error loading data: ${err.message}</div>`;
+        });
+        });
+
+
+        function setButtonLoading(button, isLoading) {
             if (isLoading) {
                 button.disabled = true;
                 button.textContent = 'Running...';
@@ -443,7 +667,7 @@
                 button.textContent = 'Execute';
                 button.style.opacity = '1';
             }
-            }
+        }
         // Store editing states for multiple query blocks
         const editingStates = {};
 
@@ -630,6 +854,107 @@
             // small delay to let browser render the new content then scroll
             setTimeout(() => { scrollToBottom(); }, 30);
         }
+
+        (function () {
+  // mapping fallback if data-target is not present
+  const fallbackMap = {
+    'analyse-data-btn': 'html_data',
+    'analyse-analyse-btn': 'analysis_results',
+    'analyse-export-btn': 'export_section'
+  };
+
+  // set active tab and manage aria
+  function setActiveTab(targetId) {
+    // hide/show panels
+    document.querySelectorAll('.data-container').forEach(el => {
+      if (el.id === targetId) {
+        el.classList.add('active');
+        el.setAttribute('aria-hidden', 'false');
+      } else {
+        el.classList.remove('active');
+        el.setAttribute('aria-hidden', 'true');
+      }
+    });
+
+    // update tab buttons
+    document.querySelectorAll('.analyse-data-btn, .analyse-analyse-btn, .analyse-export-btn, .tab-btn').forEach(btn => {
+      const target = btn.dataset.target || fallbackMap[btn.classList[0]] || null;
+      if (!target) {
+        // also try to read class names for fallback
+        const cls = Array.from(btn.classList).find(c => fallbackMap[c]);
+        if (cls) btn.dataset.target = fallbackMap[cls];
+      }
+      if ((btn.dataset.target || null) === targetId) {
+        btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
+      } else {
+        btn.classList.remove('active');
+        btn.setAttribute('aria-selected', 'false');
+      }
+    });
+  }
+
+  // call on load: default Data tab (but left pane may be closed)
+  document.addEventListener('DOMContentLoaded', function () {
+    setActiveTab('html_data');
+  });
+
+  // tab button clicks (works for both .tab-btn or your specific class buttons)
+  document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.tab-btn, .analyse-data-btn, .analyse-analyse-btn, .analyse-export-btn');
+    if (!btn) return;
+
+    e.preventDefault();
+
+    // determine target
+    const target = btn.dataset.target || (() => {
+      // fallback by class name
+      const cls = Array.from(btn.classList).find(c => fallbackMap[c]);
+      return cls ? fallbackMap[cls] : null;
+    })();
+
+    if (target) {
+      setActiveTab(target);
+      // if left pane is closed, open it (optional)
+      if (typeof openLeftPane === 'function') {
+        openLeftPane(60);
+      }
+      // focus first interactive element inside newly active panel
+      const container = document.getElementById(target);
+      if (container) {
+        const focusable = container.querySelector('button, a, input, textarea, select, table');
+        if (focusable) focusable.focus();
+      }
+    }
+  });
+
+  // Enhance your existing analyse-btn fetch handler to auto-switch to Data tab after inject.
+  // If you already have an analyse-btn click handler that injects html_data, ensure it calls:
+  //    setActiveTab('html_data');
+  // Below is a safe wrapper that hooks into your analyze flow: it watches for AJAX injection into #html_data
+  // and activates the Data tab automatically when html_data is changed.
+  function observeHtmlDataInjection() {
+    const target = document.querySelector('.left-pane #html_data');
+    if (!target) return;
+    // If content already exists, ensure tab active if left pane is open
+    if (target.innerHTML.trim() !== '') {
+      setActiveTab('html_data');
+    }
+    // Observe future changes
+    const mo = new MutationObserver((mutations) => {
+      // any injection -> make data tab active
+      setActiveTab('html_data');
+    });
+    mo.observe(target, { childList: true, subtree: true });
+  }
+
+  // Start observer after DOM ready
+  document.addEventListener('DOMContentLoaded', observeHtmlDataInjection);
+
+  // Expose utility globally if needed
+  window.setAnalysisTab = setActiveTab;
+})();
+
     </script>
 </body>
 </html>
