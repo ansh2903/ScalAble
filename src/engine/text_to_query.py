@@ -12,7 +12,7 @@ from src.core.exception import CustomException
 from src.core.logger import logging
 
 
-def generate_query_from_nl(nl_query: str, db_type, db_metadata: dict = {}, model="qwen2.5-coder:1.5b"):
+def generate_query_from_nl(nl_query: str, db_type, db_metadata: dict = {}, model="qwen2.5-coder:7b"):
 
     """
     Converts natural language query into database-specific query using a local LLM.

@@ -123,9 +123,24 @@
                 <div class="data-controls">
                     <div class="data-toolbar">
                         <div class="actions">
-                            <button class="download-btn" onclick="window.location.href='/download/json'">
-                                Download
-                            </button>
+                            <!-- Custom Dropdown -->
+                            <div class="custom-dropdown" id="downloadDropdown">
+                                <button class="dropdown-btn">Download</button>
+                                <div class="dropdown-content">
+                                    <div class="dropdown-item" data-value="json">
+                                        <img src="/static/icons/json.png" alt="JSON">
+                                        JSON
+                                    </div>
+                                    <div class="dropdown-item" data-value="csv">
+                                        <img src="/static/icons/csv.png" alt="CSV">
+                                        CSV
+                                    </div>
+                                    <div class="dropdown-item" data-value="excel">
+                                        <img src="/static/icons/excel.png" alt="Excel">
+                                        Excel
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -232,6 +247,34 @@
     <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
 
     <script>
+
+        document.querySelectorAll(".custom-dropdown").forEach(dropdown => {
+  const btn = dropdown.querySelector(".dropdown-btn");
+  const menu = dropdown.querySelector(".dropdown-content");
+
+  btn.addEventListener("click", () => {
+    menu.style.display = menu.style.display === "block" ? "none" : "block";
+  });
+
+  dropdown.querySelectorAll(".dropdown-item").forEach(item => {
+    item.addEventListener("click", () => {
+      const value = item.getAttribute("data-value");
+      console.log("Selected:", value);
+      menu.style.display = "none";
+      
+      // Example: trigger download route
+      window.location.href = `/download/${value}`;
+    });
+  });
+
+  // Close dropdown if clicked outside
+  document.addEventListener("click", (e) => {
+    if (!dropdown.contains(e.target)) {
+      menu.style.display = "none";
+    }
+  });
+});
+
 
 
         document.addEventListener('DOMContentLoaded', () => {
