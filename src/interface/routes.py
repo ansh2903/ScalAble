@@ -3,8 +3,7 @@ import importlib
 
 from src.engine.text_to_query import generate_query_from_nl
 from src.engine.query_executor import run_query
-from src.engine.visualizer import analyse_query_results
-from src.core.utils import render_result_table
+from src.core.utils import downloadable_json, downloadable_excel, downloadable_csv, render_result_table
 
 from datetime import datetime
 import uuid
@@ -164,13 +163,13 @@ def chat():
                 unique_id = form.get('unique_id')
 
                 result = run_query(db_type=db_type, credentials=credentials, query=generated_query)
+
+                print('results: ', result)
                 if isinstance(result, dict) and "error" in result:
                     return jsonify({"error": result["error"]}), 500
 
                 result_html, row_count, column_count = render_result_table(result)
-
-                print("Result HTML:", result_html)
-
+                
                 session['last_query_results'] = {
                     'query': generated_query,
                     'data': result,
@@ -213,6 +212,7 @@ def chat():
             elif "table" in form:
                 data = session.get('last_query_results').get('data')
                 html_data = session['last_query_results'].get('html_data')
+                
 
                 if is_ajax:
                     return jsonify({
@@ -319,6 +319,23 @@ def chat():
             }), 500
 
     return render_template("chat.html", connections=connections, selected_db_id=selected_db_id, table_block=table_block if 'table_block' in locals() else "")
+
+@interface_blueprint.route('/download/<fmt>', methods=['GET'])
+def download(fmt):
+    last_results = session.get('last_query_results')
+    if not last_results:
+        return "No data available", 400
+    
+    data = last_results.get('data')
+
+    if fmt == 'csv':
+        return downloadable_csv(data)
+    if fmt == 'excel':
+        return downloadable_excel(data)
+    if fmt == 'json':
+        return downloadable_json(data)
+    else:
+        return "Unsupported format", 400
 
 @interface_blueprint.route('/model_settings', methods=['GET', 'POST'])
 def model_settings():

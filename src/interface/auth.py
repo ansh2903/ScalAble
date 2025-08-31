@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 import bcrypt
-from interface.user import User, db
+from src.interface.user import User, db
 
 
 auth_blueprint = Blueprint('auth', __name__)

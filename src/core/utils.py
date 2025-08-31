@@ -1,4 +1,8 @@
-from flask import session
+from flask import session, Response
+from openpyxl import Workbook
+from io import StringIO, BytesIO
+
+import csv
 import uuid
 import json
 import dill
@@ -86,3 +90,76 @@ def render_result_table(result):
 
     return table_html, rows_count, column_count
 
+def downloadable_csv(raw_data):
+    '''
+    This function is used to create a downloadable csv file, this is done
+    via data streaming to ensure that if the user wants to download a large
+    amount of data, it doesn't overflow their ram and crash the system.
+    '''
+    def generator():
+        csv_buffer = StringIO()
+        writer = csv.writer(csv_buffer)
+
+        for row in raw_data:
+            if isinstance(row, tuple):
+                row = list(row)
+
+            writer.writerow(row)
+            yield csv_buffer.getvalue()
+            csv_buffer.seek(0)
+            csv_buffer.truncate(0)
+                
+    return Response(
+        generator(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment;filename=data.csv"}
+    )
+
+def downloadable_excel(raw_data):
+    '''
+    This function is used to create a downloadable excel file for the frontend
+    '''
+    excel_buffer = BytesIO()
+    wb = Workbook(write_only=True)
+    ws = wb.create_sheet()
+
+    for row in raw_data:
+        if isinstance(row, tuple):
+            row = list(row)
+        ws.append(row)
+
+    wb.save(excel_buffer)
+    excel_buffer.seek(0)
+
+    return Response(
+        excel_buffer.read(),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment;filename=data.xlsx"}
+    )
+
+def downloadable_json(raw_data):
+    '''
+    This function is used to create a downloadable json file for the frontend
+    '''
+    data = []
+
+    for row in raw_data:
+        if isinstance(row,tuple):
+            row = list(row)
+        data.append(row)
+
+    headers = data[0]
+    rows = data[1:]
+
+    json_data = {
+        'headers': headers,
+        'rows': rows
+    }
+
+    data = json.dumps(json_data)
+            
+    return Response(
+        data,
+        mimetype="application/json",
+        headers={"Content-Disposition": "attachment;filename=data.json"}
+    )
