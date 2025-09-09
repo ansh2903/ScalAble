@@ -1,16 +1,18 @@
 from flask import Blueprint, render_template, render_template_string, jsonify, request, session, redirect, url_for, flash
 import importlib
 
-from src.engine.text_to_query import generate_query_from_nl
+from src.engine.text_to_query import generate_query_from_nl, ollama_model_ls
 from src.engine.query_executor import run_query
 from src.core.utils import downloadable_json, downloadable_excel, downloadable_csv, render_result_table
 
+import dotenv
 from datetime import datetime
 import uuid
 import html
 import json
 import ast
 import sys
+import os
 
 from src.core.exception import CustomException
 from src.core.logger import logging
@@ -212,7 +214,7 @@ def chat():
             elif "table" in form:
                 data = session.get('last_query_results').get('data')
                 html_data = session['last_query_results'].get('html_data')
-                
+
 
                 if is_ajax:
                     return jsonify({
@@ -337,15 +339,12 @@ def download(fmt):
     else:
         return "Unsupported format", 400
 
-@interface_blueprint.route('/model_settings', methods=['GET', 'POST'])
-def model_settings():
-    pass 
+
+@interface_blueprint.route('/settings', methods=['GET', 'POST'])
+def settings():
+    models = ollama_model_ls()
+    return render_template('settings.html', models = models)    
 
 @interface_blueprint.route('/upload_file', methods=['POST'])
 def upload_file():
     pass
-
-# App settings
-@interface_blueprint.route('/settings')
-def settings():
-    return render_template('settings.html')

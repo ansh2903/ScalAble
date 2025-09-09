@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat</title>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <style>
+        /* Additional styles specific to settings page */
+        .settings-main {
+            flex: 1;
+            margin-left: 108px;
+            padding: 100px 30px 30px;
+            background: linear-gradient(145deg, #f8f8f7, #e4e4e4);
+            min-height: 100vh;
+            overflow-y: auto;
+        }
+
+        .settings-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .settings-section {
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 16px;
+            padding: 24px;
+            backdrop-filter: blur(12px) saturate(150%);
+            -webkit-backdrop-filter: blur(12px) saturate(150%);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .settings-section h2 {
+            margin: 0 0 20px 0;
+            font-size: 20px;
+            font-weight: 600;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .section-icon {
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, #06d6a0, #1fb8cd);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #374151;
+            font-size: 14px;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            font-size: 14px;
+            color: #1e293b;
+            transition: all 0.25s ease;
+            box-sizing: border-box;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: #06d6a0;
+            box-shadow: 0 0 0 3px rgba(6, 214, 160, 0.1);
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .form-textarea {
+            min-height: 100px;
+            resize: vertical;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        }
+
+        .slider-container {
+            margin: 16px 0;
+        }
+
+        .slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.6);
+            outline: none;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            appearance: none;
+            -webkit-appearance: none;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #06d6a0, #1fb8cd);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .slider::-moz-range-thumb {
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #06d6a0, #1fb8cd);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .slider-value {
+            text-align: center;
+            font-weight: 600;
+            color: #06d6a0;
+            margin-top: 8px;
+            font-size: 14px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 12px 0;
+        }
+
+        .form-checkbox {
+            width: 18px;
+            height: 18px;
+            accent-color: #06d6a0;
+        }
+
+        .checkbox-label {
+            font-size: 14px;
+            color: #374151;
+            margin: 0;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(-64deg, #06d6a0, #1fb8cd);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            flex: 1;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(-64deg, #05c194, #1ba8bb);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(6, 214, 160, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            color: #374151;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            flex: 1;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.9);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .model-card {
+            background: rgba(255, 255, 255, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 8px 0;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+
+        .model-card:hover {
+            background: rgba(255, 255, 255, 0.7);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .model-card.active {
+            background: linear-gradient(-64deg, rgba(6, 214, 160, 0.2), rgba(31, 184, 205, 0.2));
+            border-color: #06d6a0;
+        }
+
+        .model-name {
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .model-description {
+            font-size: 13px;
+            color: #64748b;
+            line-height: 1.4;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            margin-top: 12px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .status-dot.online {
+            background: #22c55e;
+        }
+
+        .status-dot.offline {
+            background: #ef4444;
+        }
+
+        .advanced-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 20px 0;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+
+        .advanced-toggle:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .advanced-content {
+            display: none;
+            margin-top: 16px;
+        }
+
+        .advanced-content.show {
+            display: block;
+        }
+
+        .info-tooltip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            background: rgba(6, 214, 160, 0.2);
+            color: #06d6a0;
+            border-radius: 50%;
+            font-size: 12px;
+            margin-left: 8px;
+            cursor: help;
+        }
+
+        .preset-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 8px;
+            margin: 12px 0;
+        }
+
+        .preset-btn {
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .preset-btn:hover {
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .preset-btn.active {
+            background: linear-gradient(-64deg, rgba(6, 214, 160, 0.3), rgba(31, 184, 205, 0.3));
+            border-color: #06d6a0;
+        }
+
+        @media (max-width: 1024px) {
+            .settings-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .settings-main {
+                margin-left: 108px;
+                padding: 100px 20px 30px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .settings-main {
+                margin-left: 108px;
+                padding: 100px 15px 30px;
+            }
+            
+            .settings-section {
+                padding: 16px;
+            }
+        }
+    </style>
+
+</head>
+
+<body class="theme">
+    <div class="dashboard">
+        <!-- Sidebar Navigation -->
+        <div class="sidebar">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L2 7V17L12 22L22 17V7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                        <path d="M12 22V12" stroke="currentColor" stroke-width="2"/>
+                        <path d="M22 7L12 12L2 7" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                </div>
+            </div>
+                
+            <nav class="sidebar-nav" role="navigation" aria-label="Main navigation">
+                <ul class="nav-list" role="menu">
+                    <li role="none">
+                        <a role="menuitem" href="#" class="nav-item active" aria-current="page">
+                            <div class="nav-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <rect x="3" y="3" width="7" height="7" stroke="currentColor" stroke-width="2" rx="1"/>
+                                    <rect x="14" y="3" width="7" height="7" stroke="currentColor" stroke-width="2" rx="1"/>
+                                    <rect x="14" y="14" width="7" height="7" stroke="currentColor" stroke-width="2" rx="1"/>
+                                    <rect x="3" y="14" width="7" height="7" stroke="currentColor" stroke-width="2" rx="1"/>
+                                </svg>
+                            </div>
+                        </a>
+                    </li>
+                    <li role="none">
+                        <a role="menuitem" href="#" class="nav-item">
+                            <div class="nav-icon">
+                                <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/Chat icon.png') }}" alt="Logo">
+                            </div>
+                        </a>
+                    </li>
+                    <li role="none">
+                        <a role="menuitem" href="/connections" class="nav-item">
+                            <div class="nav-icon">
+                                <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/Database icon.png') }}" alt="Logo">
+                            </div>
+                        </a>
+                    </li>
+                    <li role="none">
+                        <a role="menuitem" href="#" class="nav-item">
+                            <div class="nav-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12.89 1.45L8 5.6C7.11 6.27 6.6 7.33 6.6 8.45V14.45C6.6 15.57 7.11 16.63 8 17.3L12.89 21.45C11.3 22.5 9.1 22.5 7.51 21.45L2.62 17.3C1.73 16.63 1.22 15.57 1.22 14.45V8.45C1.22 7.33 1.73 6.27 2.62 5.6L7.51 1.45C9.1 0.4 11.3 0.4 12.89 1.45Z" fill="currentColor"/>
+                                    <path d="M22.78 9.55V15.55C22.78 16.67 22.27 17.73 21.38 18.4L16.49 22.55C14.9 23.6 12.7 23.6 11.11 22.55L16 18.4C16.89 17.73 17.4 16.67 17.4 15.55V9.55C17.4 8.43 16.89 7.37 16 6.7L11.11 2.55C12.7 1.5 14.9 1.5 16.49 2.55L21.38 6.7C22.27 7.37 22.78 8.43 22.78 9.55Z" fill="currentColor"/>
+                                </svg>
+                            </div>
+                        </a>
+                    </li>
+                    <li role="none">
+                        <a role="menuitem" href="https://github.com/ansh2903/ScalAble" target="_blank" rel="noopener noreferrer" class="nav-item">
+                            <div class="nav-icon">
+                                <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/github icon.png') }}" alt="Logo">
+                            </div>
+                        </a>
+                    </li>
+                    <li role="none">
+                        <a role="menuitem" href="https://www.linkedin.com/in/asharma2903/" target="_blank" rel="noopener noreferrer" class="nav-item">
+                            <div class="nav-icon">
+                                <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/linkedin icon.png') }}" alt="Logo">
+                            </div>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            
+            <nav class ="sidebar-footer" role="navigation" aria-label="Footer navigation">
+                <ul class="nav-list" role="menu">
+                    <li role="none">
+                        <a role="menuitem" href="#" class="nav-item">
+                            <div class="nav-icon">
+                                <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/Settings icon.png') }}" alt="Logo">
+                            </div>
+                        </a>
+                    </li>
+
+                    <li role="none">
+                        <a role="menuitem" href="#" class="nav-item">
+                            <div class="nav-icon">
+                                <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/Help icon.png') }}" alt="Logo">
+                            </div>
+                        </a>
+                    </li>
+
+                    <li role="none">
+                        <a role="menuitem" href="#" class="nav-item">
+                            <div class="nav-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20Z" fill="currentColor"/>
+                                    <path d="M11,15H13V17H11V15Z" fill="currentColor"/>
+                                    <path d="M11,9H13V13H11V9Z" fill="currentColor"/>
+                                </svg>
+                            </div>
+                        </a>
+                    </li>
+                </ul>
+                <span class="version">v0.6</span>
+                <span class="copyright">&copy; 2023 ScalAble</span>
+            </nav>
+        </div>
+
+        <div class="header">
+            <ul class="header-list" role="menu">
+                <li role="none">
+                    <a role="menuitem" href="https://github.com/ansh2903/ScalAble" target="_blank" class="header-item">
+                        <div class="header-icon">
+                            <img class="header-icon" src="{{ url_for('static', filename='images/Icons/GitHub icon.png') }}" alt="Help">
+                        </div>
+                        <span>GitHub</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+                <!-- Main Settings Content -->
+        <main class="settings-main">
+            <div class="settings-container">
+                <!-- Model Selection Section -->
+                <section class="settings-section">
+                    <h2>
+                        <div class="section-icon">🤖</div>
+                        Model Configuration
+                    </h2>
+                    
+                    <div class="form-group">
+                        <label class="form-label">API Endpoint</label>
+                        <input type="url" class="form-input" value="http://localhost:11434/api/generate" placeholder="Enter Ollama API endpoint">
+                    </div>
+
+<div class="form-group">
+    <label class="form-label">Available Models</label>
+
+    {% for model in models %}
+    <div class="model-card {% if loop.first %}active{% endif %}" data-model="{{ model.model }}">
+        <div class="model-name">{{ model.model }}</div>
+        <div class="model-description">
+            {{ model.paramater_size }} parameters · {{ (model.model_size / (1024*1024*1024)) | round(2) }} GB
+        </div>
+        <div class="status-indicator">
+            <span class="status-dot online"></span>
+            <span>Online</span>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="auto-fallback" class="form-checkbox" checked>
+                        <label for="auto-fallback" class="checkbox-label">Auto-fallback to available model</label>
+                    </div>
+                </section>
+
+                <!-- Generation Parameters -->
+                <section class="settings-section">
+                    <h2>
+                        <div class="section-icon">⚙️</div>
+                        Generation Parameters
+                    </h2>
+
+                    <div class="preset-buttons">
+                        <button class="preset-btn active" data-preset="balanced">Balanced</button>
+                        <button class="preset-btn" data-preset="creative">Creative</button>
+                        <button class="preset-btn" data-preset="precise">Precise</button>
+                        <button class="preset-btn" data-preset="fast">Fast</button>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            Temperature
+                            <span class="info-tooltip" title="Controls randomness: 0 = deterministic, 1 = very random">?</span>
+                        </label>
+                        <div class="slider-container">
+                            <input type="range" class="slider" id="temperature" min="0" max="2" step="0.1" value="0.3">
+                            <div class="slider-value" id="temperature-value">0.3</div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            Max Tokens
+                            <span class="info-tooltip" title="Maximum length of generated response">?</span>
+                        </label>
+                        <div class="slider-container">
+                            <input type="range" class="slider" id="max-tokens" min="100" max="4000" step="100" value="2000">
+                            <div class="slider-value" id="max-tokens-value">2000</div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            Top P
+                            <span class="info-tooltip" title="Nucleus sampling: considers tokens with cumulative probability up to P">?</span>
+                        </label>
+                        <div class="slider-container">
+                            <input type="range" class="slider" id="top-p" min="0.1" max="1" step="0.05" value="0.9">
+                            <div class="slider-value" id="top-p-value">0.9</div>
+                        </div>
+                    </div>
+
+                    <div class="advanced-toggle" onclick="toggleAdvanced()">
+                        <span>Advanced Parameters</span>
+                        <span id="advanced-arrow">▼</span>
+                    </div>
+
+                    <div class="advanced-content" id="advanced-content">
+                        <div class="form-group">
+                            <label class="form-label">Top K</label>
+                            <div class="slider-container">
+                                <input type="range" class="slider" id="top-k" min="1" max="100" step="1" value="40">
+                                <div class="slider-value" id="top-k-value">40</div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Repeat Penalty</label>
+                            <div class="slider-container">
+                                <input type="range" class="slider" id="repeat-penalty" min="0.5" max="2" step="0.05" value="1.1">
+                                <div class="slider-value" id="repeat-penalty-value">1.1</div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Presence Penalty</label>
+                            <div class="slider-container">
+                                <input type="range" class="slider" id="presence-penalty" min="-2" max="2" step="0.1" value="0">
+                                <div class="slider-value" id="presence-penalty-value">0.0</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- System Prompts -->
+                <section class="settings-section">
+                    <h2>
+                        <div class="section-icon">💬</div>
+                        System Prompts
+                    </h2>
+
+                    <div class="form-group">
+                        <label class="form-label">Default System Prompt</label>
+                        <textarea class="form-textarea" placeholder="You are a professional database and data analysis expert...">You are a professional database and data analysis expert. Convert natural language into executable queries and provide analysis.
+
+Respond using this structured format:
+
+## COMMENT
+[Provide a friendly, helpful explanation of what you're doing]
+
+## QUERY_TYPE
+[Specify: SQL, MONGODB, PYTHON, ANALYSIS, or MIXED]
+
+## CODE
+```sql
+[Your executable code here]
+```
+
+## EXPLANATION
+[Optional: Additional technical details or tips]
+
+## SUGGESTIONS
+[Optional: Related queries or next steps the user might want]</textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Response Format</label>
+                        <select class="form-select">
+                            <option value="structured">Structured (with sections)</option>
+                            <option value="json">JSON Format</option>
+                            <option value="markdown">Plain Markdown</option>
+                            <option value="conversational">Conversational</option>
+                        </select>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="include-explanations" class="form-checkbox" checked>
+                        <label for="include-explanations" class="checkbox-label">Always include explanations</label>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="include-suggestions" class="form-checkbox" checked>
+                        <label for="include-suggestions" class="checkbox-label">Suggest related queries</label>
+                    </div>
+                </section>
+
+                <!-- Streaming & Performance -->
+                <section class="settings-section">
+                    <h2>
+                        <div class="section-icon">⚡</div>
+                        Streaming & Performance
+                    </h2>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="enable-streaming" class="form-checkbox" checked>
+                        <label for="enable-streaming" class="checkbox-label">Enable streaming responses</label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Streaming Delay (ms)</label>
+                        <div class="slider-container">
+                            <input type="range" class="slider" id="stream-delay" min="0" max="100" step="5" value="10">
+                            <div class="slider-value" id="stream-delay-value">10ms</div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Request Timeout (seconds)</label>
+                        <input type="number" class="form-input" value="30" min="5" max="300">
+                    </div>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="cache-responses" class="form-checkbox" checked>
+                        <label for="cache-responses" class="checkbox-label">Cache similar responses</label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Max Concurrent Requests</label>
+                        <select class="form-select">
+                            <option value="1">1</option>
+                            <option value="2" selected>2</option>
+                            <option value="3">3</option>
+                            <option value="5">5</option>
+                        </select>
+                    </div>
+                </section>
+
+                <!-- Content Types -->
+                <section class="settings-section">
+                    <h2>
+                        <div class="section-icon">📊</div>
+                        Content Types
+                    </h2>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="enable-sql" class="form-checkbox" checked>
+                        <label for="enable-sql" class="checkbox-label">SQL Queries</label>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="enable-mongodb" class="form-checkbox" checked>
+                        <label for="enable-mongodb" class="checkbox-label">MongoDB Queries</label>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="enable-python" class="form-checkbox" checked>
+                        <label for="enable-python" class="checkbox-label">Python Analysis</label>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="enable-visualization" class="form-checkbox" checked>
+                        <label for="enable-visualization" class="checkbox-label">Data Visualization</label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Default Analysis Libraries</label>
+                        <select class="form-select" multiple size="4">
+                            <option value="pandas" selected>Pandas</option>
+                            <option value="matplotlib" selected>Matplotlib</option>
+                            <option value="seaborn">Seaborn</option>
+                            <option value="plotly">Plotly</option>
+                            <option value="numpy" selected>NumPy</option>
+                            <option value="scipy">SciPy</option>
+                        </select>
+                    </div>
+                </section>
+
+                <!-- Safety & Validation -->
+                <section class="settings-section">
+                    <h2>
+                        <div class="section-icon">🛡️</div>
+                        Safety & Validation
+                    </h2>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="validate-sql" class="form-checkbox" checked>
+                        <label for="validate-sql" class="checkbox-label">Validate SQL syntax</label>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="prevent-drops" class="form-checkbox" checked>
+                        <label for="prevent-drops" class="checkbox-label">Prevent DROP/DELETE operations</label>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="limit-results" class="form-checkbox" checked>
+                        <label for="limit-results" class="checkbox-label">Limit query results</label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Max Result Rows</label>
+                        <input type="number" class="form-input" value="1000" min="10" max="10000">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Blocked Keywords</label>
+                        <textarea class="form-textarea" rows="3" placeholder="Enter keywords to block, one per line">DROP TABLE
+DELETE FROM
+TRUNCATE
+ALTER TABLE</textarea>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="settings-container" style="margin-top: 24px;">
+                <div style="grid-column: 1 / -1;">
+                    <div class="button-group">
+                        <button type="button" class="btn-secondary" onclick="resetDefaults()">Reset to Defaults</button>
+                        <button type="button" class="btn-secondary" onclick="exportSettings()">Export Settings</button>
+                        <button type="button" class="btn-secondary" onclick="importSettings()">Import Settings</button>
+                        <button type="button" class="btn-primary" onclick="saveSettings()">Save Settings</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js"></script>
+    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+
+    <!-- JavaScript -->
+    <script>
+
+        // Initialize sliders
+        document.addEventListener('DOMContentLoaded', function() {
+            const sliders = document.querySelectorAll('.slider');
+            sliders.forEach(slider => {
+                const valueDisplay = document.getElementById(slider.id + '-value');
+                if (valueDisplay) {
+                    slider.addEventListener('input', function() {
+                        let value = this.value;
+                        if (slider.id === 'stream-delay') {
+                            value += 'ms';
+                        }
+                        valueDisplay.textContent = value;
+                    });
+                }
+            });
+
+            // Model card selection
+            const modelCards = document.querySelectorAll('.model-card');
+            modelCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    modelCards.forEach(c => c.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+
+            // Preset buttons
+            const presetButtons = document.querySelectorAll('.preset-btn');
+            presetButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    presetButtons.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    const preset = this.dataset.preset;
+                    applyPreset(preset);
+                });
+            });
+        });
+
+        function applyPreset(preset) {
+            const presets = {
+                balanced: { temperature: 0.3, topP: 0.9, topK: 40 },
+                creative: { temperature: 0.8, topP: 0.95, topK: 50 },
+                precise: { temperature: 0.1, topP: 0.5, topK: 20 },
+                fast: { temperature: 0.2, topP: 0.8, topK: 30 }
+            };
+            
+            const config = presets[preset];
+            if (config) {
+                document.getElementById('temperature').value = config.temperature;
+                document.getElementById('top-p').value = config.topP;
+                document.getElementById('top-k').value = config.topK;
+                
+                // Update displays
+                document.getElementById('temperature-value').textContent = config.temperature;
+                document.getElementById('top-p-value').textContent = config.topP;
+                document.getElementById('top-k-value').textContent = config.topK;
+            }
+        }
+
+        function toggleAdvanced() {
+            const content = document.getElementById('advanced-content');
+            const arrow = document.getElementById('advanced-arrow');
+            
+            if (content.classList.contains('show')) {
+                content.classList.remove('show');
+                arrow.textContent = '▼';
+            } else {
+                content.classList.add('show');
+                arrow.textContent = '▲';
+            }
+        }
+
+        function saveSettings() {
+            // Collect all form values
+            const settings = {
+                apiEndpoint: document.querySelector('input[type="url"]').value,
+                selectedModel: document.querySelector('.model-card.active').dataset.model,
+                temperature: parseFloat(document.getElementById('temperature').value),
+                maxTokens: parseInt(document.getElementById('max-tokens').value),
+                topP: parseFloat(document.getElementById('top-p').value),
+                topK: parseInt(document.getElementById('top-k').value),
+                systemPrompt: document.querySelector('.form-textarea').value,
+                streaming: document.getElementById('enable-streaming').checked,
+                // ... collect all other settings
+            };
+
+            // Save to backend
+            fetch('/api/settings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(settings)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Settings saved successfully!', 'success');
+                } else {
+                    showNotification('Failed to save settings: ' + data.error, 'error');
+                }
+            })
+            .catch(error => {
+                showNotification('Error saving settings: ' + error.message, 'error');
+            });
+        }
+
+        function resetDefaults() {
+            if (confirm('Are you sure you want to reset all settings to defaults?')) {
+                // Reset all form values to defaults
+                document.getElementById('temperature').value = 0.3;
+                document.getElementById('max-tokens').value = 2000;
+                document.getElementById('top-p').value = 0.9;
+                // ... reset all other values
+                
+                showNotification('Settings reset to defaults', 'info');
+            }
+        }
+
+        function exportSettings() {
+            // Export settings as JSON file
+            const settings = collectAllSettings();
+            const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'llm-settings.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function importSettings() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const settings = JSON.parse(e.target.result);
+                            applyImportedSettings(settings);
+                            showNotification('Settings imported successfully!', 'success');
+                        } catch (error) {
+                            showNotification('Error importing settings: Invalid JSON', 'error');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            };
+            input.click();
+        }
+
+        function collectAllSettings() {
+            // Collect all current settings
+            return {
+                apiEndpoint: document.querySelector('input[type="url"]').value,
+                selectedModel: document.querySelector('.model-card.active')?.dataset.model,
+                temperature: parseFloat(document.getElementById('temperature').value),
+                // ... collect all other settings
+            };
+        }
+
+        function applyImportedSettings(settings) {
+            // Apply imported settings to form
+            if (settings.temperature) {
+                document.getElementById('temperature').value = settings.temperature;
+            }
+            // ... apply all other settings
+        }
+
+        function showNotification(message, type) {
+            // Simple notification system
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 12px 20px;
+                background: ${type === 'success' ? '#22c55e' : type === 'error' ? '#ef4444' : '#06d6a0'};
+                color: white;
+                border-radius: 8px;
+                z-index: 10000;
+                animation: slideIn 0.3s ease;
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease forwards';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+    </script>
+
+    <style>
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+    </style>
+</body>
+</html>

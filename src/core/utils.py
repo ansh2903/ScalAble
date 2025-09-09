@@ -1,7 +1,10 @@
+from src.core.logger import logging
+
 from flask import session, Response
 from openpyxl import Workbook
 from io import StringIO, BytesIO
-
+from pathlib import Path
+import os
 import csv
 import uuid
 import json
@@ -163,3 +166,18 @@ def downloadable_json(raw_data):
         mimetype="application/json",
         headers={"Content-Disposition": "attachment;filename=data.json"}
     )
+
+def SETTINGS_FILE():
+    curdir = str(Path.cwd().parent.resolve()) + r'\src\config\settings.json'
+    return curdir
+
+def load_settings():
+    if os.path.exists(SETTINGS_FILE()):
+        with open(SETTINGS_FILE(), "r") as settings:
+            return json.load(settings)
+
+    return {}
+
+def save_settings(data):
+    with open(SETTINGS_FILE(), "w") as new_settings:
+        json.dump(data, new_settings, indent=2)

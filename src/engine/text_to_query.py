@@ -4,13 +4,14 @@ and converting it into a database query based on the user's choice of database,
 its metadata (schema, tables, fields), and the database type.
 """
 
-import requests
-import sys
-import json
+import requests, sys, json, os
+from dotenv import load_dotenv
 
 from src.core.exception import CustomException
 from src.core.logger import logging
 
+load_dotenv()
+OLLAMA_ENDPOINT = os.getenv('OLLAMA_ENDPOINT')
 
 def generate_query_from_nl(nl_query: str, db_type, db_metadata: dict = {}, model="qwen2.5-coder:7b"):
 
@@ -67,10 +68,10 @@ def generate_query_from_nl(nl_query: str, db_type, db_metadata: dict = {}, model
         payload = {
             'model': model,
             'prompt': prompt_text,
-            'stream': False 
+            'stream': False
         }
 
-        output = requests.post("http://localhost:11434/api/generate", json=payload)
+        output = requests.post(OLLAMA_ENDPOINT, json=payload)
         response = output.json()["response"].strip()
 
         if '```json' in response:
@@ -85,3 +86,20 @@ def generate_query_from_nl(nl_query: str, db_type, db_metadata: dict = {}, model
 
     except Exception as e:
         raise CustomException(e, sys)
+
+def ollama_model_ls():
+    OLLAMA_BASE = os.getenv('OLLAMA_BASE')
+    OLLAMA_TAGS = (f'{OLLAMA_BASE}/api/tags')
+    tag_data = requests.get(OLLAMA_TAGS).json()['models']
+
+    models = []
+    for row in tag_data:
+        model = {
+            'model':row.get('model'),
+            'model_size':row.get('size'),
+            'paramater_size': row['details'].get('parameter_size')
+        }
+        models.append(model)
+
+    return models    
+
