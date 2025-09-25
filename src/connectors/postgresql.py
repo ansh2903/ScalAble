@@ -1,6 +1,11 @@
 import psycopg2
 from psycopg2 import OperationalError
+import pandas as pd
+import openpyxl
+import csv
 import sys
+import io
+import os
 
 from src.core.exception import CustomException
 from src.core.logger import logging
@@ -154,3 +159,90 @@ def metadata(config):
         return False, CustomException(sys, str(e))
     except Exception as e:
         return False, CustomException(sys, str(e))
+
+def table_creation(query):
+    pass
+
+import io
+import pandas as pd
+import psycopg2
+
+def file_to_db(credentials, file_path, table_name, ext):
+    logging.info(f"file_to_db called with: {credentials}, {file_path}, {table_name}, {ext}")
+    conn = None
+    cur = None
+    try:
+        conn = psycopg2.connect(
+            host=credentials['host'],
+            port=credentials.get('port', 5432),
+            user=credentials['username'],
+            password=credentials['password'],
+            dbname=credentials['database']
+        )
+        cur = conn.cursor()
+
+        if ext in (".csv", ".txt"):
+            logging.info(f"Reading CSV file: {file_path}")
+            with open(file_path, "r", encoding="utf-8") as file:
+                copy_sql = f"COPY {table_name} FROM STDIN WITH CSV HEADER"
+                cur.copy_expert(copy_sql, file)
+                logging.info(f"Data copied to table {table_name} from {file_path}")
+
+        elif ext in (".xls", ".xlsx"):
+            logging.info(f"Reading Excel file: {file_path}")
+            wb = openpyxl.load_workbook(file_path, data_only=True)
+            sheet = wb.active
+
+            csv_buffer = io.StringIO()
+            writer = csv.writer(csv_buffer)
+
+            for row in sheet.iter_rows(values_only=True):
+                writer.writerow(row)
+
+            csv_buffer.seek(0)
+            logging.info(f"Excel data converted to CSV format for table {table_name}")
+
+            copy_sql = f"COPY {table_name} FROM STDIN WITH CSV HEADER"
+            cur.copy_expert(copy_sql, csv_buffer)
+            logging.info(f"Data copied to table {table_name} from {file_path}")
+
+            csv_buffer.close()
+            wb.close()
+            sheet = None
+
+        elif ext == ".json":
+            try:
+                df = pd.read_json(file_path, lines=True)
+                logging.info("Read JSON file as JSON Lines format")
+            except ValueError:
+                df = pd.read_json(file_path)
+                df.columns = [str(c).strip().replace(" ", "_") for c in df.columns]
+
+                csv_buffer = io.StringIO()
+                df.to_csv(csv_buffer, index=False, header=True, encoding="utf-8")
+                csv_buffer.seek(0)
+                logging.info(f"Dataframe converted to CSV format for table {table_name}")
+
+                copy_sql = f"COPY {table_name} FROM STDIN WITH CSV HEADER"
+                cur.copy_expert(copy_sql, csv_buffer)
+                logging.info(f"Data copied to table {table_name} from {file_path}")
+                
+                csv_buffer.close()
+                df = None
+
+        else:
+            return {"ok": False, "error": f"Unsupported extension: {ext}"}
+
+        conn.commit()
+        return {"ok": True}
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        return {"ok": False, "error": str(e)}
+
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()

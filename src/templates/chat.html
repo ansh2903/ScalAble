@@ -147,6 +147,7 @@
                     <div id="html_data" class="data-container">
 
                     </div>
+
                     <div class="table-footer">
                         <button class="page-btn">&larr;</button>
                         <button class="page-btn active">1</button>
@@ -182,6 +183,41 @@
             </div>
 
             <div class="pane right-pane">
+<div id="uploadModalOverlay" class="upload-modal-overlay hidden" aria-hidden="true">
+  <div id="uploadModal" class="upload-modal-content" role="dialog" aria-modal="true" aria-labelledby="uploadTitle">
+    <button class="upload-close-btn" aria-label="Close">&times;</button>
+    <h3 id="uploadTitle">Upload File</h3>
+
+    <div class="form-group">
+      <label for="upload_db_select">Choose target database</label>
+      <select id="upload_db_select" class="db-select">
+        <option value="" disabled selected>Select database</option>
+        {% for conn in connections %}
+        <option value="{{ conn.id }}" data-db-type="{{ conn.db_type }}">{{ conn.db_type.capitalize() }} - {{ conn.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="upload-columns">
+      <div class="upload-col">
+        <span class="upload-col-title">Provide a file path</span>
+        <input type="text" id="filePathInput" placeholder="C:\path\to\file.csv or /home/user/file.xlsx">
+
+        <span class="upload-col-title">Table name</span>
+        <input type="text" id="tableNameInput" placeholder="Enter target table name">
+
+        <button id="submitPathBtn" class="btn-primary">Submit</button>
+
+        <!-- 🔄 Loader -->
+        <div id="uploadLoader" class="hidden loader">
+          <div class="spinner"></div>
+          <span>Processing file, please wait...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
                 <!-- Main Content Layout -->
                 <div class="main-content chat-container">
                     <!-- Messages Container -->
@@ -201,15 +237,16 @@
                     <div class="chat-input-wrapper">
                         <form id="chatForm" method="POST" autocomplete="off" class="chat-input-form">
                             <div class="chat-input-left">
-                                <!-- small chips / tools like in your mockup -->
-                                <button type="button" class="chip" title="Tools">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                                    <path d="M6 12h12M12 6v12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                    </svg>
-                                    <span>Tools</span>
-                                </button>
+                            <button type="button" class="dropdown-btn" id="upload_file">
+                                <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/file upload icon.png') }}" alt="upload">
+                                <span>File Upload</span>
+                            </button>
+                            <div id="fileInfo" class="file-info"></div>
 
                             </div>
+
+                            <!-- Hidden file input -->
+                            <input type="file" id="hiddenFileInput" style="display:none;" accept=".csv,.json,.xlsx">
 
                             <div class="chat-input-center">
                                 <textarea id="messageInput" name="message" class="text-input" rows="1"
@@ -247,35 +284,221 @@
     <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
 
     <script>
+document.addEventListener("DOMContentLoaded", () => {
+  const uploadBtn = document.getElementById("upload_file");
+  const overlay = document.getElementById("uploadModalOverlay");
+  const modal = document.getElementById("uploadModal");
+  const closeBtn = modal.querySelector(".upload-close-btn");
 
-        document.querySelectorAll(".custom-dropdown").forEach(dropdown => {
-  const btn = dropdown.querySelector(".dropdown-btn");
-  const menu = dropdown.querySelector(".dropdown-content");
+  const submitPathBtn = document.getElementById("submitPathBtn");
+  const filePathInput = document.getElementById("filePathInput");
+  const tableNameInput = document.getElementById("tableNameInput");
+  const modalDbSelect = document.getElementById("upload_db_select");
 
-  btn.addEventListener("click", () => {
-    menu.style.display = menu.style.display === "block" ? "none" : "block";
-  });
+  function openModal() {
+    overlay.classList.remove("hidden");
+    overlay.setAttribute("aria-hidden", "false");
+    setTimeout(() => modalDbSelect.focus(), 50);
+  }
+  function closeModal() {
+    overlay.classList.add("hidden");
+    overlay.setAttribute("aria-hidden", "true");
+  }
 
-  dropdown.querySelectorAll(".dropdown-item").forEach(item => {
-    item.addEventListener("click", () => {
-      const value = item.getAttribute("data-value");
-      console.log("Selected:", value);
-      menu.style.display = "none";
-      
-      // Example: trigger download route
-      window.location.href = `/download/${value}`;
-    });
-  });
+  // open
+  if (uploadBtn) uploadBtn.addEventListener("click", (ev) => { ev.preventDefault(); openModal(); });
 
-  // Close dropdown if clicked outside
-  document.addEventListener("click", (e) => {
-    if (!dropdown.contains(e.target)) {
-      menu.style.display = "none";
+  // close
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) closeModal(); });
+  closeBtn.addEventListener("click", () => closeModal());
+
+  // Submit path + selected db id + table name
+submitPathBtn.addEventListener("click", () => {
+  const filePath = filePathInput.value.trim();
+  const selectedDbId = modalDbSelect.value;
+  const tableName = tableNameInput.value.trim();
+  const loader = document.getElementById("uploadLoader");
+
+  if (!filePath) { alert("Please enter a file path."); return; }
+  if (!selectedDbId) { alert("Please choose a target database."); return; }
+  if (!tableName) { alert("Please enter a target table name."); return; }
+
+  const payload = {
+    file_path: filePath,
+    selected_db_id: String(selectedDbId),
+    table_name: tableName
+  };
+
+  // show loader
+  loader.classList.remove("hidden");
+  submitPathBtn.disabled = true;
+
+  fetch("/uploadfile", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+  .then(async res => {
+    let data;
+    try { data = await res.json(); } catch { data = await res.text(); }
+
+    if (!res.ok) {
+      console.error("Server error:", data);
+      alert("Server error: " + (data.error || JSON.stringify(data)));
+      return;
     }
+
+    filePathInput.value = "";
+    tableNameInput.value = "";
+    closeModal();
+
+    if (data.inferred_sql) {
+      const chatMessages = document.querySelector('.chat-messages');
+      const uid = 'inferred-' + Date.now();
+      const botHtml = `
+        <div class="message bot" id="${uid}">
+          <div class="msg-comment">I inferred a table structure for <strong>${data.table_name}</strong>:</div>
+          <pre class="msg-text">${escapeHtml(data.inferred_sql)}</pre>
+          ${data.llm_comment ? `<div class="msg-comment">${escapeHtml(data.llm_comment)}</div>` : ''}
+        </div>
+      `;
+      if (chatMessages) {
+        chatMessages.insertAdjacentHTML('beforeend', botHtml);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+    }
+
+    if (data.detail) {
+      console.log("Import result:", data.detail);
+    }
+  })
+  .catch(err => {
+    console.error("Network error:", err);
+    alert("Network error submitting path.");
+  })
+  .finally(() => {
+    // hide loader
+    loader.classList.add("hidden");
+    submitPathBtn.disabled = false;
   });
 });
+});
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
 
 
+        document.querySelectorAll(".custom-dropdown").forEach(dropdown => {
+        const btn = dropdown.querySelector(".dropdown-btn");
+        const menu = dropdown.querySelector(".dropdown-content");
+        let isOpen = false;
+        let placeholder = null;
+
+        menu.style.position = menu.style.position || "absolute";
+        menu.style.display = "none";
+        menu.style.zIndex = 9999;
+        menu.style.maxHeight = menu.style.maxHeight || "60vh";
+        menu.style.overflowY = menu.style.overflowY || "auto";
+
+        function closeMenu() {
+            if (!isOpen) return;
+            if (placeholder) {
+            placeholder.replaceWith(menu);
+            placeholder = null;
+            }
+            menu.style.display = "none";
+            menu.style.visibility = "";
+            menu.classList.remove("drop-up", "drop-down");
+            isOpen = false;
+            document.removeEventListener("click", onDocClick);
+            document.removeEventListener("keydown", onEsc);
+            window.removeEventListener("resize", reposition);
+            window.removeEventListener("scroll", reposition, true);
+        }
+
+        function onDocClick(e) {
+            if (!menu.contains(e.target) && !btn.contains(e.target)) closeMenu();
+        }
+        function onEsc(e) { if (e.key === "Escape") closeMenu(); }
+        function reposition() { if (isOpen) positionMenu(); }
+
+        function positionMenu() {
+            menu.style.display = "block";
+            menu.style.visibility = "hidden";
+            if (menu.parentElement !== document.body) {
+            placeholder = document.createElement("span");
+            placeholder.className = "menu-placeholder";
+            menu.replaceWith(placeholder);
+            document.body.appendChild(menu);
+            }
+
+            const btnRect = btn.getBoundingClientRect();
+            const menuHeight = menu.offsetHeight || 200;
+            const menuWidth = Math.max(menu.offsetWidth || 180, btnRect.width);
+            const padding = 8;
+
+            const spaceBelow = window.innerHeight - btnRect.bottom;
+            const spaceAbove = btnRect.top;
+
+            let top;
+            if (spaceBelow >= menuHeight + padding || spaceBelow >= spaceAbove) {
+            menu.classList.remove("drop-up");
+            menu.classList.add("drop-down");
+            top = btnRect.bottom + padding + window.scrollY;
+            } else {
+            menu.classList.remove("drop-down");
+            menu.classList.add("drop-up");
+            top = btnRect.top - menuHeight - padding + window.scrollY;
+            if (top < window.scrollY + 8) top = window.scrollY + 8;
+            }
+
+            let left = btnRect.left + window.scrollX;
+            const rightClamp = window.scrollX + window.innerWidth - menuWidth - 8;
+            if (left > rightClamp) left = rightClamp;
+            if (left < window.scrollX + 8) left = window.scrollX + 8;
+
+            menu.style.top = `${Math.round(top)}px`;
+            menu.style.left = `${Math.round(left)}px`;
+            menu.style.minWidth = `${Math.round(menuWidth)}px`;
+            menu.style.visibility = "visible";
+            menu.style.display = "block";
+        }
+
+        function openMenu() {
+            if (isOpen) return;
+            positionMenu();
+            isOpen = true;
+            document.addEventListener("click", onDocClick);
+            document.addEventListener("keydown", onEsc);
+            window.addEventListener("resize", reposition);
+            window.addEventListener("scroll", reposition, true);
+        }
+
+        btn.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            if (isOpen) closeMenu();
+            else openMenu();
+        });
+
+        // item clicks → behave based on dropdown id
+        menu.querySelectorAll(".dropdown-item").forEach(item => {
+            item.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            const value = item.getAttribute("data-value");
+            closeMenu();
+
+            const dropdownId = dropdown.id;
+            if (dropdownId === "downloadDropdown") {
+                window.location.href = `/download/${value}`;
+            }
+            else {
+                console.log(`Clicked ${value} in ${dropdownId}`);
+            }
+            });
+        });
+        });
 
         document.addEventListener('DOMContentLoaded', () => {
         const ta = document.getElementById('messageInput');
@@ -566,6 +789,10 @@
                 formData.append('db_type', dbTypeInput.value);
                 formData.append('credentials', credentialsInput.value);
                 formData.append('unique_id', uid);
+                const selectedDbInput = form.querySelector('input[name="selected_db_id"]');
+                if (selectedDbInput) {
+                    formData.append('selected_db_id', selectedDbInput.value);
+                }
 
                 setButtonLoading(runBtnEl, true);
 

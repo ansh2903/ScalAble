@@ -470,6 +470,7 @@
 
         /* wrapper that sits at bottom of right-pane (right-pane must be position: relative) */
         .chat-input-wrapper {
+            overflow: visible;
             position: absolute;
             bottom: 20px;                /* small gap above bottom */
             left: 50%;
@@ -500,6 +501,7 @@
 /* left chips */
 .chat-input-left {
   display: flex;
+  overflow: visible;
   gap: 10px;
   align-items: flex-end;
   margin-right: 4px;
@@ -1390,7 +1392,7 @@
   border-radius: 14px;
   font-size: 15px;
   cursor: pointer;
-  display: inline-flex;
+  display: flex;
   gap: 8px;
   margin-top: 6px;
   margin-right: 6px;
@@ -1429,6 +1431,7 @@
 .dropdown-content {
   display: none;
   position: absolute;
+  top: 100%;
     background: rgba(255, 255, 255, 0.5); /* white with 50% transparency */
   border: 1px solid rgba(255,255,255,0.6);
     backdrop-filter: blur(8px) saturate(150%);
@@ -1438,7 +1441,8 @@
   box-shadow: 0 6px 12px rgba(0,0,0,0.15);
   border-radius: 12px;
   margin-top: 4px;
-  z-index: 999;
+  margin-bottom: 4px;
+  z-index: 1000;
 }
 
 .dropdown-content .dropdown-item {
@@ -1463,7 +1467,6 @@ outline: none;
   width: 20px;
   height: 20px;
 }
-
 
 /* table base */
 .data-controls table {
@@ -1571,3 +1574,391 @@ outline: none;
   outline: 3px solid rgba(160,120,220,0.18);
   outline-offset: 2px;
 }
+
+
+.file-info {
+    margin-top: 10px;
+    font-family: Arial, sans-serif;
+}
+
+.file-preview {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: #f9fafb;
+    border: 1px solid #ddd;
+    font-size: 14px;
+    color: #333;
+}
+
+.file-preview .remove-btn {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 14px;
+    color: #888;
+    transition: color 0.2s;
+}
+
+.file-preview .remove-btn:hover {
+    color: red;
+}
+
+.upload-success {
+    margin-left: 8px;
+    color: green;
+    font-size: 13px;
+}
+
+.upload-error {
+    margin-left: 8px;
+    color: red;
+    font-size: 13px;
+}
+
+/* Overlay */
+.upload-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10,10,12,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20000; /* very high so it won't be clipped */
+  padding: 20px;
+}
+
+/* hide helper */
+.upload-modal-overlay.hidden { display: none; }
+
+
+.close-btn {
+    float: right;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+
+/* Modal */
+.upload-modal {
+    display: none; /* hidden by default */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5); /* dark overlay */
+    z-index: 9999; /* above everything */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Close button */
+.upload-close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: transparent;
+  border: none;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  color: #374151;
+}
+
+/* Layout of the two options */
+.upload-columns {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.upload-col {
+  flex: 1 1 300px;
+  min-width: 260px;
+}
+.upload-col-title {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: #111827;
+}
+
+/* local file info */
+.file-info {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  flex-direction: column;
+  color: #374151;
+  font-size: 14px;
+}
+
+/* small preview row */
+.file-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.7);
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,0.06);
+}
+
+/* Buttons (re-usable) */
+.btn-primary {
+  background: linear-gradient(-64deg, #06d6a0, #1fb8cd);
+  border: none;
+  color: white;
+  padding: 8px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.btn-secondary {
+  background: rgba(255,255,255,0.8);
+  border: 1px solid rgba(0,0,0,0.06);
+  color: #374151;
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+/* responsive */
+@media (max-width:720px) {
+  .upload-columns { flex-direction: column; }
+}
+
+.upload-modal-content {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    width: 400px;
+    max-width: 90%;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    text-align: center;
+}
+
+
+.connections-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.connection-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.connection-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+}
+
+.connection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.conn-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.badge {
+  background: #007bff;
+  color: white;
+  font-size: 0.8rem;
+  padding: 4px 8px;
+  border-radius: 8px;
+  margin-left: 8px;
+}
+
+.created-date {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.connection-footer {
+  display: flex;
+  justify-content: flex-start;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.empty-msg {
+  font-size: 0.95rem;
+  margin-top: 16px;
+}
+
+.add-connection {
+  margin-top: 32px;
+  text-align: center;
+}
+
+/* === Card Container === */
+.card-container {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+  padding: 24px;
+  margin: 24px auto;
+  max-width: none;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.selected-db {
+  background: #f1f5f9;
+  padding: 6px 12px;
+  border-radius: 8px;
+}
+
+/* === Stepper === */
+.step-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 20px 0;
+  gap: 6px;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #d1d5db;
+  transition: background 0.2s;
+}
+
+.dot.active {
+  background: #2563eb;
+}
+
+.line {
+  flex: 1;
+  height: 2px;
+  background: #d1d5db;
+}
+
+/* === DB Type Grid === */
+.db-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.db-type-card {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  padding: 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.db-type-card:hover {
+  background: #f3f4f6;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.db-type-card.selected {
+  border: 2px solid #2563eb;
+  background: #eff6ff;
+}
+
+.db-type-card .label {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.db-type-card .desc {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+/* === DB Details Form === */
+.db-details {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* === Flash Messages === */
+.flash-container {
+  margin-bottom: 20px;
+}
+
+.flash-message {
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin: 8px 0;
+  font-size: 0.9rem;
+}
+
+.flash-success {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.flash-error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* === Footer Buttons === */
+.form-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+
+.loader {
+  margin-top: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #444;
+  font-size: 0.9rem;
+}
+
+.loader .spinner {
+  width: 18px;
+  height: 18px;
+  border: 3px solid #ccc;
+  border-top: 3px solid #0078d4; /* Accent color */
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.hidden { display: none; }

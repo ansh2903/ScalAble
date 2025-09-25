@@ -6,14 +6,15 @@ its metadata (schema, tables, fields), and the database type.
 
 import requests, sys, json, os
 from dotenv import load_dotenv
+from flask import session
 
 from src.core.exception import CustomException
 from src.core.logger import logging
-
+from src.core.utils import load_settings
 load_dotenv()
 OLLAMA_ENDPOINT = os.getenv('OLLAMA_ENDPOINT')
 
-def generate_query_from_nl(nl_query: str, db_type, db_metadata: dict = {}, model="qwen2.5-coder:7b"):
+def generate_query_from_nl(nl_query: str, db_type, db_metadata: dict = {}):
 
     """
     Converts natural language query into database-specific query using a local LLM.
@@ -65,11 +66,13 @@ def generate_query_from_nl(nl_query: str, db_type, db_metadata: dict = {}, model
         Now return ONLY the JSON object as per the rules above:
         """
 
-        payload = {
-            'model': model,
-            'prompt': prompt_text,
-            'stream': False
-        }
+        payload = load_settings()
+
+        file_prompt = session.get('file_prompt')
+        if file_prompt:
+            payload['prompt'] = file_prompt
+        else:
+            payload['prompt'] = prompt_text
 
         output = requests.post(OLLAMA_ENDPOINT, json=payload)
         response = output.json()["response"].strip()
@@ -101,5 +104,5 @@ def ollama_model_ls():
         }
         models.append(model)
 
-    return models    
+    return models
 

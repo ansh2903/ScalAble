@@ -168,14 +168,13 @@ def downloadable_json(raw_data):
     )
 
 def SETTINGS_FILE():
-    curdir = str(Path.cwd().parent.resolve()) + r'\src\config\settings.json'
+    curdir = str(Path.cwd().resolve()) + r'\src\config\settings.json'
     return curdir
 
 def load_settings():
     if os.path.exists(SETTINGS_FILE()):
         with open(SETTINGS_FILE(), "r") as settings:
             return json.load(settings)
-
     return {}
 
 def save_settings(data):
