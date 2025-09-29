@@ -1,6 +1,7 @@
 {
   "model": "qwen2.5-coder:1.5b",
-  "keep_alive": "1m",
+  "keep_alive": "5m",
+  "think": false,
   "options": {
     "num_keep": 5,
     "num_predict": 1000,

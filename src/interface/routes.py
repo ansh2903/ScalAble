@@ -393,28 +393,54 @@ def uploadfile():
             logging.info(f"Table {table_name} not found in metadata, inferring structure using LLM.")
             ext = os.path.splitext(file_path)[-1].lower()
             if ext == ".csv" or ext == ".txt":
-                sample_df = pd.read_csv(file_path, nrows=10, encoding="latin1")
+                sample_df = pd.read_csv(file_path, nrows=4, encoding="latin1")
             elif ext in [".xls", ".xlsx"]:
-                sample_df = pd.read_excel(file_path, nrows=10)
+                sample_df = pd.read_excel(file_path, nrows=4)
             elif ext == ".json":
                 try:
-                    sample_df = pd.read_json(file_path, lines=True, nrows=10)
+                    sample_df = pd.read_json(file_path, lines=True, nrows=4)
                 except ValueError:
-                    sample_df = pd.read_json(file_path, nrows=10)
+                    sample_df = pd.read_json(file_path, nrows=4)
             else:
                 return jsonify({"error": f"Unsupported file extension: {ext}"}), 400
-
+            
+            sample_str = sample_df.to_json(orient="records")
+            
             file_prompt = f"""
                 The user uploaded a file and requested a new table named `{table_name}`. Database type: {db_type}.
 
-                Here are up to the first 10 rows of the file of type `{ext}`:
-                {sample_df}
+                Here are up to the first 4 rows and all the columns of the file of type `{ext}`:
+                {sample_str}
 
                 Task:
                 1) Return ONLY a valid and executable Table structure defination statement for `{table_name}` suitable for {db_type}, to create table.
-                2) Return an OPTIONAL short markdown "comment" explaining assumptions.
+                2) Be sure to be concise and syntactically correct and make the complete query for the task.
+                3) Extreme caution and accuracy is required to ensure the query runs without errors.
+                4) Use appropriate data types for each column based on the sample data.
 
-                Return as JSON with two fields: "query" and "comment".
+                Important: Do not use reserved SQL keywords as column names. If necessary, rename them with a suffix like _col.
+
+                ### Strict Instructions:
+                - Always return output in **strict JSON**.
+                - JSON must contain:
+                - "query": (string) The final executable {db_type} query.  
+                    - MUST be a valid query string.  
+                    - Do NOT wrap in backticks or markdown.  
+                    - Do NOT include explanations, comments, or text.
+                    - SQL comments (`-- ...` or `/* ... */`) inside the query.
+                    - NUST ADD line breaks (`\n`) in the query wherever needed for readability.
+        
+                - "comment": (string) **Markdown-formatted note**  
+                    - Leave it empty (""), no comment is needed.
+
+                - Do NOT enclose the output in ('''json ''')
+                - "query" is stricly for the executable query string. No explanations or comments should be included here.
+                - "comment" does not need anything in it.
+                - Do NOT include any other fields or metadata.
+
+                ---
+
+                Now return ONLY the JSON object as per the rules above:
                 """
             session['file_prompt'] = file_prompt
 
@@ -454,7 +480,7 @@ def uploadfile():
             if str(c['id']) == str(selected_db_id):
                 c['metadata'] = metadata
         session['connections'] = connections
-        
+
         logging.info(f"Updated session metadata for connection ID {selected_db_id} after file upload.")
 
     except Exception as e:

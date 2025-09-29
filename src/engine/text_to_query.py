@@ -77,6 +77,8 @@ def generate_query_from_nl(nl_query: str, db_type, db_metadata: dict = {}):
         output = requests.post(OLLAMA_ENDPOINT, json=payload)
         response = output.json()["response"].strip()
 
+        logging.info(f"Ollama response: {response}")
+
         if '```json' in response:
             response = response.strip('``` json')
 

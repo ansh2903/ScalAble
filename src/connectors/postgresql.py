@@ -5,7 +5,6 @@ import openpyxl
 import csv
 import sys
 import io
-import os
 
 from src.core.exception import CustomException
 from src.core.logger import logging
@@ -160,13 +159,6 @@ def metadata(config):
     except Exception as e:
         return False, CustomException(sys, str(e))
 
-def table_creation(query):
-    pass
-
-import io
-import pandas as pd
-import psycopg2
-
 def file_to_db(credentials, file_path, table_name, ext):
     logging.info(f"file_to_db called with: {credentials}, {file_path}, {table_name}, {ext}")
     conn = None
@@ -226,7 +218,7 @@ def file_to_db(credentials, file_path, table_name, ext):
                 copy_sql = f"COPY {table_name} FROM STDIN WITH CSV HEADER"
                 cur.copy_expert(copy_sql, csv_buffer)
                 logging.info(f"Data copied to table {table_name} from {file_path}")
-                
+
                 csv_buffer.close()
                 df = None
 
