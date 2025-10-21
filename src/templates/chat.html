@@ -155,6 +155,51 @@
                 <div id="analysis_results" class="data-controls">
                     <h3>Analysis Results</h3>
                     <p>This section will display the results of the data analysis.</p>
+                                    <div class="col-md-4">
+                    <h5>Chart Type</h5>
+                    <div class="btn-group-vertical d-block">
+                        <button class="btn btn-custom chart-type-btn active" data-type="bar">
+                            <i class="fas fa-chart-bar"></i> Bar Chart
+                        </button>
+                        <button class="btn btn-custom chart-type-btn" data-type="line">
+                            <i class="fas fa-chart-line"></i> Line Chart
+                        </button>
+                        <button class="btn btn-custom chart-type-btn" data-type="pie">
+                            <i class="fas fa-chart-pie"></i> Pie Chart
+                        </button>
+                        <button class="btn btn-custom chart-type-btn" data-type="scatter">
+                            <i class="fas fa-braille"></i> Scatter Plot
+                        </button>
+                        <button class="btn btn-custom chart-type-btn" data-type="doughnut">
+                            <i class="fas fa-dot-circle"></i> Doughnut Chart
+                        </button>
+                    </div>
+                </div>
+
+                            <div class="row mt-3">
+                <div class="col-md-4">
+                    <label>X-Axis Column:</label>
+                    <select id="xAxisSelect" class="form-control">
+                        <option value="">Select column...</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label>Y-Axis Column:</label>
+                    <select id="yAxisSelect" class="form-control">
+                        <option value="">Select column...</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label>Group By (optional):</label>
+                    <select id="groupBySelect" class="form-control">
+                        <option value="">No grouping</option>
+                    </select>
+                </div>
+            </div>
+
+                    <div id="dataStats" class="data-stats" style="display: none;"></div>
+
+                    
                     <div id="chart-container">
                         <canvas id="analysisChart"></canvas>
                     </div>
