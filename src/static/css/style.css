@@ -1337,7 +1337,7 @@
             opacity: 0;
         }
 
-        .data-controls .data-container.active {
+        .data-controls.active .data-container {
             display: block;
             opacity: 1;
             background: linear-gradient(180deg, rgba(255,255,255,0.72), rgba(250,250,251,0.64));

@@ -115,12 +115,12 @@
         <div class="split-container">
             <div class="pane left-pane">
                 <div class="btn-container">
-                    <button class="analyse-data-btn tab-btn" data-target="html_data" role="tab" aria-selected="true">Data</button>
-                    <button class="analyse-analyse-btn tab-btn" data-target="analysis_results" role="tab" aria-selected="false">Analyse</button>
-                    <button class="analyse-export-btn tab-btn" data-target="export_section" role="tab" aria-selected="false">Export</button>
+                    <button class="analyse-data-btn tab-btn" onclick="openTab(event, 'data-section')" id="defaultOpen">Data</button>
+                    <button class="analyse-analyse-btn tab-btn" onclick="openTab(event, 'analysis_results')">Analyse</button>
+                    <button class="analyse-export-btn tab-btn" onclick="openTab(event, 'export_section')">Export</button>
                 </div>
 
-                <div class="data-controls">
+                <div class="data-controls" id="data-section">
                     <div class="data-toolbar">
                         <div class="actions">
                             <!-- Custom Dropdown -->
@@ -143,10 +143,8 @@
                             </div>
                         </div>
                     </div>
-
-                    <div id="html_data" class="data-container">
-
-                    </div>
+                    
+                    <div id="html_data" class="data-container"></div>
 
                     <div class="table-footer">
                         <button class="page-btn">&larr;</button>
@@ -154,7 +152,7 @@
                     </div>
                 </div>
 
-                <div id="analysis_results" class="data-container">
+                <div id="analysis_results" class="data-controls">
                     <h3>Analysis Results</h3>
                     <p>This section will display the results of the data analysis.</p>
                     <div id="chart-container">
@@ -170,7 +168,7 @@
                     </div>
                 </div>
 
-                <div class="data-container" id="export_section" >
+                <div class="data-controls" id="export_section" >
                     <h3>Export Data</h3>
                     <p>This section will allow you to export the data in various formats.</p>
                     <button id="exportCsvBtn">Export as CSV</button>
@@ -183,40 +181,40 @@
             </div>
 
             <div class="pane right-pane">
-<div id="uploadModalOverlay" class="upload-modal-overlay hidden" aria-hidden="true">
-  <div id="uploadModal" class="upload-modal-content" role="dialog" aria-modal="true" aria-labelledby="uploadTitle">
-    <button class="upload-close-btn" aria-label="Close">&times;</button>
-    <h3 id="uploadTitle">Upload File</h3>
+                <div id="uploadModalOverlay" class="upload-modal-overlay hidden" aria-hidden="true">
+                <div id="uploadModal" class="upload-modal-content" role="dialog" aria-modal="true" aria-labelledby="uploadTitle">
+                    <button class="upload-close-btn" aria-label="Close">&times;</button>
+                    <h3 id="uploadTitle">Upload File</h3>
 
-    <div class="form-group">
-      <label for="upload_db_select">Choose target database</label>
-      <select id="upload_db_select" class="db-select">
-        <option value="" disabled selected>Select database</option>
-        {% for conn in connections %}
-        <option value="{{ conn.id }}" data-db-type="{{ conn.db_type }}">{{ conn.db_type.capitalize() }} - {{ conn.name }}</option>
-        {% endfor %}
-      </select>
-    </div>
+                    <div class="form-group">
+                    <label for="upload_db_select">Choose target database</label>
+                    <select id="upload_db_select" class="db-select">
+                        <option value="" disabled selected>Select database</option>
+                        {% for conn in connections %}
+                        <option value="{{ conn.id }}" data-db-type="{{ conn.db_type }}">{{ conn.db_type.capitalize() }} - {{ conn.name }}</option>
+                        {% endfor %}
+                    </select>
+                    </div>
 
-    <div class="upload-columns">
-      <div class="upload-col">
-        <span class="upload-col-title">Provide a file path</span>
-        <input type="text" id="filePathInput" placeholder="C:\path\to\file.csv or /home/user/file.xlsx">
+                    <div class="upload-columns">
+                    <div class="upload-col">
+                        <span class="upload-col-title">Provide a file path</span>
+                        <input type="text" id="filePathInput" placeholder="C:\path\to\file.csv or /home/user/file.xlsx">
 
-        <span class="upload-col-title">Table name</span>
-        <input type="text" id="tableNameInput" placeholder="Enter target table name">
+                        <span class="upload-col-title">Table name</span>
+                        <input type="text" id="tableNameInput" placeholder="Enter target table name">
 
-        <button id="submitPathBtn" class="btn-primary">Submit</button>
+                        <button id="submitPathBtn" class="btn-primary">Submit</button>
 
-        <!-- 🔄 Loader -->
-        <div id="uploadLoader" class="hidden loader">
-          <div class="spinner"></div>
-          <span>Processing file, please wait...</span>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+                        <!-- 🔄 Loader -->
+                        <div id="uploadLoader" class="hidden loader">
+                        <div class="spinner"></div>
+                        <span>Processing file, please wait...</span>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+                </div>
 
                 <!-- Main Content Layout -->
                 <div class="main-content chat-container">
@@ -891,27 +889,29 @@ function escapeHtml(str) {
         })
         .then(result => {
             // Expecting result to have either 'html_data' or 'data'
-            const container = document.querySelector(".left-pane #html_data");
+            const container = document.getElementById("html_data");
             if (!container) {
             console.warn("Left pane html_data container not found");
             return;
             }
 
-        if (result.html_data) {
-            container.innerHTML = result.html_data;
+if (result.html_data) {
+    container.innerHTML = result.html_data;
+    container.classList.add('active');
+    container.style.display = 'block';
+    container.style.opacity = '1';
 
-            // switch tab to Data panel if the helper exists
-            if (typeof setAnalysisTab === 'function') {
-            setAnalysisTab('html_data');
-            } else if (typeof setActiveTab === 'function') {
-            setActiveTab('html_data'); // fallback name
-            }
+    // switch tab to the Data *panel* (wrapper)
+    if (typeof setAnalysisTab === 'function') {
+        setAnalysisTab('data-section');
+    } else if (typeof setActiveTab === 'function') {
+        setActiveTab('data-section');
+    }
 
-            // focus first meaningful element
-            const first = container.querySelector('table, button, a, input, textarea, select');
-            if (first) first.focus();
-            return;
-        }
+    const first = container.querySelector('table, button, a, input, textarea, select');
+    if (first) first.focus();
+    return;
+}
 
             if (result.data) {
             // If backend returned raw data rows, build a table
@@ -1127,104 +1127,99 @@ function escapeHtml(str) {
             setTimeout(() => { scrollToBottom(); }, 30);
         }
 
-        (function () {
-  // mapping fallback if data-target is not present
+(function () {
   const fallbackMap = {
-    'analyse-data-btn': 'html_data',
+    'analyse-data-btn': 'data-section',
     'analyse-analyse-btn': 'analysis_results',
     'analyse-export-btn': 'export_section'
   };
 
-  // set active tab and manage aria
-  function setActiveTab(targetId) {
-    // hide/show panels
-    document.querySelectorAll('.data-container').forEach(el => {
-      if (el.id === targetId) {
-        el.classList.add('active');
-        el.setAttribute('aria-hidden', 'false');
-      } else {
-        el.classList.remove('active');
-        el.setAttribute('aria-hidden', 'true');
-      }
-    });
-
-    // update tab buttons
-    document.querySelectorAll('.analyse-data-btn, .analyse-analyse-btn, .analyse-export-btn, .tab-btn').forEach(btn => {
-      const target = btn.dataset.target || fallbackMap[btn.classList[0]] || null;
-      if (!target) {
-        // also try to read class names for fallback
-        const cls = Array.from(btn.classList).find(c => fallbackMap[c]);
-        if (cls) btn.dataset.target = fallbackMap[cls];
-      }
-      if ((btn.dataset.target || null) === targetId) {
-        btn.classList.add('active');
-        btn.setAttribute('aria-selected', 'true');
-      } else {
-        btn.classList.remove('active');
-        btn.setAttribute('aria-selected', 'false');
-      }
-    });
+  function resolveTargetFromButton(btn) {
+    if (!btn) return null;
+    if (btn.dataset && btn.dataset.target) return btn.dataset.target;
+    // try class fallback
+    const cls = Array.from(btn.classList).find(c => fallbackMap[c]);
+    return cls ? fallbackMap[cls] : null;
   }
 
-  // call on load: default Data tab (but left pane may be closed)
-  document.addEventListener('DOMContentLoaded', function () {
-    setActiveTab('html_data');
+function setActiveTab(targetId, opts = {}) {
+  if (!targetId) return;
+
+  // only toggle the outer panel wrappers (do not accidentally hide inner html_data)
+  const panels = document.querySelectorAll('.data-controls');
+  panels.forEach(panel => {
+    const isActive = panel.id === targetId;
+    panel.classList.toggle('active', isActive);
+    panel.style.display = isActive ? '' : 'none';
+    panel.setAttribute('aria-hidden', isActive ? 'false' : 'true');
   });
 
-  // tab button clicks (works for both .tab-btn or your specific class buttons)
-  document.addEventListener('click', function (e) {
-    const btn = e.target.closest('.tab-btn, .analyse-data-btn, .analyse-analyse-btn, .analyse-export-btn');
-    if (!btn) return;
-
-    e.preventDefault();
-
-    // determine target
-    const target = btn.dataset.target || (() => {
-      // fallback by class name
-      const cls = Array.from(btn.classList).find(c => fallbackMap[c]);
-      return cls ? fallbackMap[cls] : null;
-    })();
-
-    if (target) {
-      setActiveTab(target);
-      // if left pane is closed, open it (optional)
-      if (typeof openLeftPane === 'function') {
-        openLeftPane(60);
-      }
-      // focus first interactive element inside newly active panel
-      const container = document.getElementById(target);
-      if (container) {
-        const focusable = container.querySelector('button, a, input, textarea, select, table');
-        if (focusable) focusable.focus();
-      }
-    }
+  // update tab button states
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    const resolved = resolveTargetFromButton(btn) || btn.dataset.target;
+    const selected = resolved === targetId;
+    btn.classList.toggle('active', selected);
+    btn.setAttribute('aria-selected', selected ? 'true' : 'false');
   });
 
-  // Enhance your existing analyse-btn fetch handler to auto-switch to Data tab after inject.
-  // If you already have an analyse-btn click handler that injects html_data, ensure it calls:
-  //    setActiveTab('html_data');
-  // Below is a safe wrapper that hooks into your analyze flow: it watches for AJAX injection into #html_data
-  // and activates the Data tab automatically when html_data is changed.
-  function observeHtmlDataInjection() {
-    const target = document.querySelector('.left-pane #html_data');
-    if (!target) return;
-    // If content already exists, ensure tab active if left pane is open
-    if (target.innerHTML.trim() !== '') {
-      setActiveTab('html_data');
-    }
-    // Observe future changes
-    const mo = new MutationObserver((mutations) => {
-      // any injection -> make data tab active
-      setActiveTab('html_data');
-    });
-    mo.observe(target, { childList: true, subtree: true });
+  if (opts.openPane !== false && typeof window.openLeftPane === 'function') {
+    window.openLeftPane(60);
   }
 
-  // Start observer after DOM ready
-  document.addEventListener('DOMContentLoaded', observeHtmlDataInjection);
+  const activePanel = document.getElementById(targetId);
+  if (activePanel) {
+    const focusable = activePanel.querySelector('button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])');
+    if (focusable) focusable.focus();
+  }
+}
 
-  // Expose utility globally if needed
+  // keep backward-compatible name used elsewhere
   window.setAnalysisTab = setActiveTab;
+
+  // DOM-facing openTab for your onclick handlers
+  window.openTab = function (evt, tabId) {
+    if (evt && typeof evt.preventDefault === 'function') evt.preventDefault();
+    if (!tabId) return;
+    setActiveTab(tabId);
+  };
+
+  // Auto-open the data-section on DOMContentLoaded (default)
+  document.addEventListener('DOMContentLoaded', function () {
+    // ensure panels start hidden if not active
+    document.querySelectorAll('.data-controls').forEach(p => {
+      if (!p.classList.contains('active')) {
+        p.style.display = 'none';
+        p.setAttribute('aria-hidden', 'true');
+      }
+    });
+
+    // default open data-section (if present) or html_data fallback
+    if (document.getElementById('data-section')) setActiveTab('data-section', { openPane: false });
+    else if (document.getElementById('html_data')) setActiveTab('html_data', { openPane: false });
+
+    // make sure the default button gets active class if it exists
+    const defaultBtn = document.getElementById('defaultOpen');
+    if (defaultBtn) {
+      defaultBtn.classList.add('active');
+      defaultBtn.setAttribute('aria-selected', 'true');
+    }
+
+    // Observe injections into #html_data and auto-show the data-section when content appears
+    const target = document.getElementById('html_data');
+    if (target) {
+      const mo = new MutationObserver((mutations) => {
+        const added = mutations.some(m => m.addedNodes && m.addedNodes.length > 0);
+        if (added && target.innerHTML.trim() !== '') {
+          // If data-section exists, prefer that; otherwise try html_data
+          if (document.getElementById('data-section')) setActiveTab('data-section');
+          else setActiveTab('html_data');
+        }
+      });
+      mo.observe(target, { childList: true, subtree: true });
+    }
+  });
+
+
 })();
 
     </script>

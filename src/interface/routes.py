@@ -230,7 +230,6 @@ def chat():
                 data = session.get('last_query_results').get('data')
                 html_data = session['last_query_results'].get('html_data')
 
-
                 if is_ajax:
                     return jsonify({
                         "data": data,
