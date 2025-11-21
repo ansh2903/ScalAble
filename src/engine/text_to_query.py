@@ -1,9 +1,3 @@
-"""
-This module is responsible for taking in the natural language query from the user
-and converting it into a database query based on the user's choice of database,
-its metadata (schema, tables, fields), and the database type.
-"""
-
 import requests, sys, json, os
 from dotenv import load_dotenv
 from flask import session
@@ -29,6 +23,7 @@ def generate_query_from_nl(nl_query: str, db_type, db_metadata: dict = {}):
         str: The generated database query string.
     """
     try:
+        logging.info("Entered the generate_query_from_nl function")
         prompt_text = f"""
         You are a professional {db_type} query generation expert. Your job is to convert natural language into executable {db_type} queries and also behave like a friendly assistant.
 
@@ -66,7 +61,9 @@ def generate_query_from_nl(nl_query: str, db_type, db_metadata: dict = {}):
         Now return ONLY the JSON object as per the rules above:
         """
 
+        logging.info("loading settings")
         payload = load_settings()
+        logging.info("settings loaded: ", payload)
 
         file_prompt = session.get('file_prompt')
         if file_prompt:
@@ -74,7 +71,8 @@ def generate_query_from_nl(nl_query: str, db_type, db_metadata: dict = {}):
         else:
             payload['prompt'] = prompt_text
 
-        output = requests.post(OLLAMA_ENDPOINT, json=payload)
+        logging.info("Sending the request to the LLM")
+        output = requests.post(OLLAMA_ENDPOINT, json=payload, stream=True)
         response = output.json()["response"].strip()
 
         logging.info(f"Ollama response: {response}")

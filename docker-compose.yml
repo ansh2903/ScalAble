@@ -1,18 +1,25 @@
 services:
-  postgres:
-    image: postgres:latest
-    container_name: scalable_postgres
-    restart: always
-    environment:
-      POSTGRES_USER: scalable
-      POSTGRES_PASSWORD: Pass
-      POSTGRES_DB: scalabledb
-    
+  scalable:
+    build: .
+    container_name: flask
     ports:
+      - "5000:5000"
       - "5432:5432"
-
+    depends_on:
+      - keydb
+    environment:
+      - OLLAMA_BASE=http://host.docker.internal:11434
+      - OLLAMA_ENDPOINT=http://host.docker.internal:11434/api/generate
+      - APP_HOST=0.0.0.0
+      - FLASK_ENV=development
+      - REDIS_HOST=keydb
+      - REDIS_PORT=6379
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - .:/app
 
-volumes:
-  postgres_data:
+  keydb:
+    image: eqalpha/keydb:latest
+    container_name: keydb
+    ports:
+      - "6379:6379"
+    restart: always

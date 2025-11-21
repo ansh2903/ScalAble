@@ -1,12 +1,12 @@
 from flask import Flask
 from flask_session import Session
 import redis
+import sys
+import logging
 
 from src.interface.routes import interface_blueprint
 from src.interface.auth import auth_blueprint
 from src.config.settings import settings
-
-import sys
 from src.core.exception import CustomException
 from src.core.logger import logging
 
@@ -16,6 +16,7 @@ def create_app():
         app = Flask(__name__)
         app.secret_key = settings.SECRET_KEY
 
+        # Session configuration
         app.config["SESSION_TYPE"] = "redis"
         app.config["SESSION_PERMANENT"] = False
         app.config["SESSION_USE_SIGNER"] = True
@@ -41,4 +42,5 @@ if __name__ == "__main__":
     print("Launching Flask server...")
     app = create_app()
     print(f"Server started on host: {settings.APP_HOST}")
-    app.run(host='127.0.0.1', port=5000, debug=settings.DEBUG)
+    sys.stdout.flush()
+    app.run(host=settings.APP_HOST, port=settings.APP_PORT, debug=settings.DEBUG)

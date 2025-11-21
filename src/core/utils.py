@@ -168,15 +168,29 @@ def downloadable_json(raw_data):
     )
 
 def SETTINGS_FILE():
-    curdir = str(Path.cwd().resolve()) + r'\src\config\settings.json'
-    return curdir
+    p = Path(__file__).parents[1] / "config" / "settings.json"
+    return p
 
 def load_settings():
+    logging.info("inside load_settings()")
     if os.path.exists(SETTINGS_FILE()):
         with open(SETTINGS_FILE(), "r") as settings:
+            logging.info("loaded settings")
             return json.load(settings)
     return {}
 
 def save_settings(data):
-    with open(SETTINGS_FILE(), "w") as new_settings:
+    settings_path = SETTINGS_FILE()
+    settings_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(settings_path, "w") as new_settings:
         json.dump(data, new_settings, indent=2)
+
+def is_running_in_docker():
+    """Check if the app is running inside a Docker container."""
+    path = "/proc/self/cgroup"
+    if os.path.exists("/.dockerenv"):
+        return True
+    if os.path.isfile(path):
+        with open(path) as f:
+            return any("docker" in line for line in f)
+    return False

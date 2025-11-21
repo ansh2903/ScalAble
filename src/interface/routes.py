@@ -3,7 +3,7 @@ import importlib
 
 from src.engine.text_to_query import generate_query_from_nl, ollama_model_ls
 from src.engine.query_executor import run_query
-from src.core.utils import downloadable_json, downloadable_excel, downloadable_csv, render_result_table, load_settings, save_settings
+from src.core.utils import downloadable_json, downloadable_excel, downloadable_csv, render_result_table, load_settings, save_settings, is_running_in_docker
 
 import dotenv
 import pandas as pd
@@ -61,6 +61,10 @@ def add_database():
         print('')
 
         db_type = raw_form_data.get("db_type")
+
+        host_value = raw_form_data.get("host", "").strip().lower()
+        if is_running_in_docker() and host_value in ["localhost", "127.0.0.1"]:
+            raw_form_data["host"] = "host.docker.internal"
 
         try:
             connector_module = importlib.import_module(f"src.connectors.{db_type}")
@@ -237,6 +241,7 @@ def chat():
                     })
 
             else:
+                logging.info("Sending message to LLM")
                 message = form.get("message")
                 selected_db_id = form.get("selected_db_id")
                 selected_conn = next((c for c in connections if str(c['id']) == str(selected_db_id)), None)
@@ -249,6 +254,8 @@ def chat():
                 metadata = selected_conn.get("metadata")
 
                 generated_query, generated_comment = generate_query_from_nl(message, db_type, metadata)
+
+                logging.info("generated_query and comment obtained from LLM")
 
                 time = datetime.now().strftime("%H:%M:%S")
 
@@ -498,7 +505,20 @@ def uploadfile():
 @interface_blueprint.route('/settings', methods=['GET', 'POST'])
 def settings():
     models = ollama_model_ls()
-    settings_data = load_settings()
+    settings_data = load_settings() or {}
+    settings_data.setdefault("options", {
+        "num_keep": 5,
+        "num_predict": 1000,
+        "top_k": 20,
+        "top_p": 0.9,
+        "typical_p": 0.7,
+        "temperature": 0.7,
+        "penalize_newline": False,
+        "num_ctx": 2048,
+        "num_batch": 8,
+        "use_mmap": True,
+        "num_thread": 16
+    })
 
     if request.method == "POST":
         new_data = settings_data.copy()
@@ -517,4 +537,4 @@ def settings():
         flash("Settings updated", "success")
         return redirect(url_for("interface.settings"))
 
-    return render_template('settings.html', models = models, settings = settings_data)    
+    return render_template('settings.html', models=models, settings=settings_data)
