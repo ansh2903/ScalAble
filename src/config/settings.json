@@ -1,19 +1,19 @@
 {
-  "model": "qwen2.5-coder:1.5b",
+  "model": "huihui_ai/deepseek-r1-abliterated:8b",
   "keep_alive": "5m",
   "think": false,
   "options": {
     "num_keep": 5,
-    "num_predict": 1000,
-    "top_k": 20,
-    "top_p": 0.9,
+    "num_predict": 256,
+    "top_k": 49,
+    "top_p": 0.34,
     "typical_p": 0.7,
-    "temperature": 0.7,
+    "temperature": 0.44,
     "penalize_newline": false,
     "num_ctx": 2048,
-    "num_batch": 8,
+    "num_batch": 4,
     "use_mmap": true,
-    "num_thread": 16
+    "num_thread": 12
   },
   "stream": false
 }

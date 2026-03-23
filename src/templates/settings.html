@@ -1,588 +1,319 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="light" lang="en"><head>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat</title>
+    <title>Settings</title>
     <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 
-    <style>
-        /* Additional styles specific to settings page */
-        .settings-main {
-            flex: 1;
-            margin-left: 108px;
-            padding: 100px 30px 30px;
-            background: linear-gradient(145deg, #f8f8f7, #e4e4e4);
-            min-height: 100vh;
-            overflow-y: auto;
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500&amp;family=Fredoka:wght@400;600;700&amp;family=Pacifico&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#00A36C",
+              "primary-dark": "#065f46",
+              "primary-soft": "#ecfdf5",
+              "secondary-accent": "#475569", 
+              "bg-main": "#f8fafc",
+              "card-border": "#e2e8f0",
+              "heavy-outline": "#cbd5e1"
+            },
+            fontFamily: {
+              "sans": ["Plus Jakarta Sans", "sans-serif"],
+              "headline": ["Plus Jakarta Sans", "sans-serif"],
+              "body": ["Plus Jakarta Sans", "sans-serif"],
+              "playful": ["Fredoka", "sans-serif"],
+              "mono": ["JetBrains Mono", "monospace"],
+              "script": ["Pacifico", "cursive"]
+            },
+            borderRadius: {
+                "organic": "2.5rem",
+                "pill": "9999px"
+            },
+            boxShadow: {
+                "tactile": "0 6px 0 0 rgba(0, 163, 108, 0.2)",
+                "tactile-hover": "0 3px 0 0 rgba(0, 163, 108, 0.3)",
+                "data-card": "0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04)",
+                "header-nav": "0 10px 15px -3px rgba(0, 163, 108, 0.05)"
+            }
+          },
+        },
+      }
+    </script>
+<style type="text/tailwindcss">
+        @layer base {
+            body { 
+                @apply bg-bg-main text-slate-800 font-body antialiased;
+            }
+            h1, h2, h3 {
+                @apply font-headline font-extrabold tracking-tight;
+            }
         }
-
-        .settings-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 24px;
+        .header-glass {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(0, 163, 108, 0.1);
         }
-
-        .settings-section {
-            background: rgba(255, 255, 255, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            border-radius: 16px;
-            padding: 24px;
-            backdrop-filter: blur(12px) saturate(150%);
-            -webkit-backdrop-filter: blur(12px) saturate(150%);
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+        .organic-border {
+            border-radius: 60% 40% 70% 30% / 30% 60% 40% 70%;
         }
-
-        .settings-section h2 {
-            margin: 0 0 20px 0;
-            font-size: 20px;
-            font-weight: 600;
-            color: #1e293b;
-            display: flex;
-            align-items: center;
-            gap: 12px;
+        .heavy-card {
+            @apply bg-white border-2 border-slate-200 rounded-organic transition-all duration-300;
+            box-shadow: 0 12px 0 -4px theme('colors.slate.100');
         }
-
-        .section-icon {
-            width: 24px;
-            height: 24px;
-            background: linear-gradient(135deg, #06d6a0, #1fb8cd);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: #374151;
-            font-size: 14px;
-        }
-
-        .form-input, .form-select, .form-textarea {
-            width: 100%;
-            padding: 12px 16px;
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            border-radius: 12px;
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            font-size: 14px;
-            color: #1e293b;
-            transition: all 0.25s ease;
-            box-sizing: border-box;
-        }
-
-        .form-input:focus, .form-select:focus, .form-textarea:focus {
-            outline: none;
-            border-color: #06d6a0;
-            box-shadow: 0 0 0 3px rgba(6, 214, 160, 0.1);
-            background: rgba(255, 255, 255, 0.9);
-        }
-
-        .form-textarea {
-            min-height: 100px;
-            resize: vertical;
-            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-        }
-
-        .slider-container {
-            margin: 16px 0;
-        }
-
-        .slider {
-            width: 100%;
-            height: 6px;
-            border-radius: 3px;
-            background: rgba(255, 255, 255, 0.6);
-            outline: none;
-            appearance: none;
-            -webkit-appearance: none;
-        }
-
-        .slider::-webkit-slider-thumb {
-            appearance: none;
-            -webkit-appearance: none;
-            height: 18px;
-            width: 18px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #06d6a0, #1fb8cd);
-            cursor: pointer;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-        }
-
-        .slider::-moz-range-thumb {
-            height: 18px;
-            width: 18px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #06d6a0, #1fb8cd);
-            cursor: pointer;
-            border: none;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-        }
-
-        .slider-value {
-            text-align: center;
-            font-weight: 600;
-            color: #06d6a0;
-            margin-top: 8px;
-            font-size: 14px;
-        }
-
-        .checkbox-group {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin: 12px 0;
-        }
-
-        .form-checkbox {
-            width: 18px;
-            height: 18px;
-            accent-color: #06d6a0;
-        }
-
-        .checkbox-label {
-            font-size: 14px;
-            color: #374151;
-            margin: 0;
-        }
-
-        .button-group {
-            display: flex;
-            gap: 12px;
-            margin-top: 24px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(-64deg, #06d6a0, #1fb8cd);
-            border: none;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 12px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.25s ease;
-            flex: 1;
-        }
-
-        .btn-primary:hover {
-            background: linear-gradient(-64deg, #05c194, #1ba8bb);
+        .heavy-card:hover {
+            @apply border-primary/30;
             transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(6, 214, 160, 0.3);
+            box-shadow: 0 16px 0 -4px rgba(0, 163, 108, 0.1);
         }
-
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.7);
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            color: #374151;
-            padding: 12px 24px;
-            border-radius: 12px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.25s ease;
-            flex: 1;
+        .custom-range {
+            @apply h-2 w-full bg-slate-200 rounded-full appearance-none cursor-pointer;
         }
-
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.9);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        .custom-range::-webkit-slider-thumb {
+            @apply appearance-none w-6 h-6 bg-primary rounded-full border-4 border-white shadow-lg transition-transform hover:scale-125 active:scale-95;
         }
-
-        .model-card {
-            background: rgba(255, 255, 255, 0.4);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            border-radius: 12px;
-            padding: 16px;
-            margin: 8px 0;
-            cursor: pointer;
-            transition: all 0.25s ease;
+        .soft-gradient-bg {
+            background: radial-gradient(circle at 50% -20%, #ecfdf5 0%, #f8fafc 60%);
         }
-
-        .model-card:hover {
-            background: rgba(255, 255, 255, 0.7);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+        .nav-link {
+            @apply relative px-3 py-2 text-slate-600 font-semibold transition-colors hover:text-primary;
         }
-
-        .model-card.active {
-            background: linear-gradient(-64deg, rgba(6, 214, 160, 0.2), rgba(31, 184, 205, 0.2));
-            border-color: #06d6a0;
+        .nav-link-active {
+            @apply text-primary font-bold;
         }
-
-        .model-name {
-            font-weight: 600;
-            color: #1e293b;
-            margin-bottom: 4px;
+        .nav-link-active::after {
+            content: '';
+            @apply absolute bottom-0 left-3 right-3 h-1 bg-primary rounded-full;
         }
-
-        .model-description {
-            font-size: 13px;
-            color: #64748b;
-            line-height: 1.4;
+        .script-text {
+            @apply font-script text-primary not-italic;
+            text-transform: none;
         }
-
-        .status-indicator {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 13px;
-            margin-top: 12px;
+        .form-input-clean {
+            @apply w-full bg-white border-2 border-slate-200 rounded-2xl px-4 py-2.5 text-sm font-medium focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all outline-none;
         }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-        }
-
-        .status-dot.online {
-            background: #22c55e;
-        }
-
-        .status-dot.offline {
-            background: #ef4444;
-        }
-
-        .advanced-toggle {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin: 20px 0;
-            padding: 12px;
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.25s ease;
-        }
-
-        .advanced-toggle:hover {
-            background: rgba(255, 255, 255, 0.5);
-        }
-
-        .advanced-content {
-            display: none;
-            margin-top: 16px;
-        }
-
-        .advanced-content.show {
-            display: block;
-        }
-
-        .info-tooltip {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 16px;
-            height: 16px;
-            background: rgba(6, 214, 160, 0.2);
-            color: #06d6a0;
-            border-radius: 50%;
-            font-size: 12px;
-            margin-left: 8px;
-            cursor: help;
-        }
-
-        .preset-buttons {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 8px;
-            margin: 12px 0;
-        }
-
-        .preset-btn {
-            background: rgba(255, 255, 255, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            border-radius: 8px;
-            padding: 8px 12px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .preset-btn:hover {
-            background: rgba(255, 255, 255, 0.8);
-        }
-
-        .preset-btn.active {
-            background: linear-gradient(-64deg, rgba(6, 214, 160, 0.3), rgba(31, 184, 205, 0.3));
-            border-color: #06d6a0;
-        }
-
-        @media (max-width: 1024px) {
-            .settings-container {
-                grid-template-columns: 1fr;
-            }
-            
-            .settings-main {
-                margin-left: 108px;
-                padding: 100px 20px 30px;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .settings-main {
-                margin-left: 108px;
-                padding: 100px 15px 30px;
-            }
-            
-            .settings-section {
-                padding: 16px;
-            }
+        .form-label-clean {
+            @apply text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-2 px-1;
         }
     </style>
-
 </head>
-
-<body class="theme">
-    <div class="dashboard">
-        <!-- Sidebar Navigation -->
-        <div class="sidebar">
-            <div class="logo">
-                <div class="logo-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 2L2 7V17L12 22L22 17V7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-                        <path d="M12 22V12" stroke="currentColor" stroke-width="2"/>
-                        <path d="M22 7L12 12L2 7" stroke="currentColor" stroke-width="2"/>
-                    </svg>
-                </div>
-            </div>
-                
-            <nav class="sidebar-nav" role="navigation" aria-label="Main navigation">
-                <ul class="nav-list" role="menu">
-                    <li role="none">
-                        <a role="menuitem" href="/chat" class="nav-item">
-                            <div class="nav-icon">
-                                <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/Chat icon.png') }}" alt="Logo">
-                            </div>
-                        </a>
-                    </li>
-                    <li role="none">
-                        <a role="menuitem" href="/connections" class="nav-item">
-                            <div class="nav-icon">
-                                <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/Database icon.png') }}" alt="Logo">
-                            </div>
-                        </a>
-                    </li>
-                    <li role="none">
-                        <a role="menuitem" href="#" class="nav-item">
-                            <div class="nav-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M12.89 1.45L8 5.6C7.11 6.27 6.6 7.33 6.6 8.45V14.45C6.6 15.57 7.11 16.63 8 17.3L12.89 21.45C11.3 22.5 9.1 22.5 7.51 21.45L2.62 17.3C1.73 16.63 1.22 15.57 1.22 14.45V8.45C1.22 7.33 1.73 6.27 2.62 5.6L7.51 1.45C9.1 0.4 11.3 0.4 12.89 1.45Z" fill="currentColor"/>
-                                    <path d="M22.78 9.55V15.55C22.78 16.67 22.27 17.73 21.38 18.4L16.49 22.55C14.9 23.6 12.7 23.6 11.11 22.55L16 18.4C16.89 17.73 17.4 16.67 17.4 15.55V9.55C17.4 8.43 16.89 7.37 16 6.7L11.11 2.55C12.7 1.5 14.9 1.5 16.49 2.55L21.38 6.7C22.27 7.37 22.78 8.43 22.78 9.55Z" fill="currentColor"/>
-                                </svg>
-                            </div>
-                        </a>
-                    </li>
-                    <li role="none">
-                        <a role="menuitem" href="https://github.com/ansh2903/ScalAble" target="_blank" rel="noopener noreferrer" class="nav-item">
-                            <div class="nav-icon">
-                                <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/github icon.png') }}" alt="Logo">
-                            </div>
-                        </a>
-                    </li>
-                    <li role="none">
-                        <a role="menuitem" href="https://www.linkedin.com/in/asharma2903/" target="_blank" rel="noopener noreferrer" class="nav-item">
-                            <div class="nav-icon">
-                                <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/linkedin icon.png') }}" alt="Logo">
-                            </div>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-            
-            <nav class ="sidebar-footer" role="navigation" aria-label="Footer navigation">
-                <ul class="nav-list" role="menu">
-                    <li role="none">
-                        <a role="menuitem" href="#" class="nav-item">
-                            <div class="nav-icon">
-                                <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/Settings icon.png') }}" alt="Logo">
-                            </div>
-                        </a>
-                    </li>
-
-                    <li role="none">
-                        <a role="menuitem" href="#" class="nav-item">
-                            <div class="nav-icon">
-                                <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/Help icon.png') }}" alt="Logo">
-                            </div>
-                        </a>
-                    </li>
-
-                    <li role="none">
-                        <a role="menuitem" href="#" class="nav-item">
-                            <div class="nav-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20Z" fill="currentColor"/>
-                                    <path d="M11,15H13V17H11V15Z" fill="currentColor"/>
-                                    <path d="M11,9H13V13H11V9Z" fill="currentColor"/>
-                                </svg>
-                            </div>
-                        </a>
-                    </li>
-                </ul>
-                <span class="version">v0.6</span>
-                <span class="copyright">&copy; 2023 ScalAble</span>
-            </nav>
-        </div>
-
-        <div class="header">
-            <ul class="header-list" role="menu">
-                <li role="none">
-                    <a role="menuitem" href="https://github.com/ansh2903/ScalAble" target="_blank" class="header-item">
-                        <div class="header-icon">
-                            <img class="header-icon" src="{{ url_for('static', filename='images/Icons/GitHub icon.png') }}" alt="Help">
-                        </div>
-                        <span>GitHub</span>
-                    </a>
-                </li>
-            </ul>
-        </div>
-        <form method="POST">
-            <!-- Main Settings Content -->
-            <main class="settings-main">
-                <div class="settings-container">
-
-                    <!-- Model Selection Section -->
-                    <section class="settings-section">
-                        <h2>
-                            <div class="section-icon">🤖</div>
-                            Model Configuration
-                        </h2>
-
-                        <div class="form-group">
-                            <label class="form-label">Available Models</label>
-                            <div class="model-list">
-                                {% for model in models %}
-                                <div class="model-card {% if settings['model'] == model.model %}active{% endif %}" 
-                                    data-model="{{ model.model }}" 
-                                    onclick="selectModel('{{ model.model }}')">
-                                    <div class="model-name">{{ model.model }}</div>
-                                    <div class="model-description">
-                                        {{ model.paramater_size }} parameters · {{ (model.model_size / (1024*1024*1024)) | round(2) }} GB
-                                    </div>
-                                    <div class="status-indicator">
-                                        <span class="status-dot online"></span>
-                                        <span>Online</span>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                            <input type="hidden" name="model" id="model-input" value="{{ settings['model'] }}">
-                        </div>
-                    </section>
-
-                    <!-- Generation Parameters -->
-                    <section class="settings-section">
-                        <h2>
-                            <div class="section-icon">⚙️</div>
-                            Generation Parameters
-                        </h2>
-
-                        <!-- Temperature -->
-                        <div class="form-group">
-                            <label class="form-label">Temperature</label>
-                            <div class="slider-container">
-                                <input type="range" class="slider" id="temperature" name="temperature"
-                                    min="0" max="2" step="0.1"
-                                    value="{{ settings['options']['temperature'] }}">
-                                <div class="slider-value" id="temperature-value">{{ settings['options']['temperature'] }}</div>
-                            </div>
-                        </div>
-
-                        <!-- Max Tokens -->
-                        <div class="form-group">
-                            <label class="form-label">Max Tokens</label>
-                            <div class="slider-container">
-                                <input type="range" class="slider" id="max-tokens" name="num_predict"
-                                    min="100" max="4000" step="100"
-                                    value="{{ settings['options']['num_predict'] }}">
-                                <div class="slider-value" id="max-tokens-value">{{ settings['options']['num_predict'] }}</div>
-                            </div>
-                        </div>
-
-                        <!-- Top P -->
-                        <div class="form-group">
-                            <label class="form-label">Top P</label>
-                            <div class="slider-container">
-                                <input type="range" class="slider" id="top-p" name="top_p"
-                                    min="0.1" max="1" step="0.05"
-                                    value="{{ settings['options']['top_p'] }}">
-                                <div class="slider-value" id="top-p-value">{{ settings['options']['top_p'] }}</div>
-                            </div>
-                        </div>
-
-                        <!-- Top K -->
-                        <div class="form-group">
-                            <label class="form-label">Top K</label>
-                            <div class="slider-container">
-                                <input type="range" class="slider" id="top-k" name="top_k"
-                                    min="1" max="100" step="1"
-                                    value="{{ settings['options']['top_k'] }}">
-                                <div class="slider-value" id="top-k-value">{{ settings['options']['top_k'] }}</div>
-                            </div>
-                        </div>
-
-                        <!-- Context Size -->
-                        <div class="form-group">
-                            <label class="form-label">Context Size</label>
-                            <input type="number" class="form-input" name="num_ctx"
-                                value="{{ settings['options']['num_ctx'] }}" min="512" max="8192">
-                        </div>
-
-                        <!-- Keep alive -->
-                        <div class="form-group">
-                            <label class="form-label">Keep Alive</label>
-                            <input type="text" class="form-input" name="keep_alive"
-                                    value="{{ settings['options']['keep_alive'] }}"
-                                    placeholder="5m" required="True">
-                        </div>
-
-                        <!-- Batch size -->
-                        <div class="form-group">
-                            <label class="form-label">Batch size</label>
-                            <input type="number" class="form-input" name="num_batch"
-                                    value="{{ settings['options']['num_batch'] }}">
-                        </div>
-
-                        <!-- no. of threads -->
-                        <div class="form-group">
-                            <label class="form-label">Threads</label>
-                            <input type="number" class="form-input" name="num_thread"
-                                    value="{{ settings['options']['num_thread'] }}">
-                        </div>
-                    </section>
-                </div>
-
-                <!-- Action Buttons -->
-                <div class="settings-container" style="margin-top: 24px;">
-                    <div style="grid-column: 1 / -1;">
-                        <div class="button-group">
-                            <button type="submit" class="btn-primary">Save Settings</button>
-                            <button type="button" class="btn-secondary" onclick="resetDefaults()">Reset to Defaults</button>
-                        </div>
-                    </div>
-                </div>
-            </main>
-        </form>
-    </div>
-
+<body class="soft-gradient-bg min-h-screen">
+<header class="header-glass fixed top-0 w-full z-50 h-20 flex items-center justify-between px-10">
+<div class="flex items-center gap-16">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-primary organic-border flex items-center justify-center text-white shadow-tactile">
+<span class="material-symbols-outlined text-2xl">rocket_launch</span>
+</div>
+<span class="text-2xl font-black tracking-tighter text-slate-900">ScalAble</span>
+</div>
+<nav class="hidden md:flex items-center gap-8">
+<a class="nav-link" href="#">Data Deck</a>
+<a class="nav-link nav-link-active" href="#">Laboratory</a>
+</nav>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-3">
+<button class="p-2 text-slate-400 hover:text-primary transition-colors"><span class="material-symbols-outlined">settings</span></button>
+<div class="w-10 h-10 rounded-full bg-slate-200 border-2 border-slate-300 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-500">person</span>
+</div>
+</div>
+</div>
+</header>
+<div class="pt-28 pb-12 px-10 max-w-[1600px] mx-auto grid grid-cols-12 gap-10">
+<aside class="col-span-12 lg:col-span-3 space-y-6">
+<div class="heavy-card p-6">
+<h2 class="text-xs font-black uppercase tracking-[0.2em] text-slate-400 mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">terminal</span> Studio Control
+                </h2>
+<nav class="space-y-2">
+<a class="flex items-center justify-between px-4 py-3 rounded-2xl bg-primary text-white shadow-tactile font-bold" href="#">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined">science</span>
+<span>Laboratory</span>
+</div>
+</a>
+<a class="flex items-center justify-between px-4 py-3 rounded-2xl text-slate-600 hover:bg-primary-soft hover:text-primary transition-all group" href="#">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined">database</span>
+<span class="font-bold">Databases</span>
+</div>
+<span class="material-symbols-outlined opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+</a>
+<a class="flex items-center justify-between px-4 py-3 rounded-2xl text-slate-600 hover:bg-primary-soft hover:text-primary transition-all group" href="#">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-bold">Asset Vault</span>
+</div>
+<span class="material-symbols-outlined opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+</a>
+<a class="flex items-center justify-between px-4 py-3 rounded-2xl text-slate-600 hover:bg-primary-soft hover:text-primary transition-all group" href="#">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined">query_stats</span>
+<span class="font-bold">Run History</span>
+</div>
+<span class="material-symbols-outlined opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+</a>
+</nav>
+</div>
+<button class="w-full py-5 bg-slate-900 text-white rounded-organic font-black text-lg shadow-xl flex items-center justify-center gap-3 hover:translate-y-[-2px] transition-all">
+<span class="material-symbols-outlined text-2xl">play_circle</span>
+                START EXECUTION
+            </button>
+</aside>
+<main class="col-span-12 lg:col-span-9 grid grid-cols-12 gap-10">
+<section class="col-span-12 lg:col-span-5 space-y-8">
+<div>
+<h1 class="text-5xl font-black text-slate-900 mb-3 tracking-tighter">Laboratory <span class="script-text text-6xl ml-2">Calibration</span></h1>
+<p class="text-slate-500 font-medium leading-relaxed">Streamlined model management for local and cloud-based AI workflows.</p>
+</div>
+<div class="heavy-card p-6 space-y-6">
+<div class="flex flex-wrap gap-2 mb-2">
+<button class="px-4 py-2 bg-primary-soft text-primary rounded-xl text-xs font-black border-2 border-primary/20 hover:bg-primary hover:text-white transition-all">LOCAL MODELS</button>
+<button class="px-4 py-2 bg-slate-50 text-slate-400 rounded-xl text-xs font-bold border-2 border-slate-100 hover:bg-slate-100 hover:text-slate-600 transition-all">CLOUD MODELS</button>
+</div>
+<div class="space-y-4">
+<div>
+<label class="form-label-clean">Model Source</label>
+<select class="form-input-clean cursor-pointer">
+<option>Ollama</option>
+<option>LM Studio</option>
+</select>
+</div>
+<div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+<div class="flex items-center justify-between mb-2">
+<span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Currently Active</span>
+<span class="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-black rounded uppercase">Local</span>
+</div>
+<h4 class="font-black text-slate-900">{{ settings.model}}</h4>
+<p class="text-xs text-slate-500 mt-1">Ollama instance running on localhost:11434</p>
+</div>
+<button class="w-full py-3 border-2 border-dashed border-slate-200 rounded-2xl text-slate-500 font-bold text-sm hover:border-primary hover:text-primary hover:bg-primary-soft transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-lg">settings_suggest</span>
+                            Configure Model Sources
+                        </button>
+</div>
+</div>
+<div class="space-y-4">
+<button class="w-full p-6 heavy-card flex items-center justify-between group">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 bg-primary-soft organic-border flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-2xl">api</span>
+</div>
+<div class="text-left">
+<h3 class="font-black text-slate-900">Manage API Connections</h3>
+<p class="text-xs text-slate-500 font-medium">Configure keys for OpenAI, Anthropic, and more.</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-slate-300 group-hover:text-primary transition-colors">chevron_right</span>
+</button>
+</div>
+</section>
+<section class="col-span-12 lg:col-span-7">
+<div class="heavy-card p-8 h-full">
+<div class="flex items-center justify-between mb-8">
+<div class="flex items-center gap-4">
+<div class="p-3 bg-primary-soft organic-border text-primary">
+<span class="material-symbols-outlined text-2xl">tune</span>
+</div>
+<h2 class="text-2xl font-black text-slate-900 tracking-tight">Tweak &amp; Discover</h2>
+</div>
+<span class="text-[10px] font-black text-white bg-primary px-4 py-1.5 rounded-pill uppercase tracking-widest">Active Model</span>
+</div>
+<form class="space-y-8" method="POST">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-8">
+<div class="space-y-6">
+<div class="space-y-3">
+<div class="flex justify-between items-center px-1">
+<label class="form-label-clean mb-0">Temperature</label>
+<span id="temperature-value" class="font-mono text-xs font-bold text-primary">{{ settings.options.temperature }}</span>
+</div>
+<input id="temperature-slider" name="temperature" class="custom-range" max="1" min="0" step="0.01" type="range" value="{{ settings.options.temperature }}"/>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between items-center px-1">
+<label class="form-label-clean mb-0">Top K</label>
+<span id="top_k-value" class="font-mono text-xs font-bold text-primary">{{ settings.options.top_k }}</span>
+</div>
+<input id="top_k-slider" name="top_k" class="custom-range" max="100" min="0" step="1" type="range" value="{{ settings.options.top_k }}"/>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between items-center px-1">
+<label class="form-label-clean mb-0">Top P</label>
+<span id="top_p-value" class="font-mono text-xs font-bold text-primary">{{ settings.options.top_p }}</span>
+</div>
+<input id="top_p-slider" name="top_p" class="custom-range" max="1" min="0" step="0.01" type="range" value="{{ settings.options.top_p }}"/>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="form-label-clean">Num Thread</label>
+<input name="num_thread" class="form-input-clean" type="number" value="{{ settings.options.num_thread }}"/>
+</div>
+<div>
+<label class="form-label-clean">Num Batch</label>
+<input name="num_batch" class="form-input-clean" type="number" value="{{ settings.options.num_batch }}"/>
+</div>
+</div>
+</div>
+<div class="space-y-6">
+<div class="space-y-3">
+<div class="flex justify-between items-center px-1">
+<label class="form-label-clean mb-0">Num Predict</label>
+<span id="num_predict-value" class="font-mono text-xs font-bold text-primary">{{ settings.options.num_predict }}</span>
+</div>
+<input id="num_predict-slider" name="num_predict" class="custom-range" max="4096" min="128" step="128" type="range" value="{{ settings.options.num_predict }}"/>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between items-center px-1">
+<label class="form-label-clean mb-0">Context (num_ctx)</label>
+<span id="num_ctx-value" class="font-mono text-xs font-bold text-primary">{{ settings.options.num_ctx }}</span>
+</div>
+<input id="num_ctx-slider" name="num_ctx" class="custom-range" max="8192" min="1024" step="512" type="range" value="{{ settings.options.num_ctx }}"/>
+</div>
+<div class="space-y-4">
+<div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+<input name="use_mmap" {% if settings.options.use_mmap %}checked{% endif %} class="rounded border-slate-300 text-primary focus:ring-primary w-4 h-4" type="checkbox"/>
+<label class="text-xs font-bold text-slate-700">Use MMAP</label>
+</div>
+<div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+<input name="penalize_newline" {% if settings.options.penalize_newline %}checked{% endif %} class="rounded border-slate-300 text-primary focus:ring-primary w-4 h-4" type="checkbox"/>
+<label class="text-xs font-bold text-slate-700">Penalize Newline</label>
+</div>
+<div class="flex items-center gap-2">
+<label class="form-label-clean mb-0 flex-1">Keep Alive</label>
+<input name="keep_alive" class="form-input-clean w-24 text-center" type="text" value="{{ settings.keep_alive }}"/>
+</div>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between pt-8 border-t border-slate-100 mt-6">
+<button class="text-xs font-black text-slate-400 hover:text-rose-500 uppercase tracking-widest transition-colors flex items-center gap-2" type="button">
+<span class="material-symbols-outlined text-sm">restart_alt</span>
+                                Reset Defaults
+                            </button>
+<div class="flex gap-4">
+<button class="px-6 py-3 font-bold text-slate-500 hover:text-slate-800 transition-colors" type="button">Discard</button>
+<button class="px-10 py-4 bg-primary text-white font-black rounded-2xl shadow-tactile hover:translate-y-[-2px] hover:shadow-tactile-hover transition-all" type="submit">
+                                    SAVE SETTINGS
+                                </button>
+</div>
+</div>
+</form>
+</div>
+</section>
+</main>
+</div>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js"></script>
     <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
 
-    <!-- JavaScript -->
+    <!-- JavaScript for Settings -->
     <script>
 
         function selectModel(modelName) {

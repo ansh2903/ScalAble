@@ -57,7 +57,7 @@ def generate_query_from_nl(nl_query: str, db_type, db_metadata: dict = {}):
         - Do NOT include any other fields or metadata.
 
         ---
-
+-
         Now return ONLY the JSON object as per the rules above:
         """
 
@@ -105,4 +105,3 @@ def ollama_model_ls():
         models.append(model)
 
     return models
-

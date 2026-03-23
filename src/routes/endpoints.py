@@ -20,30 +20,10 @@ import os
 from src.core.exception import CustomException
 from src.core.logger import logging
 
-interface_blueprint = Blueprint('interface', __name__)
-
-# Landing page
-@interface_blueprint.route('/')
-def index():
-    try:
-        return render_template('New_index.html')
-    except Exception as e:
-        logging.error(f"Error loading index page: {str(e)}")
-        return render_template('error.html', error_message="An error occurred while loading the index page.")
-
-# Home page (for authenticated user)
-@interface_blueprint.route('/home')
-def home():
-    try:
-        user = session.get('user')
-        databases = session.get('connections', []) if user else []
-        return render_template('index.html', user=user, databases=databases)
-    except Exception as e:
-        logging.error(f"Error loading home page: {str(e)}")
-        return render_template('error.html', error_message="An error occurred while loading the home page.")
+endpoints_blueprint = Blueprint('endpoints', __name__)
 
 # All connections
-@interface_blueprint.route('/connections')
+@endpoints_blueprint.route('/connections')
 def connections():
     try:
         connections = session.get("connections", [])
@@ -53,7 +33,7 @@ def connections():
         return render_template('error.html', error_message="An error occurred while loading the connections.")
 
 # Add new database
-@interface_blueprint.route('/add-database', methods=['GET', 'POST'])
+@endpoints_blueprint.route('/add-database', methods=['GET', 'POST'])
 def add_database():
     if request.method == 'POST':
         raw_form_data = request.form.to_dict()
@@ -113,7 +93,7 @@ def add_database():
     return render_template("connections_new.html")
 
 # Delete database
-@interface_blueprint.route('/delete-database/<int:db_id>', methods=['GET'])
+@endpoints_blueprint.route('/delete-database/<int:db_id>', methods=['GET'])
 def delete_database(db_id):
     try:
         connections = session.get("connections", [])
@@ -130,7 +110,7 @@ def delete_database(db_id):
 
 
 # Edit database
-@interface_blueprint.route('/edit-database/<int:db_id>', methods=['GET','POST'])
+@endpoints_blueprint.route('/edit-database/<int:db_id>', methods=['GET','POST'])
 def edit_database(db_id):
     connections = session.get("connections", [])
     conn = next((c for c in connections if c['id'] == db_id), None)
@@ -153,7 +133,7 @@ def edit_database(db_id):
     return render_template('edit_database.html', conn=conn)
 
 # chat interface
-@interface_blueprint.route('/chat', methods=['GET', 'POST'])
+@endpoints_blueprint.route('/chat', methods=['GET', 'POST'])
 def chat():
     connections = session.get('connections', [])
     databases = {conn.get('id'): conn for conn in connections}
@@ -341,7 +321,7 @@ def chat():
 
     return render_template("chat.html", connections=connections, selected_db_id=selected_db_id, table_block=table_block if 'table_block' in locals() else "")
 
-@interface_blueprint.route('/download/<fmt>', methods=['GET'])
+@endpoints_blueprint.route('/download/<fmt>', methods=['GET'])
 def download(fmt):
     last_results = session.get('last_query_results')
     if not last_results:
@@ -358,7 +338,7 @@ def download(fmt):
     else:
         return "Unsupported format", 400
 
-@interface_blueprint.route('/uploadfile', methods=['POST'])
+@endpoints_blueprint.route('/uploadfile', methods=['POST'])
 def uploadfile():
     if not request.is_json:
         return jsonify({"error": "Expected JSON payload with file_path, selected_db_id and table_name"}), 400
@@ -502,13 +482,13 @@ def uploadfile():
         "table_name": table_name
     }), 200
 
-@interface_blueprint.route('/settings', methods=['GET', 'POST'])
+@endpoints_blueprint.route('/settings', methods=['GET', 'POST'])
 def settings():
     models = ollama_model_ls()
     settings_data = load_settings() or {}
     settings_data.setdefault("options", {
         "num_keep": 5,
-        "num_predict": 1000,
+        "num_predict": 512,
         "top_k": 20,
         "top_p": 0.9,
         "typical_p": 0.7,

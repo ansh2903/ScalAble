@@ -4,8 +4,8 @@ import redis
 import sys
 import logging
 
-from src.interface.routes import interface_blueprint
-from src.interface.auth import auth_blueprint
+from src.routes.interface import interface_blueprint
+from src.routes.endpoints import endpoints_blueprint
 from src.config.settings import settings
 from src.core.exception import CustomException
 from src.core.logger import logging
@@ -18,7 +18,8 @@ def create_app():
 
         # Session configuration
         app.config["SESSION_TYPE"] = "redis"
-        app.config["SESSION_PERMANENT"] = False
+        app.config["SESSION_PERMANENT"] = True
+        app.config['PERMANENT_SESSION_LIFETIME'] = 3600 * 24  # 24 hour
         app.config["SESSION_USE_SIGNER"] = True
         app.config["SESSION_KEY_PREFIX"] = "scalable_session:"
         app.config["SESSION_REDIS"] = redis.StrictRedis(
@@ -29,9 +30,9 @@ def create_app():
         Session(app)
 
         app.register_blueprint(interface_blueprint)
-        app.register_blueprint(auth_blueprint)
+        app.register_blueprint(endpoints_blueprint)
 
-        logging.info("Flask app created successfully with Redis sessions")
+        logging.info("Flask app created successfully")
         return app
 
     except Exception as e:
