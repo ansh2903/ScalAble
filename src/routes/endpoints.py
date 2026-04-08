@@ -1,14 +1,20 @@
-from flask import Blueprint, render_template, render_template_string, jsonify, request, session, redirect, url_for, flash, current_app
+from flask import Blueprint, render_template, Response, render_template_string, jsonify, request, session, redirect, url_for, flash, current_app
 import importlib
 
-from src.engine.text_to_query import generate_query_from_nl, ollama_model_ls
+from src.connectors.connector import DatabaseConnector
+from src.engine.inference_engine import InferenceEngine
+from src.engine.model_manager import get_engine, reset_engine
 from src.engine.query_executor import run_query
-from src.core.utils import downloadable_json, downloadable_excel, downloadable_csv, render_result_table, load_settings, save_settings, is_running_in_docker
+from src.core.utils import model_ls, encrypt_creds, decrypt_creds, downloadable_json, downloadable_excel, downloadable_csv, render_result_table, load_settings, save_settings, is_running_in_docker
+from src.config.settings import settings, VENDOR_CONFIG, PROVIDER_FIELDS
 
+import psutil
+import time
 import dotenv
 import pandas as pd
 from datetime import datetime
 from pathlib import Path
+import tempfile
 import traceback
 import uuid
 import json
@@ -23,72 +29,119 @@ from src.core.logger import logging
 endpoints_blueprint = Blueprint('endpoints', __name__)
 
 # All connections
-@endpoints_blueprint.route('/connections')
+
+# Connections management (add, edit, delete)
+@endpoints_blueprint.route('/connections', methods=['GET','POST'])
 def connections():
     try:
         connections = session.get("connections", [])
-        return render_template('connections.html', connections=connections)
+        no_of_connections = len(connections) or 0
+        return render_template('connections.html', connections=connections, no_of_connections=no_of_connections)
     except Exception as e:
         logging.error(f"Error loading connections: {str(e)}")
         return render_template('error.html', error_message="An error occurred while loading the connections.")
 
-# Add new database
-@endpoints_blueprint.route('/add-database', methods=['GET', 'POST'])
-def add_database():
+@endpoints_blueprint.route('/connections/new/<vendor>', methods=['GET', 'POST'])
+def add_new_connection(vendor):
+    try:
+        db = VENDOR_CONFIG.get(vendor)
+        if not db:
+            flash(f"Unsupported database type: {vendor}", "error")
+            return redirect(url_for("endpoints.add_database"))
+        
+        template_path = f'partials/db/{db.get("connection_type")}.html'
+        return render_template(template_path, vendor=vendor, default_port=db.get("default_port"), has_schema=db.get("has_schema"), schema_default=db.get("schema_default"))
+    
+    except Exception as e:
+        logging.error(f"Template for {vendor} not found: {str(e)}")
+        return "<p class='text-red-500 text-xs p-10 text-center font-bold'>Coming Soon: Configuration for this database.</p>"
+    
+@endpoints_blueprint.route('/test-connection', methods=['POST'])
+def test_connection():
+    # Get connection details from the form
     if request.method == 'POST':
         raw_form_data = request.form.to_dict()
-        print("Raw Form Data:", raw_form_data)
-        print('')
 
-        db_type = raw_form_data.get("db_type")
-
-        host_value = raw_form_data.get("host", "").strip().lower()
-        if is_running_in_docker() and host_value in ["localhost", "127.0.0.1"]:
+        # Handle Docker edge case
+        if is_running_in_docker() and raw_form_data.get("host") in ["localhost", "127.0.0.1"]:
             raw_form_data["host"] = "host.docker.internal"
 
-        try:
-            connector_module = importlib.import_module(f"src.connectors.{db_type}")
+    try:
+        db_manager = DatabaseConnector(raw_form_data)
+        status, msg = db_manager.test()
 
-            status, msg = connector_module.test_connection(raw_form_data)
+        # test_db_connection(db_uri)
+        return "Connection successful! The matrix is full-rank and ready for queries."
+    except Exception as e:
+        return f"Connection failed: {str(e)}. Check your credentials or SSL settings."
+
+@endpoints_blueprint.route('/connections/new', methods=['GET', 'POST'])
+def new_connector():
+    if request.method == 'POST':
+        raw_form_data = request.form.to_dict()
+        
+        temp_file_paths = []
+        
+        if request.files:
+            for file_key in request.files:
+                uploaded_file = request.files[file_key]
+                # If the user actually selected a file
+                if uploaded_file.filename != '':
+                    # Create a secure temporary file on the OS
+                    fd, temp_path = tempfile.mkstemp(suffix=".pem")
+                    with os.fdopen(fd, 'wb') as f:
+                        uploaded_file.save(f)
+                    
+                    # Inject the file path into the config so the connector can find it
+                    raw_form_data[file_key] = temp_path
+                    temp_file_paths.append(temp_path)
+
+        # Handle Docker edge case
+        if is_running_in_docker() and raw_form_data.get("host") in ["localhost", "127.0.0.1"]:
+            raw_form_data["host"] = "host.docker.internal"
+
+        # 3. Test the connection
+        try:
+            db_manager = DatabaseConnector(raw_form_data)
+            status, msg = db_manager.test()
+            
             if not status:
                 flash(f"Connection failed: {msg}", "error")
-                return redirect(url_for("interface.add_database"))
+                logging.error(f"Connection test failed: {msg}")
+                return redirect(url_for("endpoints.new_connector"))
 
-            metadata_status, metadata = connector_module.metadata(raw_form_data)
-            if not metadata_status:
+            # [Fetch Metadata Logic Goes Here]
+            m_status, metadata = db_manager.fetch_metadata()
+            if not m_status:
                 flash(f"Metadata fetch failed: {metadata}", "error")
-                return redirect(url_for("interface.add_database"))
+                return redirect(url_for("endpoints.new_connector"))
 
-            connection_id = len(session.get("connections", [])) + 1
-            created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            # [Save to Session / DB Logic Goes Here]
+            connection = session.get("connections", [])
+            connection.append({
+                "id": len(connection) + 1,
+                "db_type": raw_form_data.get("db_type"),
+                "credentials": encrypt_creds(raw_form_data),
+                "metadata": metadata,
+                "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            })
+            session["connections"] = connection
 
-            connection_object = {
-                "id": connection_id,
-                "created_at": created_at,
-                "db_type": db_type,
-                "name": raw_form_data.get("name"),
-                "credentials": {
-                    key: raw_form_data[key]
-                    for key in raw_form_data
-                    if key not in ["id", "created_at", "metadata"]
-                },
-                "metadata": metadata
-            }
+            flash("System Linked Successfully!", "success")
+            return redirect(url_for("endpoints.connections"))
 
-            connections = session.get("connections", [])
-            connections.append(connection_object)
-            session["connections"] = connections
-
-            flash("Database connected and metadata fetched!", "success")
-            return redirect(url_for("interface.connections"))
-
-        except ModuleNotFoundError:
-            flash(f"Connector for '{db_type}' not implemented.", "error")
-            return redirect(url_for("interface.add_database"))
-        
         except Exception as e:
-            flash(f"Error during database addition: {str(e)}", "error")
-            return redirect(url_for("interface.add_database"))
+            flash(f"System Error: {str(e)}", "error")
+            logging.error(f"System Error during connection: {str(e)}")
+            return redirect(url_for("endpoints.new_connector"))
+            
+        finally:
+            for temp_path in temp_file_paths:
+                try:
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+                except Exception as cleanup_error:
+                    logging.warning(f"Failed to clean up temp file {temp_path}: {cleanup_error}")
 
     return render_template("connections_new.html")
 
@@ -103,10 +156,10 @@ def delete_database(db_id):
 
         session["connections"] = connections
         flash("Database deleted successfully.", "success")
-        return redirect(url_for('interface.connections'))
+        return redirect(url_for('endpoints.connections'))
     except Exception as e:
         flash(f"Error deleting database: {str(e)}", "error")
-        return redirect(url_for('interface.connections'))
+        return redirect(url_for('endpoints.connections'))
 
 
 # Edit database
@@ -117,7 +170,7 @@ def edit_database(db_id):
 
     if not conn:
         flash("Database not found.", "error")
-        return redirect(url_for('interface.connections'))
+        return redirect(url_for('endpoints.connections'))
 
     if request.method == 'POST':
         updated_data = request.form.to_dict()
@@ -128,10 +181,58 @@ def edit_database(db_id):
         flash('Database updated', 'success')
 
         print(connections)
-        return redirect(url_for('interface.connections'))
+        return redirect(url_for('endpoints.connections'))
 
     return render_template('edit_database.html', conn=conn)
 
+
+
+# chat interface
+@endpoints_blueprint.route('/chat', methods = ['GET', 'POST'])
+def chat():
+    try:
+        connections = session.get('connections', [])
+        print("Connections in session:", connections)
+    
+    except Exception as e:
+        logging.error(f"Error fetching connections: {str(e)}")
+        connections = {}
+
+    return render_template("chat.html", connections=connections)
+
+@endpoints_blueprint.route('/chat/ask', methods=['POST'])
+def ask():
+    try:
+        if request.method == 'POST':
+            input = request.form.get('message')
+            db_id = request.form.get('selected_db_id')
+            selected_conn = next((c for c in session.get('connections', []) if str(c['id']) == str(db_id)), None)
+            db_type=selected_conn.get("db_type")
+            metadata = selected_conn.get("metadata", {})
+
+
+            # Needs change - should not be initializing model on every request
+            model = get_engine()
+
+            def stream():
+                try:
+                    for token in model.generate(user_input=input, db_type=db_type, metadata=metadata):
+                        print("Generated token:", token)
+                        yield f"data: {json.dumps(token)}\n\n"
+                except Exception as e:  
+                    logging.error(f"Error during inference generation: {str(e)}")
+                    yield f"data: {json.dumps({"type": "error", "content": "An error occurred during response generation."})}\n\n"
+                
+            return Response(stream(), mimetype='text/event-stream')
+
+    except Exception as e:
+        logging.error(f"Error in /chat/ask: {str(e)}")
+        return jsonify({
+            "error": "An error occurred while processing your request. Please try again."
+        }), 500
+
+
+'''
 # chat interface
 @endpoints_blueprint.route('/chat', methods=['GET', 'POST'])
 def chat():
@@ -320,6 +421,8 @@ def chat():
             }), 500
 
     return render_template("chat.html", connections=connections, selected_db_id=selected_db_id, table_block=table_block if 'table_block' in locals() else "")
+'''
+
 
 @endpoints_blueprint.route('/download/<fmt>', methods=['GET'])
 def download(fmt):
@@ -484,37 +587,84 @@ def uploadfile():
 
 @endpoints_blueprint.route('/settings', methods=['GET', 'POST'])
 def settings():
-    models = ollama_model_ls()
-    settings_data = load_settings() or {}
-    settings_data.setdefault("options", {
-        "num_keep": 5,
-        "num_predict": 512,
-        "top_k": 20,
-        "top_p": 0.9,
-        "typical_p": 0.7,
-        "temperature": 0.7,
-        "penalize_newline": False,
-        "num_ctx": 2048,
-        "num_batch": 8,
-        "use_mmap": True,
-        "num_thread": 16
-    })
+    settings = load_settings() or {}
+    provider, model = settings.get("provider", None), settings.get("model", None)
 
     if request.method == "POST":
-        new_data = settings_data.copy()
+        try:
+            provider = request.form.get("provider")
 
-        new_data["model"] = request.form.get("model", new_data.get("model"))
-        new_data["keep_alive"] = request.form.get("keep_alive", 0)
-        new_data["options"]["num_predict"] = int(request.form.get("num_predict", 256))
-        new_data["options"]["top_k"] = int(request.form.get("top_k", 20))
-        new_data["options"]["top_p"] = float(request.form.get("top_p", 0.9))
-        new_data["options"]["temperature"] = float(request.form.get("temperature", 0.1))
-        new_data["options"]["num_ctx"] = int(request.form.get("num_ctx", 4096))
-        new_data["options"]["num_batch"] = int(request.form.get("num_batch", 2))
-        new_data["options"]["num_thread"] = int(request.form.get("num_thread", 8))
+            new_data = {
+                "provider": provider,
+                "model": request.form.get("model", settings.get("model")),
+                "keep_alive": request.form.get("keep_alive", "5m"),
+                "options": {
+                    "num_predict":       int(request.form.get("num_predict", 256)),
+                    "top_k":             int(request.form.get("top_k", 40)),
+                    "top_p":             float(request.form.get("top_p", 0.9)),
+                    "temperature":       float(request.form.get("temperature", 0.7)),
+                    "num_ctx":           int(request.form.get("num_ctx", 2048)),
+                    "num_batch":         int(request.form.get("num_batch", 4)),
+                    "num_thread":        int(request.form.get("num_thread", 8)),
+                    "num_gpu":           int(request.form.get("num_gpu", 0)),
+                    "repeat_penalty":    float(request.form.get("repeat_penalty", 1.1)),
+                    "use_mmap":          request.form.get("use_mmap") == "true",
+                    "use_mlock":         request.form.get("use_mlock") == "false",
+                    "frequency_penalty": float(request.form.get("frequency_penalty", 0.0)),
+                    "presence_penalty":  float(request.form.get("presence_penalty", 0.0)),
+                }
+            }
 
-        save_settings(new_data)
-        flash("Settings updated", "success")
-        return redirect(url_for("interface.settings"))
+            save_settings(new_data)
+            reset_engine()
+            flash("Settings updated successfully!", "success")
+  
+        except Exception as e:
+            logging.error(f"Error saving settings: {str(e)}")
+            flash("Failed to save settings. Please check the logs for details.", "error")
+            return redirect(url_for('endpoints.settings'))
+    
+    return render_template(
+        'settings.html',
+        settings=settings,
+        provider_fields=PROVIDER_FIELDS,
+        current_provider=provider,
+        current_model=model,
+        all_providers=list(PROVIDER_FIELDS.keys()),
+    )
+    
+# ----------------------------------------------------------------------------------------------------
+# Helper endpoints
 
-    return render_template('settings.html', models=models, settings=settings_data)
+@endpoints_blueprint.route('/system-metrics')
+def system_metrics():
+    def generate():
+        try:
+            while True:
+                data = {
+                    "cpu": f"{psutil.cpu_percent(interval=1)}%",
+                    "ram": f"{psutil.virtual_memory().used / (1024 ** 3):.2f} GB"
+                }
+
+                yield f"data: {json.dumps(data)}\n\n"
+                time.sleep(1)
+
+        except Exception as e:
+            logging.error(f"Error fetching system metrics: {str(e)}")
+            return jsonify({"error": "Failed to fetch system metrics"}), 500
+
+    return Response(generate(), mimetype='text/event-stream')
+
+@endpoints_blueprint.route('/models_list')
+def models_list():
+    provider = request.args.get("provider")
+    if not provider:
+        return jsonify({"error": "No provider specified"}), 400
+        
+    try:
+        models = model_ls(provider)
+        print(models)
+        return jsonify(models)
+    except Exception as e:
+        logging.error(f"Failed to fetch models for {provider}: {e}")
+        return jsonify({"error": "Could not connect to provider"}), 500

@@ -1,14 +1,30 @@
+import requests
+
 from src.core.logger import logging
 
 from flask import session, Response
 from openpyxl import Workbook
 from io import StringIO, BytesIO
 from pathlib import Path
+from cryptography.fernet import Fernet
+from dotenv import load_dotenv
+
 import os
+import ast
 import csv
 import uuid
 import json
 import dill
+
+load_dotenv()
+
+cipher_key = Fernet(os.getenv("ENCRYPTION_KEY"))
+
+def encrypt_creds(creds):
+    return cipher_key.encrypt(str(creds).encode()).decode()
+
+def decrypt_creds(encrypted_creds):
+    return ast.literal_eval(cipher_key.decrypt(encrypted_creds.encode()).decode())
 
 def generate_id():
     """
@@ -194,3 +210,45 @@ def is_running_in_docker():
         with open(path) as f:
             return any("docker" in line for line in f)
     return False
+
+def model_ls(provider):
+    if provider == "ollama":
+        return ollama_model_ls()
+    elif provider == "lmstudio":
+        return lmstudio_model_ls()
+    else:
+        return []
+    
+def ollama_model_ls():
+    OLLAMA_BASE = os.getenv('OLLAMA_BASE')
+    OLLAMA_TAGS = (f'{OLLAMA_BASE}/api/tags')
+    tag_data = requests.get(OLLAMA_TAGS).json()['models']
+
+    models = []
+    for row in tag_data:
+        model = {
+            'model':row.get('model'),
+            'model_size':row.get('size'),
+            'paramater_size': row['details'].get('parameter_size')
+        }
+        models.append(model)
+
+    return models
+
+def lmstudio_model_ls():
+    LMSTUDIO_BASE = os.getenv('LMSTUDIO_BASE')
+    LMSTUDIO_TAGS = (f'{LMSTUDIO_BASE}/api/v1/models')
+
+    tag_data = requests.get(LMSTUDIO_TAGS).json()
+
+    models = []
+    print(tag_data)
+    for unit in tag_data.get('models'):
+        if unit.get('type') == 'llm':
+            model = {
+                'model':unit.get('key'),
+                'model_size': int(unit.get('size_bytes')),
+                'paramater_size': unit.get('params_string')
+            }
+            models.append(model)
+    return models

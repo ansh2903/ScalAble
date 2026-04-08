@@ -1,187 +1,347 @@
 <!DOCTYPE html>
-<html lang="en">
+
+<html class="light" lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <title>ScalAble | Add Database</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <script src="{{ url_for('static', filename='js/database_form.js') }}"></script>
-    <script type="module" src="https://unpkg.com/@fluentui/web-components"></script>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Add Database | DataFlow AI</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500&amp;family=Fredoka:wght@400;600;700&amp;family=Pacifico&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00A36C",
+                        "primary-dark": "#065f46",
+                        "primary-soft": "#ecfdf5",
+                        "secondary-accent": "#475569",
+                        "bg-main": "#f8fafc",
+                        "card-border": "#e2e8f0",
+                        "heavy-outline": "#cbd5e1"
+                    },
+                    fontFamily: {
+                        "sans": ["Plus Jakarta Sans", "sans-serif"],
+                        "headline": ["Plus Jakarta Sans", "sans-serif"],
+                        "body": ["Plus Jakarta Sans", "sans-serif"],
+                        "playful": ["Fredoka", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"],
+                        "script": ["Pacifico", "cursive"]
+                    },
+                    borderRadius: {
+                        "organic": "2.5rem",
+                        "pill": "9999px"
+                    },
+                    boxShadow: {
+                        "tactile": "0 6px 0 0 rgba(0, 163, 108, 0.2)",
+                        "tactile-hover": "0 3px 0 0 rgba(0, 163, 108, 0.3)",
+                        "data-card": "0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04)",
+                        "header-nav": "0 10px 15px -3px rgba(0, 163, 108, 0.05)"
+                    }
+                },
+            },
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer base {
+            body { 
+                @apply bg-bg-main text-slate-800 font-body antialiased;
+            }
+            h1, h2, h3 {
+                @apply font-headline font-extrabold tracking-tight;
+            }
+        }
+        .header-glass {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(0, 163, 108, 0.1);
+        }
+        .organic-border {
+            border-radius: 60% 40% 70% 30% / 30% 60% 40% 70%;
+        }
+        .heavy-card {
+            @apply bg-white border-2 border-slate-200 rounded-organic transition-all duration-300;
+            box-shadow: 0 12px 0 -4px theme('colors.slate.100');
+        }
+        .heavy-card:hover {
+            @apply border-primary/30;
+            transform: translateY(-2px);
+            box-shadow: 0 16px 0 -4px rgba(0, 163, 108, 0.1);
+        }
+        .soft-gradient-bg {
+            background: radial-gradient(circle at 50% -20%, #ecfdf5 0%, #f8fafc 60%);
+        }
+        .nav-link {
+            @apply relative px-3 py-2 text-slate-600 font-semibold transition-colors hover:text-primary;
+        }
+        .nav-link-active {
+            @apply text-primary font-bold;
+        }
+        .nav-link-active::after {
+            content: '';
+            @apply absolute bottom-0 left-3 right-3 h-1 bg-primary rounded-full;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            @apply bg-slate-200 rounded-full;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            @apply bg-primary/30;
+        }
+        [x-cloak] { display: none !important; }
+    </style>
 </head>
 
-<body class="theme">
-    <div class="dashboard", style="flex-direction: row;">
-        <!-- Sidebar Navigation -->
-        <div class="sidebar">
-            <div class="logo">
-                <div class="logo-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 2L2 7V17L12 22L22 17V7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-                        <path d="M12 22V12" stroke="currentColor" stroke-width="2"/>
-                        <path d="M22 7L12 12L2 7" stroke="currentColor" stroke-width="2"/>
-                    </svg>
+<body class="soft-gradient-bg min-h-screen">
+    <!-- Unified Header -->
+    <header class="header-glass fixed top-0 w-full z-50 h-20 flex items-center justify-between px-10">
+        <div class="flex items-center gap-16">
+            <div class="flex items-center gap-3">
+                <div
+                    class="w-10 h-10 bg-primary organic-border flex items-center justify-center text-white shadow-tactile">
+                    <span class="material-symbols-outlined text-2xl">rocket_launch</span>
                 </div>
+                <span class="text-2xl font-black tracking-tighter text-slate-900">DataFlow AI</span>
             </div>
-                
-            <nav class="sidebar-nav" role="navigation" aria-label="Main navigation">
-                <ul class="nav-list" role="menu">
-                    <li role="none">
-                        <a role="menuitem" href="#" class="nav-item active" aria-current="page">
-                            <div class="nav-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <rect x="3" y="3" width="7" height="7" stroke="currentColor" stroke-width="2" rx="1"/>
-                                    <rect x="14" y="3" width="7" height="7" stroke="currentColor" stroke-width="2" rx="1"/>
-                                    <rect x="14" y="14" width="7" height="7" stroke="currentColor" stroke-width="2" rx="1"/>
-                                    <rect x="3" y="14" width="7" height="7" stroke="currentColor" stroke-width="2" rx="1"/>
-                                </svg>
-                            </div>
-                        </a>
-                    </li>
-                    <li role="none">
-                        <a role="menuitem" href="#" class="nav-item">
-                            <div class="nav-icon">
-                                <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/Chat icon.png') }}" alt="Logo">
-                            </div>
-                        </a>
-                    </li>
-                    <li role="none">
-                        <a role="menuitem" href="/connections" class="nav-item">
-                            <div class="nav-icon">
-                                <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/Database icon.png') }}" alt="Logo">
-                            </div>
-                        </a>
-                    </li>
-                    <li role="none">
-                        <a role="menuitem" href="/settings" class="nav-item">
-                            <div class="nav-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M12.89 1.45L8 5.6C7.11 6.27 6.6 7.33 6.6 8.45V14.45C6.6 15.57 7.11 16.63 8 17.3L12.89 21.45C11.3 22.5 9.1 22.5 7.51 21.45L2.62 17.3C1.73 16.63 1.22 15.57 1.22 14.45V8.45C1.22 7.33 1.73 6.27 2.62 5.6L7.51 1.45C9.1 0.4 11.3 0.4 12.89 1.45Z" fill="currentColor"/>
-                                    <path d="M22.78 9.55V15.55C22.78 16.67 22.27 17.73 21.38 18.4L16.49 22.55C14.9 23.6 12.7 23.6 11.11 22.55L16 18.4C16.89 17.73 17.4 16.67 17.4 15.55V9.55C17.4 8.43 16.89 7.37 16 6.7L11.11 2.55C12.7 1.5 14.9 1.5 16.49 2.55L21.38 6.7C22.27 7.37 22.78 8.43 22.78 9.55Z" fill="currentColor"/>
-                                </svg>
-                            </div>
-                        </a>
-                    </li>
-                    <li role="none">
-                        <a role="menuitem" href="https://github.com/ansh2903/ScalAble" target="_blank" rel="noopener noreferrer" class="nav-item">
-                            <div class="nav-icon">
-                                <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/github icon.png') }}" alt="Logo">
-                            </div>
-                        </a>
-                    </li>
-                    <li role="none">
-                        <a role="menuitem" href="https://www.linkedin.com/in/asharma2903/" target="_blank" rel="noopener noreferrer" class="nav-item">
-                            <div class="nav-icon">
-                                <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/linkedin icon.png') }}" alt="Logo">
-                            </div>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-            
-            <nav class ="sidebar-footer" role="navigation" aria-label="Footer navigation">
-                <ul class="nav-list" role="menu">
-                    <li role="none">
-                        <a role="menuitem" href="#" class="nav-item">
-                            <div class="nav-icon">
-                                <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/Settings icon.png') }}" alt="Logo">
-                            </div>
-                        </a>
-                    </li>
-
-                    <li role="none">
-                        <a role="menuitem" href="#" class="nav-item">
-                            <div class="nav-icon">
-                                <img class="nav-icon" src="{{ url_for('static', filename='images/Icons/Help icon.png') }}" alt="Logo">
-                            </div>
-                        </a>
-                    </li>
-
-                    <li role="none">
-                        <a role="menuitem" href="#" class="nav-item">
-                            <div class="nav-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20Z" fill="currentColor"/>
-                                    <path d="M11,15H13V17H11V15Z" fill="currentColor"/>
-                                    <path d="M11,9H13V13H11V9Z" fill="currentColor"/>
-                                </svg>
-                            </div>
-                        </a>
-                    </li>
-                </ul>
-                <span class="version">v0.6</span>
-                <span class="copyright">&copy; 2023 ScalAble</span>
+            <nav class="hidden md:flex items-center gap-8">
+                <a class="nav-link" href="#">Data Deck</a>
+                <a class="nav-link nav-link-active" href="#">Laboratory</a>
             </nav>
         </div>
-
-        <div class="card-container ">
-            <div class="card-header">
-                <h3 class="text-xl font-medium">Add your database</h3>
-                <div id="selected-db-type" class="selected-db hidden">
-                    <span id="selected-db-type-label" class="font-medium text-sm"></span>
+        <div class="flex items-center gap-6">
+            <div class="flex items-center gap-3">
+                <button class="p-2 text-slate-400 hover:text-primary transition-colors"><span
+                        class="material-symbols-outlined">settings</span></button>
+                <div
+                    class="w-10 h-10 rounded-full bg-slate-200 border-2 border-slate-300 flex items-center justify-center overflow-hidden">
+                    <img alt="Profile" class="w-full h-full object-cover"
+                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9nkpLSRGJnG1A5hGO8QLT0MT0ZgNM9bK08FTZEn1Jit6xwoJTgluh3RxdsZkvZhHSnb1aE4iF1HEEav3ndcqOq3yiJpS4KtziJyOvf2ydd2FG-3LOkgIBi3pqwGo0wTGLDhS7XF2FkacFLbU86DGXHDByW3OsQjh-qRjM1nifky2EmsSHzF3J-Z59KETQA_Q9dK36z-U4ixf4lJ4HBWKYkE4V5ulHyr0xy0NIBRbCibZzrKXs8o6myp_yJp-p2CcN99nQ-GBJlrPg" />
                 </div>
             </div>
-
-            <!-- Stepper Dots -->
-            <div class="step-indicator">
-                <div class="dot active"></div>
-                <div class="line"></div>
-                <div class="dot"></div>
-                <div class="line"></div>
-                <div class="dot"></div>
-                <div class="line"></div>
-                <div class="dot"></div>
-                <div class="line"></div>
-                <div class="dot"></div>
-                <div class="line"></div>
-                <div class="dot"></div>
-            </div>
-
-            <form id="databaseForm" method="POST">
-                <input type="hidden" name="db_type" id="db_type">
-                <div id="db-type-grid" class="db-grid">
-                    {% set db_types = [
-                        ('MySQL', 'mysql', 'AWS managed MySQL'),
-                        ('Microsoft SQL Server', 'mssql', 'Microsoft managed SQL Server'),
-                        ('PostgreSQL', 'postgresql', 'Open source PostgreSQL'),
-                        ('Oracle PL/SQL', 'oracle', 'Oracle Database'),
-                        ('SQLite', 'sqlite', 'File-based SQLite'),
-                        ('Snowflake', 'snowflake', 'Cloud Data Warehouse'),
-                        ('Redshift', 'redshift', 'AWS Redshift'),
-                        ('BigQuery', 'bigquery', 'Google BigQuery'),
-                        ('MariaDB', 'mariadb', 'MariaDB Server'),
-                        ('MongoDB', 'mongodb', 'NoSQL MongoDB'),
-                        ('Clickhouse', 'clickhouse', 'Clickhouse DB'),
-                        ('Other Database', 'other', 'Custom/Other')
-                    ] %}
-                    {% for label, value, desc in db_types %}
-                        <div class="db-type-card" data-dbtype="{{ value }}" data-label="{{ label }}">
-                            <h4 class="label">{{ label }}</h4>
-                            <p class="desc">{{ desc }}</p>
+        </div>
+    </header>
+    <div class="pt-28 pb-12 px-10 max-w-[1600px] mx-auto grid grid-cols-12 gap-10">
+        <!-- Unified Sidebar -->
+        <aside class="col-span-12 lg:col-span-3 space-y-6">
+            <div class="heavy-card p-6">
+                <h2 class="text-xs font-black uppercase tracking-[0.2em] text-slate-400 mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">terminal</span> Studio Control
+                </h2>
+                <nav class="space-y-2">
+                    <a class="flex items-center justify-between px-4 py-3 rounded-2xl text-slate-600 hover:bg-primary-soft hover:text-primary transition-all group font-semibold"
+                        href="#">
+                        <div class="flex items-center gap-3">
+                            <span class="material-symbols-outlined">science</span>
+                            <span>Laboratory</span>
                         </div>
-                    {% endfor %}
-                </div>
+                        <span
+                            class="material-symbols-outlined opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+                    </a>
+                    <a class="flex items-center justify-between px-4 py-3 rounded-2xl bg-primary text-white shadow-tactile font-bold"
+                        href="#">
+                        <div class="flex items-center gap-3">
+                            <span class="material-symbols-outlined">database</span>
+                            <span>Databases</span>
+                        </div>
+                    </a>
+                    <a class="flex items-center justify-between px-4 py-3 rounded-2xl text-slate-600 hover:bg-primary-soft hover:text-primary transition-all group font-semibold"
+                        href="#">
+                        <div class="flex items-center gap-3">
+                            <span class="material-symbols-outlined">forum</span>
+                            <span>AI Chat</span>
+                        </div>
+                        <span
+                            class="material-symbols-outlined opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+                    </a>
+                    <a class="flex items-center justify-between px-4 py-3 rounded-2xl text-slate-600 hover:bg-primary-soft hover:text-primary transition-all group font-semibold"
+                        href="#">
+                        <div class="flex items-center gap-3">
+                            <span class="material-symbols-outlined">query_stats</span>
+                            <span>Run History</span>
+                        </div>
+                        <span
+                            class="material-symbols-outlined opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+                    </a>
+                </nav>
+            </div>
+            <button
+                class="w-full py-5 bg-slate-900 text-white rounded-organic font-black text-lg shadow-xl flex items-center justify-center gap-3 hover:translate-y-[-2px] transition-all">
+                <span class="material-symbols-outlined text-2xl">play_circle</span>
+                START EXECUTION
+            </button>
+        </aside>
 
-                <!-- Dynamic DB Config Form -->
-                <div id="form-fields-container" class="db-details hidden"></div>
+        <!-- Main Wizard Content -->
+        <main class="col-span-12 lg:col-span-9">
+            <form id="databaseForm" action="{{ url_for('endpoints.new_connector') }}" method="POST" enctype="multipart/form-data" @submit="loading = true">
 
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    <div class="flash-container">
-                    {% for category, message in messages %}
-                        <div class="flash-message flash-{{ category }}">{{ message }}</div>
-                    {% endfor %}
+                <div id="dynamic-content-area" class="heavy-card p-12 bg-white relative overflow-hidden">
+                    <!-- Header Wizard Section -->
+                    <div class="flex flex-col md:flex-row md:items-start justify-between gap-8 mb-12">
+                        <div class="space-y-4">
+                            <nav
+                                class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                <span class="text-primary font-bold">Connect</span>
+                                <span class="material-symbols-outlined text-xs">chevron_right</span>
+                                <span class="font-bold">New Source</span>
+                            </nav>
+                            <h1 class="text-5xl font-black text-slate-900 tracking-tighter leading-tight">
+                                Add your <span class="font-script text-primary font-normal lowercase">database</span>
+                            </h1>
+                            <p class="text-slate-500 font-medium leading-relaxed max-w-xl">Select a source below to
+                                enable
+                                real-time AI-powered analytics and flow orchestration across your infrastructure.</p>
+                        </div>
+                        <!-- Stepper -->
+                        <div class="flex flex-col items-end gap-3 shrink-0">
+                            <div class="flex gap-2">
+                                <div class="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_12px_rgba(0,163,108,0.4)]">
+                                </div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-slate-200"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-slate-200"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-slate-200"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-slate-200"></div>
+                            </div>
+                            <span class="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Step 1: Select
+                                Source</span>
+                        </div>
                     </div>
-                {% endif %}
-                {% endwith %}
+                    <!-- Database Grid Selection -->
+                    <input type="hidden" id="db_type" name="db_type" value="">
+                    <div class="animate-in fade-in duration-500">
+                    <div
+                        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12 max-h-[520px] overflow-y-auto pr-4 custom-scrollbar">
+                        {% set db_types = [
+                        ('MySQL', 'mysql',
+                        'https://lh3.googleusercontent.com/aida-public/AB6AXuAjDxt2466c2SbgoHFv4Blvtq3TiJCKs0xKv2hSkDsTmHuEK72vQDR0On7Ocug89eCtoqd9DOfgN-8EZYfeC8X5H7eJFvIGy21ODG0qZG-JMbFqXwDLKSh3skMQsWQImAQoD8j1BFtuTQYtqVCfHtWWncHnQNejSwKgokMPtRaLa3SQoz8OzduX4LGPlDU_KL18NBxXrRfefj4HhDXCFZSgrHqz_PmWf-Zawp968eFqVUTHpF4AcgQlhmWtw-EKvCHsDMJzlQQNYfwm',
+                        'Relational database for web apps.'),
+                        ('SQL Server', 'mssql',
+                        'https://lh3.googleusercontent.com/aida-public/AB6AXuAI54hyqhTE5VyIlAVF668CQ7GzldKoAxdDaJQYBqkdwHaFEy4qY_eeJGdcF7LxUGwX-Vw_2vWne1sqmxcILO5WUuC_MQw_E6QDGpSAatSY-BE0e-otzpwDJCP3gisIaAb_3Qd4H44Kd94t2Oniw_QAzA5UFHPw8Cy0139KUe9iEW1b6ZKvI4kR-DJzXm70fTEv7iJsKOFVNj9tFUe0Ft6j5RuTnZfDgt4PkD4xyLulNga3pxyXRl0A4AbQM75bqrwTmjeg9Qr-x4e_',
+                        'Enterprise Microsoft engine.'),
+                        ('PostgreSQL', 'postgresql',
+                        'https://lh3.googleusercontent.com/aida-public/AB6AXuAXP05sbYJ5jZ4EzyN-DpjqCVu2VsTNagcSilMnLFOPEOGPPm7Hk9B8Upo-_NghSTN3Vb5PzmVrOHAwwjH3rAUalmTHw4NG-HXWCTToVwQlbfwm_mgJM85RSr0UQKp0ITA--juu_83fHF8HLaenBlZMXNLlbK7KJFnstLPAkcHJMRu2cCM-_HOgZ14Db_taEg-MnxzMOHIvtjHHq3iX1_vz7NBJS1n1Yh-q8baR97YfU__WjDiXf7Ms7aemzqeczaeLmKW_SqOeiE9l',
+                        'Advanced open-source relational database.'),
+                        ('Oracle', 'oracle',
+                        'https://lh3.googleusercontent.com/aida-public/AB6AXuDj3ZQN8KOiPtG9QwWSq6-9qZHlFqS5VuS0pd3qWjOIFQoeVksvjEvFXQq1O3Q1FA9qLck4Zc8Z2t8LgexV9Fq3i_Tk-8LSUnhfnzzzlcPejgimNKaCUuuZzCrobz7D1q3BLhUv3Ukt1YCF_GUfSUdKW4LH6VBY1QT79FhI2FNu-lVaz8iy4mWgsVN7QxAsFC2113zRFE6jRtcCp_CqKpw7XN4vq8Q-1s6YU49IMQVrayQ1bj0GM0bc8fIe5GbtljHWU2ACl6nHPk9o',
+                        'Secure enterprise data management.'),
+                        ('SQLite', 'sqlite',
+                        'https://lh3.googleusercontent.com/aida-public/AB6AXuAXP05sbYJ5jZ4EzyN-DpjqCVu2VsTNagcSilMnLFOPEOGPPm7Hk9B8Upo-_NghSTN3Vb5PzmVrOHAwwjH3rAUalmTHw4NG-HXWCTToVwQlbfwm_mgJM85RSr0UQKp0ITA--juu_83fHF8HLaenBlZMXNLlbK7KJFnstLPAkcHJMRu2cCM-_HOgZ14Db_taEg-MnxzMOHIvtjHHq3iX1_vz7NBJS1n1Yh-q8baR97YfU__WjDiXf7Ms7aemzqeczaeLmKW_SqOeiE9l0',
+                        'File-based SQLite for local storage.'),
+                        ('Snowflake', 'snowflake',
+                        'https://lh3.googleusercontent.com/aida-public/AB6AXuAcspQSWtqmLrRdU3-8qYA72Hmz-SaeiECP0IGPNxG0G-DGvVRQ-O9m1OFbgK4q8stUdMn4fjcD6njCaclWgAL0FJIxMmTMWBbglxDjisvVN3om8vm1UUqb9ISk4rMlrXaYu-i0Y2fVaJp8ZuWtwFAN-Djgi7r7s1efOscN-VnEOt-ubRiQioS3QR-FYyC2iN5gpoLp6LNZlgXRZn_UdRsjuVaouvmmbtIte9GLFCN9TZkeJFwt2uArg0_R_1LtGhjvRUAAeVYvoKMz',
+                        'Cloud data warehousing platform.'),
+                        ('BigQuery', 'bigquery',
+                        'https://lh3.googleusercontent.com/aida-public/AB6AXuCCyT_HDeBvdx0ywdvV0jxkyXKqlUY57xhRO8oHM5Vfr-2_XpquLQvY_NRzA57FZGysJ0ir4Y_SUlCjRqtoeOnOcSU_ZucG8R_ydnXLND09Tswvr1I9Gc9wkHWFxKRMl5rNgFWjFCIKDe_CuvEdqQw9EUzmJBi-b_6VI7et4nKLnHltgfTWuGFnXTX6XQYlyEgoPhHEozd3jUDjbOVAfRBbhdzdbixIXjKWy1_Iwaf73DzucVbkOZCn2Dt5ljgtYcGIjiljDfmrBOkU',
+                        'Google Cloud data warehouse.'),
+                        ('MongoDB', 'mongodb',
+                        'https://lh3.googleusercontent.com/aida-public/AB6AXuCir0mwU0NCjekF27q1hNNwiADrHFfMI-tb4HYQFh5ULOyyG3M-R3RI3xg_zD-tHrip44LD2VR79JY_1nohVLcgu88_IxNGuN11qYOttL3m9f6MlDfpD2EOISCqEjBF9VyBF-rcq4KOjHBp9dotqjGCN2RY_9yTlIzVWJ8y5hh_Xju9pGmInmkjqVy_g78M11bzFvYyvAif2RHJR6-I1Q63rZksGZtQ8-ktVsY3KttUJqf3QiKTsep76-PJA28oOLcjxiaqTRH8AqzG',
+                        'NoSQL document store.'),
+                        ('MariaDB', 'mariadb', 'http://googleusercontent.com/profile/picture/8', 'Community-developed
+                        SQL server.'),
+                        ('Clickhouse', 'clickhouse',
+                        'https://lh3.googleusercontent.com/aida-public/AB6AXuAXP05sbYJ5jZ4EzyN-DpjqCVu2VsTNagcSilMnLFOPEOGPPm7Hk9B8Upo-_NghSTN3Vb5PzmVrOHAwwjH3rAUalmTHw4NG-HXWCTToVwQlbfwm_mgJM85RSr0UQKp0ITA--juu_83fHF8HLaenBlZMXNLlbK7KJFnstLPAkcHJMRu2cCM-_HOgZ14Db_taEg-MnxzMOHIvtjHHq3iX1_vz7NBJS1n1Yh-q8baR97YfU__WjDiXf7Ms7aemzqeczaeLmKW_SqOeiE9l1',
+                        'Fast OLAP database system.'),
+                        ('Redshift', 'redshift', 'http://googleusercontent.com/profile/picture/7', 'AWS managed data
+                        warehouse.')
+                        ] %}
+                        {% for label, value, image, desc in db_types %}
+                        <div hx-get="/connections/new/{{ value }}" hx-target="#dynamic-content-area"
+                            hx-swap="innerHTML"
+                            class="db-type-card p-6 rounded-2xl border border-slate-100 hover:border-primary/30 transition-all cursor-pointer group shadow-sm bg-slate-50 hover:bg-white relative">
 
-                <!-- Footer Buttons -->
-                <div class="form-footer">
-                    <button type="button" id="back-btn" class="btn-secondary hidden">Back</button>
-                    <button type="submit" id="continue-btn" class="btn-primary hidden">Continue</button>
+                            <div
+                                class="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm group-hover:shadow-md transition-all mb-4">
+                                <img class="w-8 h-8 object-contain" src="{{ image }}" />
+                            </div>
+                            <h4 class="font-bold text-slate-900 mb-1 tracking-tight">{{ label }}</h4>
+                            <p class="text-xs text-slate-500 leading-relaxed font-medium">{{ desc }}</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    </div>
+
+                    <!-- Footer Actions -->
+                    <div class="form-footer flex items-center justify-between pt-10 border-t border-slate-100">
+                        <a href="{{ url_for('endpoints.connections')}}">
+                            <button
+                                class="flex items-center gap-2 px-6 py-3.5 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all">
+                                <span class="material-symbols-outlined text-sm">arrow_back</span>
+                                Back to Connections
+                            </button>
+                        </a>
+
+                        <div class="flex items-center gap-6">
+                            <div class="hidden sm:flex flex-col items-end">
+                                <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">System
+                                    Status</span>
+                                <span
+                                    class="text-[10px] font-bold text-primary flex items-center gap-1 uppercase tracking-widest">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                                    Auto-detecting Schema
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </form>
-        </div>
+
+        </main>
     </div>
-    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+
+    <!-- Feedback Toast -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="fixed bottom-10 left-1/2 -translate-x-1/2 w-full max-w-2xl px-6 z-[60] space-y-4">
+        {% for category, message in messages %}
+        <div class="bg-slate-900 border border-slate-800 text-white p-5 rounded-[2rem] shadow-2xl flex items-center gap-5 animate-in fade-in slide-in-from-bottom-5 duration-500"
+            id="flash-{{ loop.index }}">
+
+            <div
+                class="w-12 h-12 {% if category == 'error' %}bg-red-500/20 text-red-400{% else %}bg-primary/20 text-primary{% endif %} rounded-full flex items-center justify-center shrink-0 animate-pulse">
+                <span class="material-symbols-outlined">
+                    {% if category == 'error' %}report{% elif category == 'success' %}check_circle{% else %}lightbulb{%
+                    endif %}
+                </span>
+            </div>
+
+            <div class="flex-1">
+                <p
+                    class="text-sm font-bold {% if category == 'error' %}text-red-400{% else %}text-primary{% endif %} mb-0.5 font-headline">
+                    Mission Control
+                    <span class="font-script lowercase font-normal text-white ml-1">
+                        {% if category == 'error' %}Alert{% else %}Advice{% endif %}
+                    </span>
+                </p>
+                <p class="text-xs font-medium opacity-70 leading-relaxed font-sans">
+                    {{ message }}
+                </p>
+            </div>
+
+            <button onclick="document.getElementById('flash-{{ loop.index }}').remove()"
+                class="p-2 text-white/20 hover:text-white transition-colors">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
 
 </body>
+
 </html>

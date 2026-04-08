@@ -1,19 +1,20 @@
 {
-  "model": "huihui_ai/deepseek-r1-abliterated:8b",
+  "provider": "lmstudio",
+  "model": "liquid/lfm2.5-1.2b",
   "keep_alive": "5m",
-  "think": false,
   "options": {
-    "num_keep": 5,
     "num_predict": 256,
     "top_k": 49,
     "top_p": 0.34,
-    "typical_p": 0.7,
     "temperature": 0.44,
-    "penalize_newline": false,
     "num_ctx": 2048,
     "num_batch": 4,
-    "use_mmap": true,
-    "num_thread": 12
-  },
-  "stream": false
+    "num_thread": 12,
+    "num_gpu": 0,
+    "repeat_penalty": 1.1,
+    "use_mmap": false,
+    "use_mlock": false,
+    "frequency_penalty": 0.0,
+    "presence_penalty": 0.0
+  }
 }

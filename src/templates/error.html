@@ -1,49 +1,55 @@
 <!DOCTYPE html>
 
-<html class="light" lang="en"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Error 404 - Laboratory Desync | ScalAble</title>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500&amp;family=Fredoka:wght@400;600;700&amp;family=Pacifico&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<script id="tailwind-config">
-      tailwind.config = {
-        darkMode: "class",
-        theme: {
-          extend: {
-            colors: {
-              "primary": "#00A36C", // Emerald Green
-              "primary-dark": "#065f46",
-              "primary-soft": "#ecfdf5",
-              "secondary-accent": "#475569", 
-              "bg-main": "#f8fafc",
-              "card-border": "#e2e8f0",
-              "heavy-outline": "#cbd5e1"
+<html class="light" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Error 404 - Laboratory Desync | ScalAble</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500&amp;family=Fredoka:wght@400;600;700&amp;family=Pacifico&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00A36C", // Emerald Green
+                        "primary-dark": "#065f46",
+                        "primary-soft": "#ecfdf5",
+                        "secondary-accent": "#475569",
+                        "bg-main": "#f8fafc",
+                        "card-border": "#e2e8f0",
+                        "heavy-outline": "#cbd5e1"
+                    },
+                    fontFamily: {
+                        "sans": ["Plus Jakarta Sans", "sans-serif"],
+                        "headline": ["Plus Jakarta Sans", "sans-serif"],
+                        "body": ["Plus Jakarta Sans", "sans-serif"],
+                        "playful": ["Fredoka", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"],
+                        "script": ["Pacifico", "cursive"]
+                    },
+                    borderRadius: {
+                        "organic": "2.5rem",
+                        "pill": "9999px"
+                    },
+                    boxShadow: {
+                        "tactile": "0 6px 0 0 rgba(0, 163, 108, 0.2)",
+                        "tactile-hover": "0 3px 0 0 rgba(0, 163, 108, 0.3)",
+                        "data-card": "0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04)",
+                        "header-nav": "0 10px 15px -3px rgba(0, 163, 108, 0.05)"
+                    }
+                },
             },
-            fontFamily: {
-              "sans": ["Plus Jakarta Sans", "sans-serif"],
-              "headline": ["Plus Jakarta Sans", "sans-serif"],
-              "body": ["Plus Jakarta Sans", "sans-serif"],
-              "playful": ["Fredoka", "sans-serif"],
-              "mono": ["JetBrains Mono", "monospace"],
-              "script": ["Pacifico", "cursive"]
-            },
-            borderRadius: {
-                "organic": "2.5rem",
-                "pill": "9999px"
-            },
-            boxShadow: {
-                "tactile": "0 6px 0 0 rgba(0, 163, 108, 0.2)",
-                "tactile-hover": "0 3px 0 0 rgba(0, 163, 108, 0.3)",
-                "data-card": "0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04)",
-                "header-nav": "0 10px 15px -3px rgba(0, 163, 108, 0.05)"
-            }
-          },
-        },
-      }
+        }
     </script>
-<style type="text/tailwindcss">
+    <style type="text/tailwindcss">
         @layer base {
             body { 
                 @apply bg-bg-main text-slate-800 font-body antialiased;
@@ -81,98 +87,112 @@
         }
     </style>
 </head>
+
 <body class="soft-gradient-bg min-h-screen flex flex-col">
-<!-- Header -->
-<header class="header-glass fixed top-0 w-full z-50 h-20 flex items-center justify-between px-10">
-<div class="flex items-center gap-16">
-<div class="flex items-center gap-3">
-<div class="w-10 h-10 bg-primary organic-border flex items-center justify-center text-white shadow-tactile">
-<span class="material-symbols-outlined text-2xl">rocket_launch</span>
-</div>
-<span class="text-2xl font-black tracking-tighter text-slate-900">ScalAble</span>
-</div>
-<nav class="hidden md:flex items-center gap-8">
-<a class="nav-link" href="#">Data Deck</a>
-<a class="nav-link" href="#">Live Chat</a>
-<a class="nav-link" href="#">AI Playground</a>
-</nav>
-</div>
-<div class="flex items-center gap-6">
-<div class="flex items-center gap-2 bg-slate-100/50 px-4 py-2 rounded-pill border border-slate-200">
-<span class="material-symbols-outlined text-primary text-sm">stars</span>
-<span class="text-xs font-bold text-slate-600">Level 12 Architect</span>
-</div>
-<div class="flex items-center gap-3">
-<button class="p-2 text-slate-400 hover:text-primary transition-colors"><span class="material-symbols-outlined">notifications</span></button>
-<div class="w-10 h-10 rounded-full border-2 border-primary/30 p-0.5 overflow-hidden">
-<img alt="User avatar" class="w-full h-full rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC-f8TTx8bBFUGqf42OM1R8Whfp3LjOOu2WEloffe2jYBHPfQcKaeyjHmuVd63Bs2LDTjCA3I93KOac7gbt8YG-FEPRoRvMcdVC2iqfKG70hmYfY6H7Kf3IcG8yRYB-IeHgKeQyuvchqYFdQax1K2lZcRX77iUk5ZogtDQOGUXL3kQCYu4uCEfzxirkqHf0JZXlTK3eN5gwMwKj800imCj98mrQCiklCItJ985ijbYgJhjBnjHzQ84J-xW__OOEZNQDsZ_97qLA5Lcg"/>
-</div>
-</div>
-</div>
-</header>
-<!-- Main Content -->
-<main class="flex-grow flex items-center justify-center pt-32 pb-16 px-6">
-<div class="max-w-4xl w-full">
-<div class="heavy-card p-10 md:p-16 text-center relative overflow-hidden">
-<!-- Mascot Presence -->
-<div class="absolute -top-12 -right-12 w-48 h-48 bg-primary/5 organic-border rotate-12 flex items-center justify-center">
-<span class="material-symbols-outlined text-8xl text-primary/10">psychology_alt</span>
-</div>
-<!-- Error Branding -->
-<div class="flex flex-col items-center mb-10">
-<div class="w-24 h-24 bg-primary-soft organic-border flex items-center justify-center text-primary mb-8 shadow-sm">
-<span class="material-symbols-outlined text-5xl">biotech</span>
-</div>
-<div class="inline-flex items-center gap-2 px-4 py-1.5 bg-slate-900 rounded-pill mb-6">
-<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-<span class="text-[10px] font-black tracking-[0.2em] text-white uppercase">Error 404: Internal Laboratory Desync</span>
-</div>
-<h1 class="text-5xl md:text-6xl font-black text-slate-900 mb-6 tracking-tighter leading-tight">
+    <!-- Header -->
+    <header class="header-glass fixed top-0 w-full z-50 h-20 flex items-center justify-between px-10">
+        <div class="flex items-center gap-16">
+            <div class="flex items-center gap-3">
+                <div
+                    class="w-10 h-10 bg-primary organic-border flex items-center justify-center text-white shadow-tactile">
+                    <span class="material-symbols-outlined text-2xl">rocket_launch</span>
+                </div>
+                <span class="text-2xl font-black tracking-tighter text-slate-900">ScalAble</span>
+            </div>
+            <nav class="hidden md:flex items-center gap-8">
+                <a class="nav-link" href="#">Data Deck</a>
+                <a class="nav-link" href="#">Live Chat</a>
+                <a class="nav-link" href="#">AI Playground</a>
+            </nav>
+        </div>
+        <div class="flex items-center gap-6">
+            <div class="flex items-center gap-2 bg-slate-100/50 px-4 py-2 rounded-pill border border-slate-200">
+                <span class="material-symbols-outlined text-primary text-sm">stars</span>
+                <span class="text-xs font-bold text-slate-600">Level 12 Architect</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <button class="p-2 text-slate-400 hover:text-primary transition-colors"><span
+                        class="material-symbols-outlined">notifications</span></button>
+                <div class="w-10 h-10 rounded-full border-2 border-primary/30 p-0.5 overflow-hidden">
+                    <img alt="User avatar" class="w-full h-full rounded-full object-cover"
+                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuC-f8TTx8bBFUGqf42OM1R8Whfp3LjOOu2WEloffe2jYBHPfQcKaeyjHmuVd63Bs2LDTjCA3I93KOac7gbt8YG-FEPRoRvMcdVC2iqfKG70hmYfY6H7Kf3IcG8yRYB-IeHgKeQyuvchqYFdQax1K2lZcRX77iUk5ZogtDQOGUXL3kQCYu4uCEfzxirkqHf0JZXlTK3eN5gwMwKj800imCj98mrQCiklCItJ985ijbYgJhjBnjHzQ84J-xW__OOEZNQDsZ_97qLA5Lcg" />
+                </div>
+            </div>
+        </div>
+    </header>
+    <!-- Main Content -->
+    <main class="flex-grow flex items-center justify-center pt-32 pb-16 px-6">
+        <div class="max-w-4xl w-full">
+            <div class="heavy-card p-10 md:p-16 text-center relative overflow-hidden">
+                <!-- Mascot Presence -->
+                <div
+                    class="absolute -top-12 -right-12 w-48 h-48 bg-primary/5 organic-border rotate-12 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-8xl text-primary/10">psychology_alt</span>
+                </div>
+                <!-- Error Branding -->
+                <div class="flex flex-col items-center mb-10">
+                    <div
+                        class="w-24 h-24 bg-primary-soft organic-border flex items-center justify-center text-primary mb-8 shadow-sm">
+                        <span class="material-symbols-outlined text-5xl">biotech</span>
+                    </div>
+                    <div class="inline-flex items-center gap-2 px-4 py-1.5 bg-slate-900 rounded-pill mb-6">
+                        <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                        <span class="text-[10px] font-black tracking-[0.2em] text-white uppercase">Error 404: Internal
+                            Laboratory Desync</span>
+                    </div>
+                    <h1 class="text-5xl md:text-6xl font-black text-slate-900 mb-6 tracking-tighter leading-tight">
                         Path <span class="script-text text-6xl md:text-8xl inline-block -rotate-2 ml-2">Unmapped.</span>
-</h1>
-<p class="text-xl text-slate-500 max-w-xl mx-auto font-medium leading-relaxed">
-                        Our sensors indicate that the laboratory segment you're looking for has drifted outside the primary data grid.
+                    </h1>
+                    <p class="text-xl text-slate-500 max-w-xl mx-auto font-medium leading-relaxed">
+                        Our sensors indicate that the laboratory segment you're looking for has drifted outside the
+                        primary data grid.
                     </p>
-</div>
-<!-- Actions -->
-<div class="flex flex-col sm:flex-row gap-6 justify-center items-center">
-<a class="bg-primary text-white px-10 py-5 rounded-2xl font-black text-lg shadow-tactile hover:translate-y-[-2px] hover:shadow-tactile-hover transition-all flex items-center gap-3" href="/">
-<span class="material-symbols-outlined">home_app_logo</span>
+                </div>
+                <!-- Actions -->
+                <div class="flex flex-col sm:flex-row gap-6 justify-center items-center">
+                    <a class="bg-primary text-white px-10 py-5 rounded-2xl font-black text-lg shadow-tactile hover:translate-y-[-2px] hover:shadow-tactile-hover transition-all flex items-center gap-3"
+                        href="/">
+                        <span class="material-symbols-outlined">home_app_logo</span>
                         Return to Studio
                     </a>
-<a class="bg-white border-2 border-slate-200 text-slate-600 px-10 py-5 rounded-2xl font-bold text-lg hover:bg-slate-50 transition-all flex items-center gap-3" href="/support">
-<span class="material-symbols-outlined">support_agent</span>
+                    <a class="bg-white border-2 border-slate-200 text-slate-600 px-10 py-5 rounded-2xl font-bold text-lg hover:bg-slate-50 transition-all flex items-center gap-3"
+                        href="/support">
+                        <span class="material-symbols-outlined">support_agent</span>
                         Contact Support
                     </a>
-</div>
-<!-- Subtle Decorative Background -->
-<div class="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent"></div>
-</div>
-<!-- Suggestion Text -->
-<p class="mt-10 text-center text-sm font-medium text-slate-400">
-                Did you mean to run a 
-                <a class="text-primary hover:underline font-bold" href="#">Calibration</a> or check the 
+                </div>
+                <!-- Subtle Decorative Background -->
+                <div
+                    class="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent">
+                </div>
+            </div>
+            <!-- Suggestion Text -->
+            <p class="mt-10 text-center text-sm font-medium text-slate-400">
+                Did you mean to run a
+                <a class="text-primary hover:underline font-bold" href="#">Calibration</a> or check the
                 <a class="text-primary hover:underline font-bold" href="#">Data Deck</a>?
             </p>
-</div>
-</main>
-<!-- Footer -->
-<footer class="bg-slate-900 border-t border-slate-800 py-12 px-10 text-slate-300">
-<div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
-<div class="flex items-center gap-3">
-<div class="w-8 h-8 bg-primary organic-border flex items-center justify-center text-white">
-<span class="material-symbols-outlined text-lg">rocket_launch</span>
-</div>
-<span class="text-xl font-black tracking-tighter text-white">ScalAble</span>
-</div>
-<div class="flex gap-8 text-xs font-mono font-bold uppercase tracking-widest text-slate-500">
-<a class="hover:text-primary transition-colors" href="#">Documentation</a>
-<a class="hover:text-primary transition-colors" href="#">Privacy</a>
-<a class="hover:text-primary transition-colors" href="#">Status</a>
-</div>
-<div class="text-xs font-mono text-slate-500">
+        </div>
+    </main>
+    <!-- Footer -->
+    <footer class="bg-slate-900 border-t border-slate-800 py-12 px-10 text-slate-300">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-primary organic-border flex items-center justify-center text-white">
+                    <span class="material-symbols-outlined text-lg">rocket_launch</span>
+                </div>
+                <span class="text-xl font-black tracking-tighter text-white">ScalAble</span>
+            </div>
+            <div class="flex gap-8 text-xs font-mono font-bold uppercase tracking-widest text-slate-500">
+                <a class="hover:text-primary transition-colors" href="#">Documentation</a>
+                <a class="hover:text-primary transition-colors" href="#">Privacy</a>
+                <a class="hover:text-primary transition-colors" href="#">Status</a>
+            </div>
+            <div class="text-xs font-mono text-slate-500">
                 © 2024 ScalAble Open Source. Built with precision.
             </div>
-</div>
-</footer>
-</body></html>
+        </div>
+    </footer>
+</body>
+
+</html>

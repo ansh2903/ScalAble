@@ -1,0 +1,247 @@
+<div class="flex flex-col md:flex-row md:items-start justify-between gap-8 mb-12">
+    <div class="space-y-4">
+        <nav class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+            <span class="text-primary font-bold">Connect</span>
+            <span class="material-symbols-outlined text-xs">chevron_right</span>
+            <span class="font-bold">New Source</span>
+            <span class="material-symbols-outlined text-xs">chevron_right</span>
+            <span class="text-primary font-bold uppercase">{{ vendor }}</span>
+        </nav>
+        <h1 class="text-5xl font-black text-slate-900 tracking-tighter leading-tight">
+            Add your <span class="font-script text-primary font-normal lowercase">database</span>
+        </h1>
+        <p class="text-slate-500 font-medium leading-relaxed max-w-xl">
+            Select how ScalAble should reach your <strong>{{ vendor | capitalize }}</strong> instance and provide the
+            credentials below.
+        </p>
+    </div>
+    <div class="flex flex-col items-end gap-3 shrink-0">
+        <div class="flex gap-2">
+            <div class="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_12px_rgba(var(--color-primary),0.4)]"></div>
+            <div class="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_12px_rgba(var(--color-primary),0.4)]"></div>
+            <div class="w-2.5 h-2.5 rounded-full bg-slate-200"></div>
+        </div>
+        <span class="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Step 2: Configuration</span>
+    </div>
+</div>
+
+<div class="animate-in fade-in slide-in-from-bottom-4 duration-500"
+    x-data="{ strategy: 'direct', sslMode: 'disable', loading: false }">
+
+    <input type="hidden" name="db_type" value="{{ vendor }}">
+    <input type="hidden" name="strategy" :value="strategy">
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <template x-for="s in [
+            {id: 'direct', label: 'Direct / Cloud', icon: 'cloud', desc: 'Publicly reachable host'},
+            {id: 'ssh', label: 'Private (SSH)', icon: 'vpn_lock', desc: 'Behind a private VPC bastion'},
+            {id: 'local', label: 'Local Machine', icon: 'laptop_mac', desc: 'Running on localhost'}
+        ]">
+            <div @click="strategy = s.id"
+                :class="strategy === s.id ? 'border-primary bg-primary/5' : 'border-slate-100 bg-white hover:border-primary/40'"
+                class="p-5 border-2 rounded-2xl cursor-pointer transition-all group shadow-sm">
+                <span class="material-symbols-outlined text-2xl"
+                    :class="strategy === s.id ? 'text-primary' : 'text-slate-400'" x-text="s.icon"></span>
+                <p class="font-bold text-sm mt-2 text-slate-900" x-text="s.label"></p>
+                <p class="text-xs text-slate-400 mt-1 font-medium" x-text="s.desc"></p>
+            </div>
+        </template>
+    </div>
+
+    <div class="space-y-6">
+
+        <div class="space-y-4 p-6 bg-slate-50 rounded-3xl border border-slate-100">
+            <div class="flex items-center gap-2 mb-2">
+                <span
+                    class="flex items-center justify-center w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold">1</span>
+                <h4 class="text-sm font-bold uppercase tracking-wider text-slate-500">Identity & Location</h4>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-700 ml-1">Display Name</label>
+                    <input type="text" name="display_name" placeholder="e.g., Main Prod DB"
+                        class="w-full px-4 py-3 rounded-2xl border-2 border-slate-100 focus:border-primary focus:ring-0 bg-white text-sm transition-colors">
+                </div>
+
+                {% if has_schema %}
+                <div class="space-y-1.5" g="/>
+                    <label class=" text-xs font-bold text-slate-700 ml-1">
+                    {% if vendor == 'bigquery' %}Dataset{% else %}Schema{% endif %}
+                    </label>
+                    <input type="text" name="schema" placeholder="{{ schema_default if schema_default else '' }}" class="w-full px-4 py-3 rounded-2xl border-2 border-slate-100 
+                            focus:border-primary focus:ring-0 bg-white text-sm transition-colors">
+                    {% if schema_default %}
+                    <p class="text-[10px] text-slate-400 ml-1">
+                        Leave blank to use <code class="font-mono">{{ schema_default }}</code>
+                    </p>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-700 ml-1">Database Name</label>
+                    <input type="text" name="dbname" placeholder="my_database" required
+                        class="w-full px-4 py-3 rounded-2xl border-2 border-slate-100 focus:border-primary focus:ring-0 bg-white text-sm transition-colors">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-4">
+                <div class="col-span-2 space-y-1.5" x-show="strategy !== 'local'">
+                    <label class="text-xs font-bold text-slate-700 ml-1">Host / IP</label>
+                    <input type="text" name="host" placeholder="db.example.com" :disabled="strategy === 'local'"
+                        class="w-full px-4 py-3 rounded-2xl border-2 border-slate-100 focus:border-primary focus:ring-0 bg-white text-sm transition-colors">
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-700 ml-1">Port</label>
+                    <input type="number" name="port" value="{{ default_port }}" required
+                        class="w-full px-4 py-3 rounded-2xl border-2 border-slate-100 focus:border-primary focus:ring-0 bg-white text-sm transition-colors">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-700 ml-1">Username</label>
+                    <input type="text" name="user" placeholder="admin" required
+                        class="w-full px-4 py-3 rounded-2xl border-2 border-slate-100 focus:border-primary focus:ring-0 bg-white text-sm transition-colors">
+                </div>
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-700 ml-1">Password</label>
+                    <input type="password" name="password" placeholder="••••••••" required
+                        class="w-full px-4 py-3 rounded-2xl border-2 border-slate-100 focus:border-primary focus:ring-0 bg-white text-sm transition-colors">
+                </div>
+            </div>
+        </div>
+
+        <!-- SSL/TLS Config for Direct, SSH Tunnel Config for Private, Info for Local -->
+        <div x-show="strategy === 'direct'" x-cloak
+            class="space-y-4 p-6 bg-slate-50 rounded-3xl border border-slate-100">
+            <div class="flex items-center gap-2 mb-2">
+                <span
+                    class="flex items-center justify-center w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold">2</span>
+                <h4 class="text-sm font-bold uppercase tracking-wider text-slate-500">SSL / TLS Config</h4>
+            </div>
+
+            <div class="space-y-1.5">
+                <label class="text-xs font-bold text-slate-700 ml-1">SSL Mode</label>
+                <select name="sslmode" x-model="sslMode" :disabled="strategy !== 'direct'"
+                    class="w-full px-4 py-3 rounded-2xl border-2 border-slate-100 focus:border-primary text-sm bg-white appearance-none transition-colors">
+                    <option value="disable">Disable (default)</option>
+                    <option value="require">Require</option>
+                    <option value="verify-ca">Verify-CA</option>
+                    <option value="verify-full">Verify-Full</option>
+                </select>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3" x-show="sslMode !== 'disable'" x-cloak>
+                <div class="space-y-1" x-show="sslMode.includes('verify')">
+                    <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">SSL Root
+                        Cert</label>
+                    <label
+                        class="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-slate-200 rounded-2xl hover:border-primary/50 bg-white cursor-pointer transition-all">
+                        <span class="material-symbols-outlined text-slate-300">upload_file</span>
+                        <input type="file" name="sslrootcert" accept=".pem,.crt,.cer" class="hidden"
+                            :disabled="strategy !== 'direct'">
+                    </label>
+                </div>
+
+                <div class="space-y-1" x-show="sslMode === 'verify-full'">
+                    <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Client SSL
+                        Cert</label>
+                    <label
+                        class="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-slate-200 rounded-2xl hover:border-primary/50 bg-white cursor-pointer transition-all">
+                        <span class="material-symbols-outlined text-slate-300">upload_file</span>
+                        <input type="file" name="sslcert" accept=".pem,.crt,.cer" class="hidden"
+                            :disabled="strategy !== 'direct'">
+                    </label>
+                </div>
+
+                <div class="space-y-1" x-show="sslMode === 'verify-full'">
+                    <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Client SSL
+                        Key</label>
+                    <label
+                        class="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-slate-200 rounded-2xl hover:border-primary/50 bg-white cursor-pointer transition-all">
+                        <span class="material-symbols-outlined text-slate-300">upload_file</span>
+                        <input type="file" name="sslkey" accept=".pem,.key" class="hidden"
+                            :disabled="strategy !== 'direct'">
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- SSH Tunnel Config for Private -->
+        <div x-show="strategy === 'ssh'" x-cloak class="space-y-4 p-6 bg-amber-50 border border-amber-100 rounded-3xl">
+            <div class="flex items-center gap-2 mb-2">
+                <span
+                    class="flex items-center justify-center w-6 h-6 rounded-full bg-amber-200 text-amber-700 text-xs font-bold">2</span>
+                <h4 class="text-sm font-bold uppercase tracking-wider text-amber-600">SSH Tunnel Config</h4>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3">
+                <div class="col-span-2 space-y-1.5">
+                    <label class="text-xs font-bold text-slate-700 ml-1">Bastion / Jump Host</label>
+                    <input type="text" name="ssh_host" placeholder="ssh.example.com" :disabled="strategy !== 'ssh'"
+                        class="w-full px-4 py-3 rounded-2xl border-2 border-slate-100 focus:border-primary focus:ring-0 bg-white text-sm transition-colors">
+                </div>
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-700 ml-1">SSH Port</label>
+                    <input type="number" name="ssh_port" value="22" :disabled="strategy !== 'ssh'"
+                        class="w-full px-4 py-3 rounded-2xl border-2 border-slate-100 focus:border-primary focus:ring-0 bg-white text-sm transition-colors">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-700 ml-1">SSH Username</label>
+                    <input type="text" name="ssh_user" placeholder="ec2-user" :disabled="strategy !== 'ssh'"
+                        class="w-full px-4 py-3 rounded-2xl border-2 border-slate-100 focus:border-primary focus:ring-0 bg-white text-sm transition-colors">
+                </div>
+                <div class="space-y-1.5">
+                    <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Private Key
+                        (.pem)</label>
+                    <label
+                        class="flex items-center gap-3 w-full px-4 py-3 border-2 border-dashed border-slate-200 rounded-2xl hover:border-primary/50 bg-white cursor-pointer transition-all">
+                        <span class="material-symbols-outlined text-slate-300 text-sm">key</span>
+                        <span class="text-xs text-slate-400">Upload private key</span>
+                        <input type="file" name="ssh_private_key" accept=".pem,.key" class="hidden"
+                            :disabled="strategy !== 'ssh'">
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info for Local Strategy -->
+        <div x-show="strategy === 'local'" x-cloak
+            class="p-4 bg-primary/10 border border-primary/20 rounded-2xl flex items-start gap-3">
+            <span class="material-symbols-outlined text-primary text-sm mt-0.5">info</span>
+            <p class="text-xs text-primary font-medium leading-relaxed">
+                ScalAble will connect to <strong>localhost</strong> on port <span
+                    x-text="$el.closest('.space-y-6').querySelector('input[name=\'port\']').value"></span>
+            </p>
+        </div>
+
+        <!-- Form Footer -->
+        <div class="form-footer flex items-center justify-between pt-10 border-t border-slate-100 mt-8">
+            <a href="{{ url_for('endpoints.connections') }}">
+                <button type="button"
+                    class="flex items-center gap-2 px-6 py-3.5 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all">
+                    <span class="material-symbols-outlined text-sm">arrow_back</span>
+                    Back
+                </button>
+            </a>
+
+            <button type="submit" :disabled="loading" class="... disabled:opacity-60 disabled:cursor-not-allowed">
+                <span x-show="!loading" class="flex items-center gap-3">
+                    ESTABLISH CONNECTION
+                    <span class="material-symbols-outlined text-sm">bolt</span>
+                </span>
+                <span x-show="loading" class="flex items-center gap-3">
+                    CONNECTING...
+                    <span class="animate-spin material-symbols-outlined text-sm">sync</span>
+                </span>
+            </button>
+        </div>
+
+    </div>
+</div>

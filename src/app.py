@@ -29,8 +29,8 @@ def create_app():
         )
         Session(app)
 
-        app.register_blueprint(interface_blueprint)
-        app.register_blueprint(endpoints_blueprint)
+        app.register_blueprint(interface_blueprint, name='interface')
+        app.register_blueprint(endpoints_blueprint, name='endpoints')
 
         logging.info("Flask app created successfully")
         return app
