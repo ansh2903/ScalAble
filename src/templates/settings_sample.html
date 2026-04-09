@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>AI Playground | ScalAble</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500&amp;family=Fredoka:wght@400;600;700&amp;family=Pacifico&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00A36C", // Emerald Green
+                        "primary-dark": "#065f46",
+                        "primary-soft": "#ecfdf5",
+                        "secondary-accent": "#475569",
+                        "bg-main": "#f8fafc",
+                        "card-border": "#e2e8f0",
+                        "heavy-outline": "#cbd5e1"
+                    },
+                    fontFamily: {
+                        "sans": ["Plus Jakarta Sans", "sans-serif"],
+                        "headline": ["Plus Jakarta Sans", "sans-serif"],
+                        "body": ["Plus Jakarta Sans", "sans-serif"],
+                        "playful": ["Fredoka", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"],
+                        "script": ["Pacifico", "cursive"]
+                    },
+                    borderRadius: {
+                        "organic": "2.5rem",
+                        "pill": "9999px"
+                    },
+                    boxShadow: {
+                        "tactile": "0 6px 0 0 rgba(0, 163, 108, 0.2)",
+                        "tactile-hover": "0 3px 0 0 rgba(0, 163, 108, 0.3)",
+                        "data-card": "0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04)",
+                        "header-nav": "0 10px 15px -3px rgba(0, 163, 108, 0.05)"
+                    }
+                },
+            },
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer base {
+            body { 
+                @apply bg-bg-main text-slate-800 font-body antialiased;
+            }
+            h1, h2, h3 {
+                @apply font-headline font-extrabold tracking-tight;
+            }
+        }
+        .header-glass {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(0, 163, 108, 0.1);
+        }
+        .organic-border {
+            border-radius: 60% 40% 70% 30% / 30% 60% 40% 70%;
+        }
+        .heavy-card {
+            @apply bg-white border-2 border-slate-200 rounded-organic transition-all duration-300;
+            box-shadow: 0 12px 0 -4px theme('colors.slate.100');
+        }
+        .heavy-card:hover {
+            @apply border-primary/30;
+            transform: translateY(-2px);
+            box-shadow: 0 16px 0 -4px rgba(0, 163, 108, 0.1);
+        }
+        .active-powerup {
+            @apply border-primary bg-primary-soft/50 ring-4 ring-primary/5;
+            box-shadow: 0 12px 0 -4px rgba(0, 163, 108, 0.2);
+        }
+        .module-level {
+            @apply relative border-l-2 border-dashed border-slate-200 pl-8 pb-12 last:pb-0 last:border-l-0;
+        }
+        .level-badge {
+            @apply absolute -left-[13px] top-0 w-6 h-6 rounded-full bg-white border-2 border-primary flex items-center justify-center text-[10px] font-black text-primary z-10;
+        }
+        .custom-range {
+            @apply h-2 w-full bg-slate-200 rounded-full appearance-none cursor-pointer;
+        }
+        .custom-range::-webkit-slider-thumb {
+            @apply appearance-none w-6 h-6 bg-primary rounded-full border-4 border-white shadow-lg transition-transform hover:scale-125 active:scale-95;
+        }
+        .soft-gradient-bg {
+            background: radial-gradient(circle at 50% -20%, #ecfdf5 0%, #f8fafc 60%);
+        }
+        .nav-link {
+            @apply relative px-3 py-2 text-slate-600 font-semibold transition-colors hover:text-primary;
+        }
+        .nav-link-active {
+            @apply text-primary font-bold;
+        }
+        .nav-link-active::after {
+            content: '';
+            @apply absolute bottom-0 left-3 right-3 h-1 bg-primary rounded-full;
+        }
+        .script-text {
+            @apply font-script text-primary not-italic;
+            text-transform: none;
+        }
+    </style>
+</head>
+
+<body class="soft-gradient-bg min-h-screen">
+    <header class="header-glass fixed top-0 w-full z-50 h-20 flex items-center justify-between px-10">
+        <div class="flex items-center gap-16">
+            <div class="flex items-center gap-3">
+                <div
+                    class="w-10 h-10 bg-primary organic-border flex items-center justify-center text-white shadow-tactile">
+                    <span class="material-symbols-outlined text-2xl">rocket_launch</span>
+                </div>
+                <span class="text-2xl font-black tracking-tighter text-slate-900">ScalAble</span>
+            </div>
+            <nav class="hidden md:flex items-center gap-8">
+                <a class="nav-link" href="#">Data Deck</a>
+                <a class="nav-link" href="#">Live Chat</a>
+                <a class="nav-link nav-link-active" href="#">AI Playground</a>
+            </nav>
+        </div>
+        <div class="flex items-center gap-6">
+            <div class="flex items-center gap-2 bg-slate-100/50 px-4 py-2 rounded-pill border border-slate-200">
+                <span class="material-symbols-outlined text-primary text-sm">stars</span>
+                <span class="text-xs font-bold text-slate-600">Level 12 Architect</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <button class="p-2 text-slate-400 hover:text-primary transition-colors"><span
+                        class="material-symbols-outlined">notifications</span></button>
+                <div class="w-10 h-10 rounded-full border-2 border-primary/30 p-0.5 overflow-hidden">
+                    <img class="w-full h-full rounded-full object-cover"
+                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuC-f8TTx8bBFUGqf42OM1R8Whfp3LjOOu2WEloffe2jYBHPfQcKaeyjHmuVd63Bs2LDTjCA3I93KOac7gbt8YG-FEPRoRvMcdVC2iqfKG70hmYfY6H7Kf3IcG8yRYB-IeHgKeQyuvchqYFdQax1K2lZcRX77iUk5ZogtDQOGUXL3kQCYu4uCEfzxirkqHf0JZXlTK3eN5gwMwKj800imCj98mrQCiklCItJ985ijbYgJhjBnjHzQ84J-xW__OOEZNQDsZ_97qLA5Lcg" />
+                </div>
+            </div>
+        </div>
+    </header>
+    <div class="pt-28 pb-12 px-10 max-w-[1600px] mx-auto grid grid-cols-12 gap-10">
+        <aside class="col-span-12 lg:col-span-3 space-y-8">
+            <div class="heavy-card p-6">
+                <h2 class="text-xs font-black uppercase tracking-[0.2em] text-slate-400 mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">terminal</span> Tech Studio
+                </h2>
+                <nav class="space-y-2">
+                    <a class="flex items-center justify-between px-4 py-3 rounded-2xl text-slate-600 hover:bg-primary-soft hover:text-primary transition-all group"
+                        href="#">
+                        <div class="flex items-center gap-3">
+                            <span class="material-symbols-outlined">inventory_2</span>
+                            <span class="font-bold">Asset Vault</span>
+                        </div>
+                        <span
+                            class="material-symbols-outlined opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+                    </a>
+                    <a class="flex items-center justify-between px-4 py-3 rounded-2xl text-slate-600 hover:bg-primary-soft hover:text-primary transition-all group"
+                        href="#">
+                        <div class="flex items-center gap-3">
+                            <span class="material-symbols-outlined">query_stats</span>
+                            <span class="font-bold">Run History</span>
+                        </div>
+                        <span
+                            class="material-symbols-outlined opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+                    </a>
+                    <a class="flex items-center justify-between px-4 py-3 rounded-2xl bg-primary text-white shadow-tactile font-bold"
+                        href="#">
+                        <div class="flex items-center gap-3">
+                            <span class="material-symbols-outlined">gamepad</span>
+                            <span>Playground</span>
+                        </div>
+                        <span class="material-symbols-outlined">check_circle</span>
+                    </a>
+                </nav>
+            </div>
+            <button
+                class="w-full py-5 bg-primary text-white rounded-organic font-black text-lg shadow-tactile flex items-center justify-center gap-3 hover:translate-y-[-2px] hover:shadow-tactile-hover active:translate-y-[2px] active:shadow-none transition-all">
+                <span class="material-symbols-outlined text-2xl">bolt</span>
+                EXECUTE SIM
+            </button>
+            <div class="p-6 bg-slate-900 rounded-organic text-white relative overflow-hidden shadow-2xl">
+                <div class="relative z-10">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="material-symbols-outlined text-primary">emoji_objects</span>
+                        <span class="text-xs font-bold uppercase tracking-wider text-primary">Pro Hack</span>
+                    </div>
+                    <p class="text-sm font-medium leading-relaxed opacity-80 italic">
+                        "Try a higher Creative Temperature to unlock more 'out-of-the-box' analytical patterns!"
+                    </p>
+                </div>
+                <div class="absolute -right-4 -bottom-4 opacity-10">
+                    <span class="material-symbols-outlined text-8xl">psychology</span>
+                </div>
+            </div>
+        </aside>
+        <main class="col-span-12 lg:col-span-9 grid grid-cols-12 gap-10">
+            <section class="col-span-12 lg:col-span-5 space-y-8">
+                <div>
+                    <h1 class="text-5xl font-black text-slate-900 mb-3 tracking-tighter">Laboratory <span
+                            class="script-text text-6xl ml-2">Calibration</span></h1>
+                    <p class="text-slate-500 font-medium leading-relaxed">Level up your data game. Pick your engine and
+                        customize your strategy for maximum discovery!</p>
+                </div>
+                <div class="grid grid-cols-1 gap-6">
+                    <div class="heavy-card active-powerup p-6 cursor-pointer relative group overflow-hidden">
+                        <div class="flex items-start justify-between relative z-10">
+                            <div class="flex gap-5">
+                                <div
+                                    class="w-16 h-16 bg-white organic-border shadow-sm flex items-center justify-center text-primary">
+                                    <span class="material-symbols-outlined text-4xl">auto_awesome</span>
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <h4 class="font-black text-slate-900 text-lg">Claude 3.5</h4>
+                                        <span
+                                            class="bg-primary/10 text-primary text-[10px] font-black px-2 py-0.5 rounded-pill">S-TIER</span>
+                                    </div>
+                                    <p class="text-xs text-slate-500 font-bold mt-1">THE STRATEGIST</p>
+                                    <p class="text-xs text-slate-400 mt-2 leading-tight">Master of reasoning and complex
+                                        patterns.</p>
+                                </div>
+                            </div>
+                            <div class="w-6 h-6 rounded-full border-4 border-primary bg-white"></div>
+                        </div>
+                        <div
+                            class="absolute -right-6 -bottom-6 opacity-[0.03] group-hover:opacity-10 transition-opacity">
+                            <span class="material-symbols-outlined text-9xl">strategy</span>
+                        </div>
+                    </div>
+                    <div class="heavy-card p-6 cursor-pointer relative group overflow-hidden border-slate-200">
+                        <div class="flex items-start justify-between relative z-10">
+                            <div class="flex gap-5">
+                                <div
+                                    class="w-16 h-16 bg-slate-50 organic-border shadow-sm flex items-center justify-center text-slate-400 group-hover:text-primary transition-colors">
+                                    <span class="material-symbols-outlined text-4xl">hub</span>
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2 text-slate-700">
+                                        <h4 class="font-black text-lg">GPT-4 Turbo</h4>
+                                        <span
+                                            class="bg-slate-100 text-slate-400 text-[10px] font-black px-2 py-0.5 rounded-pill">VERSATILE</span>
+                                    </div>
+                                    <p class="text-xs text-slate-400 font-bold mt-1">THE ALL-ROUNDER</p>
+                                    <p class="text-xs text-slate-400 mt-2 leading-tight">Great for quick tasks and
+                                        general chat.</p>
+                                </div>
+                            </div>
+                            <div class="w-6 h-6 rounded-full border-2 border-slate-200 bg-white"></div>
+                        </div>
+                        <div
+                            class="absolute -right-6 -bottom-6 opacity-0 group-hover:opacity-[0.03] transition-opacity">
+                            <span class="material-symbols-outlined text-9xl">rocket</span>
+                        </div>
+                    </div>
+                    <div class="heavy-card p-6 cursor-pointer relative group overflow-hidden border-slate-200">
+                        <div class="flex items-start justify-between relative z-10">
+                            <div class="flex gap-5">
+                                <div
+                                    class="w-16 h-16 bg-slate-50 organic-border shadow-sm flex items-center justify-center text-slate-400 group-hover:text-primary transition-colors">
+                                    <span class="material-symbols-outlined text-4xl">cyclone</span>
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2 text-slate-700">
+                                        <h4 class="font-black text-lg">Gemini 1.5</h4>
+                                        <span
+                                            class="bg-slate-100 text-slate-400 text-[10px] font-black px-2 py-0.5 rounded-pill">HUGE
+                                            CONTEXT</span>
+                                    </div>
+                                    <p class="text-xs text-slate-400 font-bold mt-1">THE ARCHIVIST</p>
+                                    <p class="text-xs text-slate-400 mt-2 leading-tight">Eats massive datasets for
+                                        breakfast.</p>
+                                </div>
+                            </div>
+                            <div class="w-6 h-6 rounded-full border-2 border-slate-200 bg-white"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block px-2">Secure
+                        Link Key</label>
+                    <div class="relative group">
+                        <input
+                            class="w-full bg-white border-2 border-slate-200 rounded-2xl px-5 py-4 text-sm font-mono focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all outline-none"
+                            type="password" value="sk-playground-••••••••••••" />
+                        <span
+                            class="material-symbols-outlined absolute right-5 top-4 text-slate-300 group-hover:text-primary transition-colors">key_visualizer</span>
+                    </div>
+                </div>
+            </section>
+            <section class="col-span-12 lg:col-span-7">
+                <div class="heavy-card p-10 h-full">
+                    <div class="flex items-center justify-between mb-12">
+                        <div class="flex items-center gap-4">
+                            <div class="p-3 bg-primary-soft organic-border text-primary shadow-sm">
+                                <span class="material-symbols-outlined text-2xl">tune</span>
+                            </div>
+                            <h2 class="text-2xl font-black text-slate-900 tracking-tight">Tweak &amp; Discover</h2>
+                        </div>
+                        <span
+                            class="text-[10px] font-black text-white bg-slate-900 px-4 py-1.5 rounded-pill uppercase tracking-widest">Mission
+                            Active</span>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="module-level">
+                            <div class="level-badge">1</div>
+                            <div class="flex justify-between items-start mb-6">
+                                <div>
+                                    <h3 class="font-black text-slate-900 text-lg flex items-center gap-2">
+                                        Chaos Factor
+                                        <span
+                                            class="material-symbols-outlined text-slate-300 text-base cursor-help hover:text-primary transition-colors">help</span>
+                                    </h3>
+                                    <p class="text-sm text-slate-500 font-medium">How wild should the ideas be?</p>
+                                </div>
+                                <div class="font-mono text-3xl font-black text-primary">0.70</div>
+                            </div>
+                            <input class="custom-range" max="1" min="0" step="0.01" type="range" value="0.7" />
+                            <div class="flex justify-between mt-4">
+                                <div
+                                    class="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[12px]">fact_check</span> Factual</div>
+                                <div
+                                    class="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-1">
+                                    Uncharted <span class="material-symbols-outlined text-[12px]">explore</span></div>
+                            </div>
+                        </div>
+                        <div class="module-level">
+                            <div class="level-badge">2</div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+                                <div class="space-y-4">
+                                    <div class="flex justify-between items-center">
+                                        <h3 class="font-black text-slate-900 text-sm">Output Capacity</h3>
+                                        <span
+                                            class="font-mono text-xs font-bold text-primary bg-primary-soft px-3 py-1 rounded-lg">2,048</span>
+                                    </div>
+                                    <input class="custom-range" max="8192" min="256" type="range" value="2048" />
+                                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Token
+                                        limit for current run</p>
+                                </div>
+                                <div class="space-y-4">
+                                    <div class="flex justify-between items-center">
+                                        <h3 class="font-black text-slate-900 text-sm">Focus Filter</h3>
+                                        <span
+                                            class="font-mono text-xs font-bold text-primary bg-primary-soft px-3 py-1 rounded-lg">0.95</span>
+                                    </div>
+                                    <input class="custom-range" max="1" min="0" step="0.01" type="range" value="0.95" />
+                                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Nucleus
+                                        Sampling (Top P)</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="module-level">
+                            <div class="level-badge">3</div>
+                            <div
+                                class="flex items-center justify-between p-6 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 cursor-pointer hover:bg-white hover:border-primary/30 transition-all group">
+                                <div class="flex items-center gap-4">
+                                    <div
+                                        class="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400 group-hover:text-primary transition-colors">
+                                        <span class="material-symbols-outlined">extension</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-sm font-black text-slate-700 block">Advanced Tactics</span>
+                                        <span class="text-[10px] font-bold text-slate-400 uppercase">Context Window
+                                            &amp; Penalty Modifiers</span>
+                                    </div>
+                                </div>
+                                <span
+                                    class="material-symbols-outlined text-slate-400 group-hover:translate-y-1 transition-transform">expand_more</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between pt-10 border-t border-slate-100 mt-8">
+                        <button
+                            class="text-xs font-black text-slate-400 hover:text-rose-500 uppercase tracking-widest transition-colors flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm">restart_alt</span>
+                            Wipe All Settings
+                        </button>
+                        <div class="flex gap-4">
+                            <button
+                                class="px-8 py-3 font-bold text-slate-500 hover:text-slate-800 transition-colors">Discard</button>
+                            <button
+                                class="px-12 py-4 bg-primary text-white font-black rounded-2xl shadow-tactile hover:translate-y-[-2px] hover:shadow-tactile-hover transition-all">
+                                LOCK IN CONFIG
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    <div class="fixed bottom-10 left-1/2 -translate-x-1/2 w-full max-w-2xl px-6 z-[60]">
+        <div
+            class="bg-slate-900 border border-slate-800 text-white p-5 rounded-[2rem] shadow-2xl flex items-center gap-5">
+            <div
+                class="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center text-primary shrink-0 animate-pulse">
+                <span class="material-symbols-outlined">lightbulb</span>
+            </div>
+            <div class="flex-1">
+                <p class="text-sm font-bold text-primary mb-0.5">Mission Control Advice</p>
+                <p class="text-xs font-medium opacity-70 leading-relaxed">
+                    Claude 3.5 is your best bet for heavy logical simulations. Switch to it if you're hitting reasoning
+                    walls!
+                </p>
+            </div>
+            <button class="p-2 text-white/20 hover:text-white transition-colors">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -18,13 +18,17 @@ import dill
 
 load_dotenv()
 
-cipher_key = Fernet(os.getenv("ENCRYPTION_KEY"))
+def _get_cipher():
+    key = os.getenv("ENCRYPTION_KEY")
+    if not key:
+        raise ValueError("ENCRYPTION_KEY not set in environment")
+    return Fernet(key.encode())
 
 def encrypt_creds(creds):
-    return cipher_key.encrypt(str(creds).encode()).decode()
+    return _get_cipher().encrypt(str(creds).encode()).decode()
 
 def decrypt_creds(encrypted_creds):
-    return ast.literal_eval(cipher_key.decrypt(encrypted_creds.encode()).decode())
+    return ast.literal_eval(_get_cipher().decrypt(encrypted_creds.encode()).decode())
 
 def generate_id():
     """

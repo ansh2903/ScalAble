@@ -1,26 +1,21 @@
-from flask import Blueprint, render_template, Response, render_template_string, jsonify, request, session, redirect, url_for, flash, current_app
+from flask import Blueprint, stream_with_context, render_template, Response, jsonify, request, session, redirect, url_for, flash, current_app
 import importlib
 
 from src.connectors.connector import DatabaseConnector
-from src.engine.inference_engine import InferenceEngine
 from src.engine.model_manager import get_engine, reset_engine
 from src.engine.query_executor import run_query
-from src.core.utils import model_ls, encrypt_creds, decrypt_creds, downloadable_json, downloadable_excel, downloadable_csv, render_result_table, load_settings, save_settings, is_running_in_docker
-from src.config.settings import settings, VENDOR_CONFIG, PROVIDER_FIELDS
+from src.kernel.manager import SessionKernel
+from src.kernel.store import get_kernel, destroy_kernel
+from src.core.utils import model_ls, encrypt_creds, downloadable_json, downloadable_excel, downloadable_csv, load_settings, save_settings, is_running_in_docker
+from src.config.settings import VENDOR_CONFIG, PROVIDER_FIELDS
 
 import psutil
 import time
-import dotenv
 import pandas as pd
 from datetime import datetime
-from pathlib import Path
 import tempfile
 import traceback
-import uuid
 import json
-import ast
-import sys
-import csv
 import os
 
 from src.core.exception import CustomException
@@ -79,7 +74,7 @@ def test_connection():
 def new_connector():
     if request.method == 'POST':
         raw_form_data = request.form.to_dict()
-        
+
         temp_file_paths = []
         
         if request.files:
@@ -102,8 +97,11 @@ def new_connector():
 
         # 3. Test the connection
         try:
+            print("raw_form_data",raw_form_data)
+
             db_manager = DatabaseConnector(raw_form_data)
             status, msg = db_manager.test()
+            print(msg)
             
             if not status:
                 flash(f"Connection failed: {msg}", "error")
@@ -112,12 +110,14 @@ def new_connector():
 
             # [Fetch Metadata Logic Goes Here]
             m_status, metadata = db_manager.fetch_metadata()
+            print(metadata)
             if not m_status:
                 flash(f"Metadata fetch failed: {metadata}", "error")
                 return redirect(url_for("endpoints.new_connector"))
 
             # [Save to Session / DB Logic Goes Here]
             connection = session.get("connections", [])
+            print(connection)
             connection.append({
                 "id": len(connection) + 1,
                 "db_type": raw_form_data.get("db_type"),
@@ -185,9 +185,9 @@ def edit_database(db_id):
 
     return render_template('edit_database.html', conn=conn)
 
-
-
+# ---------------------------------------------------------------------------------
 # chat interface
+
 @endpoints_blueprint.route('/chat', methods = ['GET', 'POST'])
 def chat():
     try:
@@ -215,6 +215,7 @@ def ask():
             model = get_engine()
 
             def stream():
+                
                 try:
                     for token in model.generate(user_input=input, db_type=db_type, metadata=metadata):
                         print("Generated token:", token)
@@ -231,197 +232,69 @@ def ask():
             "error": "An error occurred while processing your request. Please try again."
         }), 500
 
+@endpoints_blueprint.route('/query-execution', methods=["POST"])
+def execute():
+    try:
+        if request.method == "POST":
+            query = request.form.get("query")
+            selected_id = request.form.get("id")
+            connection = session.get("connections", [])
+            raw_data = next((conn for conn in connection if str(conn['id']) == str(selected_id)), None)
+            
+            if not raw_data:
+                return jsonify({"status": "error", "message": "Connection not found"}), 404
 
-'''
-# chat interface
-@endpoints_blueprint.route('/chat', methods=['GET', 'POST'])
-def chat():
-    connections = session.get('connections', [])
-    databases = {conn.get('id'): conn for conn in connections}
-    selected_db_id = None
-    chat_html = ""
-
-    if request.method == 'POST':
-        is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
-        form = request.form
-
-        try:
-            if "query" in form:
-                generated_query = form.get('query')
-                db_type = form.get('db_type')
-                credentials = ast.literal_eval(form.get('credentials'))
-                unique_id = form.get('unique_id')
-                selected_db_id = form.get("selected_db_id")
-
-                selected_conn = next((c for c in connections if str(c['id']) == str(selected_db_id)), None)
-
-                result = run_query(db_type=db_type, credentials=credentials, query=generated_query)
-                
-                connector_module = importlib.import_module(f"src.connectors.{db_type}")
-                metadata_status, metadata = connector_module.metadata(credentials)
-                if not metadata_status:
-                    flash(f"Metadata fetch failed: {metadata}", "error")
-                
-                for c in connections:
-                    if str(c['id']) == str(selected_db_id):
-                        c['metadata'] = metadata
-                session['connections'] = connections
-                
-                if isinstance(result, dict) and "error" in result:
-                    return jsonify({"error": result["error"]}), 500
-
-                result_html, row_count, column_count = render_result_table(result)
-                
-                session['last_query_results'] = {
-                    'query': generated_query,
-                    'data': result,
-                    'html_data': result_html,
-                    'db_type': db_type,
-                    'unique_id': unique_id
-                }
-
-                table_block = render_template_string("""
-                    <div class="message-content">
-                        <div class="result-header">
-                            <div class="result-count">
-                                Showing <strong>{{ rows_count }}</strong> rows, <strong>{{ column_count }}</strong> columns
-                            </div>
-                        </div>
-
-                        <div class='table-scroll'>{{ table|safe }}</div>
+            print(raw_data)
+            print(query)
+            print(selected_id)
+            db_manager = DatabaseConnector(raw_data)
+            def generate_stream():
+                try:
+                    # This loop actually triggers the execution in DuckDB
+                    for chunk in db_manager.query_execute(query=query):
+                        yield f"data: {json.dumps(chunk)}\n\n"
                         
-                        <div class="btn-group">
-                            <form class="execute-query-form" method="POST" onsubmit="return false;">
-                                <input type="hidden" name="unique_id" value="{{ unique_id }}">
-                                <input type="hidden" name="table" value="{{ table }}">
-                                <button class="analyse-btn" type="button" data-uid="{{ unique_id }}">
-                                    Analyse Data
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                """, table=result_html, rows_count=row_count, column_count=column_count, unique_id=unique_id)
+                except Exception as e:
+                    logging.error(f"Stream error: {str(e)}")
+                    err_chunk = {"type": "error", "content": str(e)}
+                    yield f"data: {json.dumps(err_chunk)}\n\n"
 
-                if is_ajax:
-                    return jsonify({
-                        "unique_id": unique_id,
-                        "table_html": table_block,
-                        "success": True
-                    })
+        # 2. Return the stream directly to the frontend
+            return Response(stream_with_context(generate_stream()), mimetype='text/event-stream')
+    except Exception as e:
+        logging.error(f"Query execution error: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
-                chat_html += table_block
+# ---------------------------------------------------------------------------------------------------------------
+# kernel specific
 
-            elif "table" in form:
-                data = session.get('last_query_results').get('data')
-                html_data = session['last_query_results'].get('html_data')
+@endpoints_blueprint.route('/kernel/execute', methods=['POST'])
+def kernel_execute():
+    code = request.form.get('code')
+    session_id = session.get('session_id') or session.sid
+    kernel = get_kernel(session_id)
 
-                if is_ajax:
-                    return jsonify({
-                        "data": data,
-                        "html_data": html_data
-                    })
+    def generate():
+        for chunk in kernel.execute(code):
+            yield f"data: {json.dumps(chunk)}\n\n"
 
-            else:
-                logging.info("Sending message to LLM")
-                message = form.get("message")
-                selected_db_id = form.get("selected_db_id")
-                selected_conn = next((c for c in connections if str(c['id']) == str(selected_db_id)), None)
+    return Response(stream_with_context(generate()), mimetype='text/event-stream')
 
-                if not selected_conn:
-                    raise ValueError("Invalid database selection.")
+@endpoints_blueprint.route('/kernel/interrupt', methods=['POST'])
+def kernel_interrupt():
+    session_id = session.get('session_id') or session.sid
+    get_kernel(session_id).interrupt()
+    return jsonify({"status": "ok"})
 
-                db_type = selected_conn.get("db_type")
-                credentials = selected_conn.get("credentials")
-                metadata = selected_conn.get("metadata")
+@endpoints_blueprint.route('/kernel/restart', methods=['POST'])
+def kernel_restart():
+    session_id = session.get('session_id') or session.sid
+    get_kernel(session_id).restart()
+    return jsonify({"status": "ok"})
 
-                generated_query, generated_comment = generate_query_from_nl(message, db_type, metadata)
-
-                logging.info("generated_query and comment obtained from LLM")
-
-                time = datetime.now().strftime("%H:%M:%S")
-
-                # Generate unique ID for this query block
-                unique_id = str(uuid.uuid4())[:8]
-
-                user_block = render_template_string("""
-                    <div class="message user">
-                        <div class="msg-text">{{ message }}</div>
-                        <span class="msg-time">{{ time }}</span>
-                    </div>
-                """, message=message, time=time)
-
-                query_block = render_template_string("""
-                    <div class="message bot" data-query-id="{{ unique_id }}">
-                                                     
-                        {% if comment %}
-                        <div class="msg-comment">{{ comment|safe }}</div>
-                        {% endif %}
-                        
-                        {% if query %}                                                     
-                        <div class="db-type">
-                            {{ db_type }}
-                        </div>
-
-                        <div class="message-bot-query">
-                                                                                 
-                            <pre id="queryText_{{ unique_id }}" class="msg-text">{{ query }}</pre>
-                            
-                            <div class="edit-btn-container">
-                                <button class="edit-btn" onclick="toggleEdit('{{ unique_id }}')">
-                                    <i class="fas fa-edit"></i> Edit
-                                </button>
-                            </div>
-                                                     
-                            <div class="edit-controls" id="editControls_{{ unique_id }}" style="display: none;">
-                                <button class="save-btn" onclick="saveEdit('{{ unique_id }}')">
-                                    Save
-                                </button>
-                                    
-                                <button class="cancel-btn" onclick="cancelEdit('{{ unique_id }}')">
-                                    Cancel
-                                </button>
-
-                            </div>
-
-                              <div class="btn-group">
-                                <form class="run-query-form" method="POST">
-                                    <input type="hidden" name="unique_id" value="{{ unique_id }}">
-                                    <input type="hidden" name="query" id="hiddenQuery_{{ unique_id }}" value="{{ generated_query }}">
-                                    <input type="hidden" name="db_type" value="{{ db_type }}">
-                                    <input type="hidden" name="credentials" value="{{ credentials }}">
-                                    <input type="hidden" name="selected_db_id" value="{{ selected_db_id }}">
-                                    <button class="run-query-btn" type="submit" data-uid="{{ unique_id }}">
-                                        Execute
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                        {% endif %}
-                        
-                        <div class="table-container" id="tableContainer_{{ unique_id }}">
-                            <!-- Query results will be injected here -->
-                        </div>
-                    </div>
-                """, query=generated_query, comment = generated_comment, db_type=db_type, credentials=credentials, selected_db_id=selected_db_id, generated_query=generated_query, unique_id=unique_id)
-                                
-                chat_html += user_block + query_block
-
-            if is_ajax:
-                return jsonify({"chat_html": chat_html})
-
-        except Exception as e:
-            error_message = ""
-            if isinstance(e, dict) and "error" in e:
-                error_message = e["error"]
-            else:
-                error_message = str(e)
-
-            return jsonify({
-                "chat_html": f"<div class='error'>Error: {error_message}</div>"
-            }), 500
-
-    return render_template("chat.html", connections=connections, selected_db_id=selected_db_id, table_block=table_block if 'table_block' in locals() else "")
-'''
+@endpoints_blueprint.route('/kernel/available', methods=['GET'])
+def kernel_available():
+    return jsonify({"kernels": SessionKernel.available_kernels()})
 
 
 @endpoints_blueprint.route('/download/<fmt>', methods=['GET'])

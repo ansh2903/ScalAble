@@ -115,12 +115,14 @@
             <div class="flex items-center gap-3 bg-white border border-slate-200 px-3 py-1 rounded-lg mr-2">
                 <div class="flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-[14px] text-slate-400">memory</span>
-                    <span id="cpu-stat" class="text-[10px] font-bold text-slate-600 uppercase tracking-tight">CPU: 0%</span>
+                    <span id="cpu-stat" class="text-[10px] font-bold text-slate-600 uppercase tracking-tight">CPU:
+                        0%</span>
                 </div>
                 <div class="w-px h-3 bg-slate-200"></div>
                 <div class="flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-[14px] text-slate-400">database</span>
-                    <span id="ram-stat" class="text-[10px] font-bold text-slate-600 uppercase tracking-tight">RAM: 0GB</span>
+                    <span id="ram-stat" class="text-[10px] font-bold text-slate-600 uppercase tracking-tight">RAM:
+                        0GB</span>
                 </div>
             </div>
         </div>
@@ -184,89 +186,58 @@
                 </button>
             </div>
             <div id='chat-messages-container' class="flex-1 overflow-y-auto space-y-2 pr-1 mb-3 scrollbar-thin">
-                <!-- Sample Assistant Message -->
-                <div class="flex gap-2">
-                    <div
-                        class="w-7 h-7 rounded-xl bg-primary organic-border flex-shrink-0 flex items-center justify-center shadow-tactile">
-                        <span class="material-symbols-outlined text-white text-xs"
-                            style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
-                    </div>
-                    <div
-                        class="bg-white px-2.5 py-2 rounded-xl rounded-tl-none border border-slate-100 shadow-data-card max-w-[92%]">
-                        <p class="text-xs leading-snug text-slate-700 font-medium">Hello! I've loaded the 2024 Employee
-                            Retention dataset. What would you like to analyze today?</p>
-                        <span class="text-[8px] text-slate-400 mt-1 block font-black uppercase tracking-wider">Assistant
-                            • 09:12 AM</span>
-                    </div>
-                </div>
-
-                <!-- Sample User Message -->
-                <div class="flex gap-2 flex-row-reverse">
-                    <div class="w-7 h-7 rounded-full border border-primary/30 p-0.5 flex-shrink-0 overflow-hidden">
-                        <img alt="User Avatar" class="w-full h-full rounded-full object-cover"
-                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2v9fR7Z8LXtsKju0XYfVKBxgzRWCr4vfmaUMRRwFWWo6MP1y-2ejuSdyW6eE-597QN8MTpBqYA5CjFcXtkyiuMGDLvJmDvkMvMGWknOIwBadQfg1czKhoN_blb1dCLgfNCs6Yj8ba5Ct82fMvSuWMAwFTgPAst5HlRkJmyzNvUQxTrH5ktR8HttZXAoMXs0xZZSVOkaoUFqAdqtujn_IhH0zbz1VN2-bXtr_zMV18ifFPACr6_hKZgTSXfm5fu1ZvwaSd5LM9jiL6" />
-                    </div>
-                    <div
-                        class="bg-primary text-white px-2.5 py-2 rounded-xl rounded-tr-none shadow-tactile max-w-[92%]">
-                        <p class="text-xs leading-snug font-bold">Can we run a cohort analysis for the Tech department?
-                        </p>
-                        <span class="text-[8px] text-primary-soft/80 mt-1 block font-black uppercase tracking-wider">You
-                            • 09:14 AM</span>
-                    </div>
-                </div>
+                <!-- Dynamic Messages Will Be Inserted Here -->
             </div>
 
-<div class="heavy-card bg-white overflow-hidden">
-    <div class="px-3 py-1.5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-        <div class="flex items-center gap-2">
-            <span class="material-symbols-outlined text-xs text-primary">database</span>
-            <select id="selected_db_id" name="selected_db_id" 
-                class="bg-transparent border-none p-0 text-[10px] font-black text-slate-600 focus:ring-0 cursor-pointer uppercase tracking-tight">
-                <option value="" disabled selected>Select Context</option>
-                {% for conn in connections %}
-                <option value="{{ conn.id }}">{{ conn.db_type }} - {{ conn.display_name or conn.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div id="fileInfo" class="hidden flex items-center gap-1 bg-primary-soft px-2 py-0.5 rounded-full border border-primary/10">
-            <span class="material-symbols-outlined text-[10px] text-primary">attach_file</span>
-            <span id="fileName" class="text-[9px] font-bold text-primary truncate max-w-[80px]">file.csv</span>
-            <button onclick="clearFile()" class="text-primary hover:text-primary-dark ml-1">×</button>
-        </div>
-    </div>
+            <div class="heavy-card bg-white overflow-hidden">
+                <div class="px-3 py-1.5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-xs text-primary">database</span>
+                        <select id="selected_db_id" name="selected_db_id"
+                            class="bg-transparent border-none p-0 text-[10px] font-black text-slate-600 focus:ring-0 cursor-pointer uppercase tracking-tight">
+                            <option value="" disabled selected>Select Context</option>
+                            {% for conn in connections %}
+                            <option value="{{ conn.id }}">{{ conn.db_type }} - {{ conn.display_name or conn.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div id="fileInfo"
+                        class="hidden flex items-center gap-1 bg-primary-soft px-2 py-0.5 rounded-full border border-primary/10">
+                        <span class="material-symbols-outlined text-[10px] text-primary">attach_file</span>
+                        <span id="fileName"
+                            class="text-[9px] font-bold text-primary truncate max-w-[80px]">file.csv</span>
+                        <button onclick="clearFile()" class="text-primary hover:text-primary-dark ml-1">×</button>
+                    </div>
+                </div>
 
-    <textarea id="messageInput"
-        class="w-full bg-transparent border-none focus:ring-0 text-xs resize-none h-16 placeholder:text-slate-400 font-bold p-3"
-        placeholder="Ask for a new analysis..."></textarea>
+                <textarea id="messageInput"
+                    class="w-full bg-transparent border-none focus:ring-0 text-xs resize-none h-16 placeholder:text-slate-400 font-bold p-3"
+                    placeholder="Ask for a new analysis..."></textarea>
 
-    <div class="flex justify-between items-center p-2 pt-0">
-        <div class="flex gap-1">
-            <input type="file" id="hiddenFileInput" class="hidden" accept=".csv,.json,.xlsx">
-            
-            <button onclick="document.getElementById('hiddenFileInput').click()"
-                class="p-1.5 hover:bg-primary-soft rounded-lg text-slate-400 hover:text-primary transition-all flex items-center gap-1">
-                <span class="material-symbols-outlined text-lg">attach_file</span>
-                <span class="text-[9px] font-black uppercase hidden sm:inline">Upload</span>
-            </button>
-            
-            <button class="p-1.5 hover:bg-primary-soft rounded-lg text-slate-400 hover:text-primary transition-all">
-                <span class="material-symbols-outlined text-lg">bar_chart_4_bars</span>
-            </button>
-        </div>
+                <div class="flex justify-between items-center p-2 pt-0">
+                    <div class="flex gap-1">
+                        <input type="file" id="hiddenFileInput" class="hidden" accept=".csv,.json,.xlsx">
 
-        <button id="sendMessageBtn"
-            class="bg-primary text-white px-4 py-2 rounded-lg text-[10px] font-black flex items-center gap-2 shadow-tactile hover:translate-y-[-1px] active:translate-y-[1px] transition-all">
-            SEND INSIGHT
-            <span class="material-symbols-outlined text-xs">send</span>
-        </button>
-    </div>
-</div>
+                        <button onclick="document.getElementById('hiddenFileInput').click()"
+                            class="p-1.5 hover:bg-primary-soft rounded-lg text-slate-400 hover:text-primary transition-all flex items-center gap-1">
+                            <span class="material-symbols-outlined text-lg">attach_file</span>
+                            <span class="text-[9px] font-black uppercase hidden sm:inline">Upload</span>
+                        </button>
+                    </div>
+
+                    <button id="sendMessageBtn"
+                        class="bg-primary text-white px-4 py-2 rounded-lg text-[10px] font-black flex items-center gap-2 shadow-tactile hover:translate-y-[-1px] active:translate-y-[1px] transition-all">
+                        SEND INSIGHT
+                        <span class="material-symbols-outlined text-xs">send</span>
+                    </button>
+                </div>
+            </div>
         </section>
 
         <div class="gutter">
             <div id="gutter" class="gutter-handle"></div>
         </div>
-
 
         <!-- Notebook Split -->
         <section class="flex-1 bg-transparent flex flex-col overflow-hidden relative">

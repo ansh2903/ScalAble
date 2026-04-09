@@ -1,7 +1,7 @@
 // ------------------------------------------------------------
 
 // Script for user text, file input handling and dynamic content updates
-document.getElementById('hiddenFileInput').addEventListener('change', function(e) {
+document.getElementById('hiddenFileInput').addEventListener('change', function (e) {
     const fileInfo = document.getElementById('fileInfo');
     const fileName = document.getElementById('fileName');
 
@@ -22,12 +22,12 @@ const sendMessageBtn = document.getElementById('sendMessageBtn');
 const chatContainer = document.getElementById('chat-messages-container');
 
 // 2. The Keyboard & Auto-expand Logic
-messageInput.addEventListener('input', function() {
+messageInput.addEventListener('input', function () {
     this.style.height = 'auto';
     this.style.height = (Math.min(this.scrollHeight, 150)) + 'px';
 });
 
-messageInput.addEventListener('keydown', function(e) {
+messageInput.addEventListener('keydown', function (e) {
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         if (this.value.trim() !== "") {
@@ -45,7 +45,7 @@ sendMessageBtn.addEventListener('click', async () => {
 
     appendMessage('user', message);
     messageInput.value = '';
-    
+
     const assistantMsgId = 'msg-' + Date.now();
     appendMessage('assistant', '', assistantMsgId); // Start empty
     const targetText = document.getElementById(`text-${assistantMsgId}`);
@@ -58,27 +58,26 @@ sendMessageBtn.addEventListener('click', async () => {
         const response = await fetch('/chat/ask', { method: 'POST', body: formData });
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
-        
+
         let fullContent = "";
 
         while (true) {
             const { value, done } = await reader.read();
             if (done) break;
-            
+
             const chunk = decoder.decode(value);
             const lines = chunk.split('\n');
 
             for (const line of lines) {
                 if (line.startsWith('data: ')) {
                     const data = JSON.parse(line.slice(6));
-                    
+
                     if (data.type === 'token') {
                         fullContent += data.content;
-                        // 500 IQ: Parse XML on the fly for better UI
-                        targetText.innerHTML = formatAIResponse(fullContent);
+                        targetText.innerHTML = formatAIResponse(fullContent, dbId);
                         chatContainer.scrollTop = chatContainer.scrollHeight;
                     }
-                    
+
                     if (data.type === 'stats') {
                         console.log("Inference Stats:", data);
                     }
@@ -90,25 +89,197 @@ sendMessageBtn.addEventListener('click', async () => {
     }
 });
 
-function formatAIResponse(raw) {
+// Add these empty functions to handle the button clicks
+async function runQuery(base64Code, dbId, blockId) {
+    if (!base64Code || !dbId) return;
+    const sql = decodeURIComponent(escape(atob(base64Code)));
+
+    // Find the query block and inject a results container after it
+    const queryBlock = document.getElementById(blockId);
+    if (!queryBlock) return;
+
+    // Remove any previous result for this block
+    const existingResult = document.getElementById(`result-${blockId}`);
+    if (existingResult) existingResult.remove();
+
+    // Insert a result container right after the query block
+    queryBlock.insertAdjacentHTML('afterend', `
+        <div id="result-${blockId}" class="mt-1 mb-3 rounded-xl border border-slate-200 overflow-hidden bg-white shadow-data-card">
+            <div class="flex items-center gap-2 px-3 py-2 bg-slate-50 border-b border-slate-100">
+                <span class="material-symbols-outlined text-[13px] text-primary">table</span>
+                <span class="text-[9px] font-black uppercase tracking-widest text-slate-500">Query Result</span>
+                <span id="rowcount-${blockId}" class="ml-auto text-[9px] font-black text-slate-400"></span>
+            </div>
+            <div class="overflow-x-auto max-h-64 overflow-y-auto scrollbar-thin">
+                <table id="table-${blockId}" class="w-full text-[11px]">
+                    <thead id="thead-${blockId}" class="sticky top-0 bg-slate-50 border-b border-slate-200"></thead>
+                    <tbody id="tbody-${blockId}"></tbody>
+                </table>
+            </div>
+        </div>
+    `);
+
+    const thead = document.getElementById(`thead-${blockId}`);
+    const tbody = document.getElementById(`tbody-${blockId}`);
+    const rowcount = document.getElementById(`rowcount-${blockId}`);
+    let totalRows = 0;
+
+    const formData = new FormData();
+    formData.append('query', sql);
+    formData.append('id', dbId);
+
+    try {
+        const response = await fetch('/query-execution', { method: 'POST', body: formData });
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        const PREVIEW_LIMIT = 100;
+        let totalRows = 0;
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+
+            for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                const data = JSON.parse(line.slice(6));
+
+                // Render column headers
+                if (data.type === 'columns') {
+                    thead.innerHTML = `
+                        <tr>
+                            ${data.content.map(col => `
+                                <th class="px-3 py-2 text-left text-[9px] font-black uppercase tracking-wider text-slate-500 whitespace-nowrap">
+                                    ${col}
+                                </th>
+                            `).join('')}
+                        </tr>`;
+                }
+
+                // Stream rows in progressively
+                if (data.type === 'rows') {
+                    const previousCount = totalRows;
+                    totalRows += data.content.length;
+                    rowcount.textContent = `${totalRows} row${totalRows !== 1 ? 's' : ''}`;
+
+                    // Only append if we haven't hit the "Blow up the browser" limit
+                    if (previousCount < PREVIEW_LIMIT) {
+                        const remainingCapacity = PREVIEW_LIMIT - previousCount;
+                        const rowsToRender = data.content.slice(0, remainingCapacity);
+
+                        const rowsHtml = rowsToRender.map((row, i) => {
+                            // Re-calculate the actual row index for zebra striping
+                            const rowIndex = previousCount + i;
+                            return `
+                <tr class="${rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'} hover:bg-primary-soft/30 transition-colors">
+                    ${Object.values(row).map(val => `
+                        <td class="px-3 py-1.5 text-[11px] text-slate-700 font-medium whitespace-nowrap border-b border-slate-100">
+                            ${val === null ? '<span class="text-slate-300 italic">null</span>' : val}
+                        </td>
+                    `).join('')}
+                </tr>`;
+                        }).join('');
+
+                        tbody.insertAdjacentHTML('beforeend', rowsHtml);
+
+                        // If we just hit the limit, add a "See more" call to action
+                        if (totalRows >= PREVIEW_LIMIT && previousCount < PREVIEW_LIMIT) {
+                            tbody.insertAdjacentHTML('afterend', `
+                <div class="p-4 bg-slate-50 border-t border-slate-200 text-center">
+                    <p class="text-[10px] text-slate-500 italic mb-2">Showing first ${PREVIEW_LIMIT} rows.</p>
+                    <button onclick="openInAnalysis('${base64Code}')" class="px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 text-[10px] font-black rounded-lg transition-all">
+                        ANALYZE FULL DATASET →
+                    </button>
+                </div>
+            `);
+                        }
+                    }
+                }
+                if (data.type === 'error') {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="99" class="px-3 py-3 text-[11px] text-red-500 font-bold">
+                                ${data.content}
+                            </td>
+                        </tr>`;
+                }
+            }
+        }
+
+    } catch (err) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="99" class="px-3 py-3 text-[11px] text-red-500 font-bold">
+                    Connection lost during execution.
+                </td>
+            </tr>`;
+    }
+}
+
+
+function editQuery(base64Code) {
+    if (!base64Code) return;
+    const sql = decodeURIComponent(escape(atob(base64Code)));
+    console.log("Editing SQL:", sql);
+    // TODO: Open a modal or make the div editable
+    alert("Editing Query:\n" + sql);
+}
+
+// Helper to build the UI box
+function buildQueryUI(code, isStreaming = false, dbId = '') {
+    if (!code.trim()) return '';
+
+    const blockId = 'qblock-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+    const safeCode = isStreaming ? '' : btoa(unescape(encodeURIComponent(code.trim())));
+    const buttonState = isStreaming ? 'opacity-50 cursor-not-allowed pointer-events-none' : '';
+    const runIcon = isStreaming ? 'sync' : 'play_arrow';
+    const runAnim = isStreaming ? 'animate-spin' : '';
+
+    return `
+    <div id="${blockId}" class="my-3 bg-slate-900 rounded-xl overflow-hidden border border-slate-700 shadow-md w-full">
+        <div class="flex justify-between items-center px-3 py-2 bg-slate-800/80 border-b border-slate-700">
+            <div class="flex items-center gap-2 opacity-80">
+                <span class="material-symbols-outlined text-[14px] text-primary">terminal</span>
+                <span class="text-[9px] uppercase font-black tracking-widest text-primary">SQL Command</span>
+            </div>
+            <div class="flex gap-2 ${buttonState}">
+                <button onclick="editQuery('${safeCode}')" class="flex items-center gap-1 px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300 text-[9px] font-bold transition-all">
+                    <span class="material-symbols-outlined text-[11px]">edit</span>EDIT
+                </button>
+                <button onclick="runQuery('${safeCode}', '${dbId}', '${blockId}')" class="flex items-center gap-1 px-2 py-1 rounded bg-primary/20 hover:bg-primary/40 text-primary text-[9px] font-bold transition-all">
+                    <span class="material-symbols-outlined text-[11px] ${runAnim}">${runIcon}</span>RUN
+                </button>
+            </div>
+        </div>
+        <div class="p-3 font-mono text-[12px] text-slate-300 whitespace-pre-wrap overflow-x-auto leading-relaxed">${code.trim()}</div>
+    </div>`;
+}
+
+function formatAIResponse(raw, dbId) {
     let html = raw;
-    
-    // Style the SQL Query block
+
     html = html.replace(/<query>([\s\S]*?)<\/query>/g, (match, code) => {
-        return `
-            <div class="my-2 bg-slate-900 rounded-lg p-3 font-mono text-[10px] text-primary border border-slate-700">
-                <div class="flex justify-between mb-1 opacity-50 text-[8px] uppercase font-black"><span>SQL Query</span><span class="material-symbols-outlined text-[10px]">terminal</span></div>
-                ${code.trim()}
-            </div>`;
+        return buildQueryUI(code, false, dbId);
     });
 
-    // Style the Comment block
+    if (html.includes('<query>') && !html.includes('</query>')) {
+        const parts = html.split('<query>');
+        const codeSoFar = parts[1].replace(/<\/query>/g, '');
+        html = parts[0] + buildQueryUI(codeSoFar, true, dbId);
+    }
+
     html = html.replace(/<comment>([\s\S]*?)<\/comment>/g, (match, comment) => {
-        return `<div class="text-slate-600 italic leading-relaxed">${comment.trim()}</div>`;
+        return `<div class="text-xs leading-snug text-slate-700 font-medium">${comment.trim()}</div>`;
     });
 
-    // Handle partial tags during streaming
-    return html.replace(/<[^>]*>?/g, ''); 
+    if (html.includes('<comment>') && !html.includes('</comment>')) {
+        const parts = html.split('<comment>');
+        html = parts[0] + `<div class="text-xs leading-snug text-slate-700 font-medium">${parts[1]}</div>`;
+    }
+
+    return html.replace(/<\/?(query|comment)>/g, '');
 }
 
 // 4. Enhanced Append Function
@@ -119,9 +290,6 @@ function appendMessage(role, text, id = null) {
     if (role === 'user') {
         messageHtml = `
             <div class="flex gap-2 flex-row-reverse animate-in fade-in slide-in-from-right-2 duration-300">
-                <div class="w-7 h-7 rounded-full border border-primary/30 p-0.5 flex-shrink-0 overflow-hidden">
-                    <img alt="User" class="w-full h-full rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC-f8TTx8bBFUGqf42OM1R8Whfp3LjOOu2WEloffe2jYBHPfQcKaeyjHmuVd63Bs2LDTjCA3I93KOac7gbt8YG-FEPRoRvMcdVC2iqfKG70hmYfY6H7Kf3IcG8yRYB-IeHgKeQyuvchqYFdQax1K2lZcRX77iUk5ZogtDQOGUXL3kQCYu4uCEfzxirkqHf0JZXlTK3eN5gwMwKj800imCj98mrQCiklCItJ985ijbYgJhjBnjHzQ84J-xW__OOEZNQDsZ_97qLA5Lcg" />
-                </div>
                 <div class="bg-primary text-white px-2.5 py-2 rounded-xl rounded-tr-none shadow-tactile max-w-[92%]">
                     <p class="text-xs leading-snug font-bold">${text}</p>
                     <span class="text-[8px] text-primary-soft/80 mt-1 block font-black uppercase tracking-wider">You • ${time}</span>
@@ -149,13 +317,13 @@ function appendMessage(role, text, id = null) {
 // Script for system metrics SSE
 const eventSource = new EventSource("/system-metrics");
 
-eventSource.onmessage = function(event) {
+eventSource.onmessage = function (event) {
     const stats = JSON.parse(event.data);
     document.getElementById("cpu-stat").innerText = `CPU: ${stats.cpu}`;
     document.getElementById("ram-stat").innerText = `RAM: ${stats.ram}`;
 };
 
-eventSource.onerror = function() {
+eventSource.onerror = function () {
     console.error("Metrics stream error");
 };
 // ----------------------------------------------------------------------------
@@ -252,9 +420,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const dbSelect = document.getElementById('selected_db');
-    dbSelect.addEventListener('change', function() {
+    dbSelect.addEventListener('change', function () {
         const selectedOption = dbSelect.options[dbSelect.selectedIndex];
         if (selectedOption.value === 'configure_db') {
             window.location.href = selectedOption.getAttribute('data-link');

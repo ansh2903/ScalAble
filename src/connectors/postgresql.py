@@ -1,6 +1,8 @@
 import psycopg2
 from psycopg2 import OperationalError
 from sshtunnel import SSHTunnelForwarder
+import duckdb
+import urllib.parse
 import pandas as pd
 import openpyxl
 import csv
@@ -297,3 +299,89 @@ def file_to_db(config, file_path, table_name, ext):
         return {"ok": False, "error": str(e)}
     finally:
         _close(tunnel, conn, cur)
+
+def execute(query, config):
+    """
+    DuckDB streaming execution layer.
+    Yields chunks of data safely back to the connector.
+    """
+    tunnel = None
+    conn = None
+    try:
+        # 1. Open the pipes and get the URI
+        tunnel, duckdb_uri = _setup_duckdb_route(config)
+
+        # 2. Spin up the DuckDB Kernel
+        conn = duckdb.connect(':memory:')
+        conn.execute("SET memory_limit = '1GB';") # Protect the 16GB RAM!
+        
+        # 3. Load extension and Attach
+        conn.execute("INSTALL postgres; LOAD postgres;")
+        conn.execute(f"ATTACH '{duckdb_uri}' AS remote_db (TYPE POSTGRES);")
+        conn.execute("USE remote_db;")
+
+        # Set schema if needed
+        schema = config.get('schema')
+        if schema:
+            conn.execute(f"SET search_path = {schema};")
+
+        # 4. Execute and Stream
+        # fetch_record_batch prevents Python from loading the whole DB into RAM
+        result_reader = conn.execute(query).fetch_record_batch(rows_per_batch=100)
+        
+        # Yield Headers first
+        columns = [field.name for field in result_reader.schema]
+        yield {"type": "columns", "content": columns}
+
+        # Yield Data chunks
+        for batch in result_reader:
+            yield {"type": "rows", "content": batch.to_pylist()}
+
+    except Exception as e:
+        yield {"type": "error", "content": str(e)}
+    
+    finally:
+        # 5. Clean up the pipes immediately after streaming finishes
+        if conn:
+            conn.close()
+        if tunnel:
+            tunnel.stop()
+
+def _setup_duckdb_route(config):
+    tunnel = None
+    strategy = config.get('strategy')
+
+    target_host = config.get('host', '127.0.0.1')
+    target_port = config['port']
+
+    if strategy == 'local':
+        target_host = 'host.docker.internal' if is_running_in_docker() else '127.0.0.1'
+
+    elif strategy == 'ssh':
+        tunnel = SSHTunnelForwarder(
+            (config['ssh_host'], int(config.get('ssh_port', 22))),
+            ssh_username=config['ssh_user'],
+            ssh_pkey=config.get('ssh_private_key'),
+            remote_bind_address=(config['host'], int(config['port']))
+        )
+
+        tunnel.start()
+        target_host = '127.0.0.1'
+        target_port = tunnel.local_bind_port
+
+    user = urllib.parse.quote_plus(config['user'])
+    password = urllib.parse.quote_plus(config['password'])
+    dbname = urllib.parse.quote_plus(config['dbname'])
+
+    uri = f"postgresql://{user}:{password}@{target_host}:{target_port}/{dbname}"
+
+    if strategy not in ['local', 'ssh']:
+        ssl_params = []
+        for key in ['sslmode', 'sslrootcert', 'sslcert', 'sslkey']:
+            if config.get(key):
+                ssl_params.append(f"{key}={urllib.parse.quote_plus(config[key])}")
+        
+        if ssl_params:
+            uri += "?" + "&".join(ssl_params)
+
+    return tunnel, uri

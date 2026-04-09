@@ -32,7 +32,8 @@ class InferenceEngine:
                 logging.info(f"Initializing Ollama LLM with model: {self.model_name}")
                 return ChatOllama(
                     model = self.model_name,
-                    base_url = os.getenv("OLLAMA_ENDPOINT", "http://localhost:11434"),
+                    base_url = os.getenv("OLLAMA_BASE"),
+                    reasoning = False,
                     keep_alive = settings.get("keep_alive", "5m"),  # how long to keep model in VRAM
                     num_predict = settings["options"].get("num_predict", 256),  # max tokens to generate
                     num_ctx = settings["options"].get("num_ctx", 2048),         # context window size
@@ -115,8 +116,6 @@ class InferenceEngine:
             raise ValueError(f"Provider {self.provider} not supported.")
 
     def get_query_prompt(self):
-        """Returns the structured system prompt for XML generation."""
-        
         system_instructions = """You are a professional {db_type} query generation expert. 
         Convert natural language into executable {db_type} queries and behave like a friendly assistant.
 
@@ -125,13 +124,19 @@ class InferenceEngine:
 
         STRICT OUTPUT RULES:
         1. Return output using ONLY these XML tags: <query> and <comment>.
-        2. <query>: Valid, executable {db_type} query string. No markdown, no backticks.
+        2. <query>: Valid, executable {db_type} query string. If no query is needed, leave this tag empty: <query></query>.
         3. <comment>: Markdown-formatted explanation or friendly reply.
         4. Do NOT include any text outside these tags.
 
-        Example:
-        <query>SELECT * FROM users;</query><comment>I've fetched all users for you.</comment>"""
+        EXAMPLES:
+        User: "hello"
+        Assistant: <query></query><comment>Hello! I'm ready to help you query your {db_type} database. What are we looking for today?</comment>
 
+        User: "show me all users"
+        Assistant: <query>SELECT * FROM users;</query><comment>I've retrieved all records from the users table for you.</comment>
+
+        User: "clear the history"
+        Assistant: <query></query><comment>I can't physically clear the UI, but I'm ready for your next fresh request!</comment>"""
         prompt = ChatPromptTemplate.from_messages([
             ("system", system_instructions),
             MessagesPlaceholder(variable_name="history"),
@@ -163,7 +168,6 @@ class InferenceEngine:
                 token = chunk.content
                 token_count += 1
                 full_response += token
-                print(token)
                 yield {
                     "type": "token",
                     "content": token
