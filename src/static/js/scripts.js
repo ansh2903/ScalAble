@@ -1,3 +1,295 @@
+// ─── Notebook State ───────────────────────────────────────────
+let notebookOpen = false;
+let cellCounter = 0;
+const cells = {}; // cellId → { code, outputEl, statusEl, countEl }
+
+function addCell(initialCode = '') {
+    cellCounter++;
+    const cellId = `cell-${cellCounter}`;
+
+    const cellHtml = `
+    <div id="${cellId}" class="heavy-card p-3 bg-white border-slate-100">
+        
+        <!-- Cell Header -->
+        <div class="flex justify-between mb-2">    
+        <span id="${cellId}-count" class="text-[9px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded-pill border border-slate-100">
+                In [ ] — Execution Block: Python
+            </span>
+
+            <span class="text-[9px] text-primary font-black uppercase tracking-wider">Completed in
+                0.8s</span>
+
+            <div class="flex items-center gap-1">
+                <button onclick="runCell('${cellId}')"
+                    class="flex items-center gap-1 px-2 py-1 bg-primary text-white text-[9px] font-black rounded hover:opacity-90 transition-all">
+                    <span class="material-symbols-outlined text-[11px]" style="font-variation-settings:'FILL' 1">play_arrow</span>
+                    RUN
+                </button>
+                <button onclick="deleteCell('${cellId}')"
+                    class="p-1 text-slate-300 hover:text-red-400 transition-colors rounded">
+                    <span class="material-symbols-outlined text-[13px]">delete</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Code Input -->
+<div class="bg-slate-50 border border-slate-100 p-2.5 rounded-lg">
+<textarea 
+    id="${cellId}-input"
+    class="w-full bg-transparent border-none outline-none focus:outline-none focus:ring-0 p-0 m-0 resize-none overflow-hidden font-mono text-[11px] text-slate-700 leading-relaxed block"
+    placeholder="# Write Python here..."
+    onkeydown="handleCellKeydown(event, '${cellId}')"
+    oninput="this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';"
+    spellcheck="false"
+    rows="1">${initialCode}</textarea>
+    </div>    
+
+    <!-- Will think about what can be done here later
+        <div class="mt-2 p-2 bg-emerald-50/50 border border-primary/10 rounded-lg">
+            <div class="flex items-center gap-2 mb-1">
+                <span class="material-symbols-outlined text-primary text-sm">terminal</span>
+                <p class="text-[9px] font-black text-primary uppercase tracking-widest">Analysis Output</p>
+            </div>
+            <p class="text-[10px] text-slate-600 font-medium leading-tight">
+                Successfully computed retention rates for <span
+                    class="font-bold text-slate-900">4,281</span> unique records. Detected a churn spike
+                (-32%) in the <span class="font-bold text-slate-900">12-18 month</span> bracket.
+            </p>
+        </div>
+-->
+        <!-- Output Area -->
+        <div id="${cellId}-output" class="hidden border-t border-slate-100">
+            <!-- Output chunks rendered here -->
+        </div>
+
+    </div>`;
+
+    document.getElementById('notebook-cells').insertAdjacentHTML('beforeend', cellHtml);
+
+    // Register in state
+    cells[cellId] = {
+        executionCount: null,
+        outputEl: document.getElementById(`${cellId}-output`),
+        countEl: document.getElementById(`${cellId}-count`),
+        inputEl: document.getElementById(`${cellId}-input`)
+    };
+
+    // Focus the new cell
+    document.getElementById(`${cellId}-input`).focus();
+    autoResizeCell(document.getElementById(`${cellId}-input`));
+}
+
+function deleteCell(cellId) {
+    document.getElementById(cellId)?.remove();
+    delete cells[cellId];
+}
+
+function autoResizeCell(textarea) {
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.max(80, textarea.scrollHeight) + 'px';
+}
+
+function handleCellKeydown(e, cellId) {
+    if (e.key === 'Enter' && (e.ctrlKey || e.shiftKey)) {
+        e.preventDefault();
+        runCell(cellId);
+    }
+    // Tab → indent
+    if (e.key === 'Tab') {
+        e.preventDefault();
+        const ta = e.target;
+        const start = ta.selectionStart;
+        ta.value = ta.value.slice(0, start) + '    ' + ta.value.slice(ta.selectionEnd);
+        ta.selectionStart = ta.selectionEnd = start + 4;
+    }
+}
+
+function runCell(cellId) {
+    const cell = cells[cellId];
+    if (!cell) return;
+
+    const code = cell.inputEl.value.trim();
+    if (!code) return;
+
+    // Clear previous output
+    cell.outputEl.innerHTML = '';
+    cell.outputEl.classList.remove('hidden');
+    cell.countEl.textContent = 'In [*] — Running...';
+
+    socket.emit('kernel_execute', { cell_id: cellId, code });
+}
+
+// ─── Handle incoming kernel output ───────────────────────────
+const MIME_RENDERERS = [
+{
+  mimeType: 'application/vnd.plotly.v1+json',
+  priority: 100,
+  render(data, container) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'p-3 border-t border-slate-100';
+    const plotDiv = document.createElement('div');
+    plotDiv.style.width = '100%';
+    plotDiv.style.minHeight = '400px';
+    wrapper.appendChild(plotDiv);
+    container.appendChild(wrapper);
+
+    // If Plotly isn't loaded yet, show a helpful message instead of crashing
+    if (typeof Plotly === 'undefined') {
+        plotDiv.innerHTML = `<p class="text-[10px] text-red-400 font-mono">Error: Plotly.js not found in frontend.</p>`;
+        return;
+    }
+
+    // Logic: Notebooks sometimes send strings, sometimes objects. 
+    // Handle both so the 'JSON.parse' doesn't kill the script.
+    const spec = typeof data === 'string' ? JSON.parse(data) : data;
+
+    Plotly.newPlot(plotDiv, spec.data, spec.layout ?? {}, {
+      responsive: true,
+      displayModeBar: true,
+    });
+  }
+},    {
+    mimeType: 'application/vnd.jupyter.widget-view+json',
+    priority: 90,
+    render(data, container) {
+      // Stub — wire up ipywidgets here if needed
+      const parsed = JSON.parse(data);
+      container.insertAdjacentHTML('beforeend', `
+        <pre class="font-mono text-[11px] p-3 text-amber-600 border-t border-slate-100">
+          [Widget: ${parsed.model_id} — ipywidgets not yet connected]
+        </pre>`);
+    }
+  },
+  {
+    mimeType: 'text/html',
+    priority: 50,
+    render(data, container) {
+      container.insertAdjacentHTML('beforeend', `
+        <div class="p-3 border-t border-slate-100 overflow-x-auto text-[11px]">
+          ${data}
+        </div>`);
+    }
+  },
+  {
+    mimeType: 'image/png',
+    priority: 40,
+    render(data, container) {
+      container.insertAdjacentHTML('beforeend', `
+        <div class="p-3 border-t border-slate-100">
+          <img src="data:image/png;base64,${data}"
+               class="max-w-full rounded-lg shadow-sm" />
+        </div>`);
+    }
+  },
+  {
+    mimeType: 'image/svg+xml',
+    priority: 45,
+    render(data, container) {
+      container.insertAdjacentHTML('beforeend', `
+        <div class="p-3 border-t border-slate-100 overflow-x-auto">
+          ${data}
+        </div>`);
+    }
+  },
+  {
+    mimeType: 'text/plain',
+    priority: 10, // lowest — fallback only
+    render(data, container) {
+      container.insertAdjacentHTML('beforeend', `
+        <pre class="font-mono text-[11px] p-3 text-slate-600 border-t border-slate-100 whitespace-pre-wrap m-0">${data}</pre>`);
+    }
+  },
+];
+
+// Pick the highest-priority renderer available in a data bundle
+function renderMimeBundle(dataBundle, container) {
+  const available = MIME_RENDERERS
+    .filter(r => dataBundle[r.mimeType] !== undefined)
+    .sort((a, b) => b.priority - a.priority);
+
+  if (available.length === 0) return;
+  available[0].render(dataBundle[available[0].mimeType], container);
+}
+
+// ── Main Output Handler ─────────────────────────────────────────────────────
+
+function handleKernelOutput(chunk) {
+  const cell = cells[chunk.cell_id];
+  if (!cell) return;
+  const out = cell.outputEl;
+
+  if (chunk.type === 'stream') {
+    let streamEl = out.querySelector(`.stream-output[data-stream="${chunk.stream}"]`);
+    if (!streamEl) {
+      out.insertAdjacentHTML('beforeend', `
+        <pre class="stream-output font-mono text-[11px] p-3 leading-relaxed whitespace-pre-wrap m-0
+             ${chunk.stream === 'stderr' ? 'text-amber-600 bg-amber-50' : 'text-slate-700'}"
+             data-stream="${chunk.stream}"></pre>`);
+      streamEl = out.querySelector(`.stream-output[data-stream="${chunk.stream}"]`);
+    }
+    // Use textContent += to avoid XSS from user output
+    streamEl.textContent += chunk.content;
+  }
+
+  else if (chunk.type === 'display' || chunk.type === 'result') {
+    renderMimeBundle(chunk.data, out); // ← registry does the rest
+
+    if (chunk.type === 'result') {
+      cell.countEl.textContent = `Out [${chunk.execution_count}]`;
+    }
+  }
+
+  else if (chunk.type === 'error') {
+    const clean = chunk.traceback
+      .join('\n')
+      .replace(/\x1b\[[0-9;]*m/g, '');
+    out.insertAdjacentHTML('beforeend', `
+      <pre class="font-mono text-[11px] p-3 text-red-500 bg-red-50 border-t border-red-100 whitespace-pre-wrap m-0">${clean}</pre>`);
+    cell.countEl.textContent = `In [!] — Error`;
+  }
+
+  else if (chunk.type === 'done') {
+    if (cell.countEl.textContent.includes('*')) {
+      cell.countEl.textContent = `In [✓] — Complete`;
+    }
+  }
+}
+
+// Add first cell on load
+addCell();
+
+// ------------------------------------------------------------
+// Kernel stuff
+
+const socket = io();
+let mySessionId = null;
+
+socket.on('connect', () => {
+    console.log('Kernel socket connected');
+});
+
+socket.on('kernel_status', (data) => {
+    mySessionId = data.session_id;
+    console.log('Kernel status:', data.status);
+});
+
+socket.on('kernel_output', (chunk) => {
+    // Route output to the correct cell by cell_id
+    handleKernelOutput(chunk);
+});
+
+function executeCell(cellId, code) {
+    socket.emit('kernel_execute', { cell_id: cellId, code: code });
+}
+
+function interruptKernel() {
+    socket.emit('kernel_interrupt');
+}
+
+function restartKernel(kernelName = 'python3') {
+    socket.emit('kernel_restart', { kernel_name: kernelName });
+}
+
 // ------------------------------------------------------------
 
 // Script for user text, file input handling and dynamic content updates
@@ -42,6 +334,8 @@ sendMessageBtn.addEventListener('click', async () => {
     const dbId = document.getElementById('selected_db_id').value;
 
     if (!message || !dbId) return;
+
+    switchToChatView();
 
     appendMessage('user', message);
     messageInput.value = '';
@@ -89,6 +383,14 @@ sendMessageBtn.addEventListener('click', async () => {
     }
 });
 
+function openInAnalysis(base64Code) {
+    switchToSplitView();
+
+    const pythonBoilerplate = `# Whatever the fuck`;
+
+    addCell(pythonBoilerplate);
+}
+
 // Add these empty functions to handle the button clicks
 async function runQuery(base64Code, dbId, blockId) {
     if (!base64Code || !dbId) return;
@@ -103,20 +405,30 @@ async function runQuery(base64Code, dbId, blockId) {
     if (existingResult) existingResult.remove();
 
     // Insert a result container right after the query block
+    // Insert a result container with the button in the top action bar
     queryBlock.insertAdjacentHTML('afterend', `
         <div id="result-${blockId}" class="mt-1 mb-3 rounded-xl border border-slate-200 overflow-hidden bg-white shadow-data-card">
             <div class="flex items-center gap-2 px-3 py-2 bg-slate-50 border-b border-slate-100">
                 <span class="material-symbols-outlined text-[13px] text-primary">table</span>
                 <span class="text-[9px] font-black uppercase tracking-widest text-slate-500">Query Result</span>
-                <span id="rowcount-${blockId}" class="ml-auto text-[9px] font-black text-slate-400"></span>
+                
+                <div class="ml-auto flex items-center gap-4">
+                    <span id="rowcount-${blockId}" class="text-[9px] font-black text-slate-400"></span>
+                </div>
             </div>
-            <div class="overflow-x-auto max-h-64 overflow-y-auto scrollbar-thin">
+            <div class="overflow-x-auto max-h-64 overflow-y-auto x-scrollbar-thin scrollbar-thin">
                 <table id="table-${blockId}" class="w-full text-[11px]">
                     <thead id="thead-${blockId}" class="sticky top-0 bg-slate-50 border-b border-slate-200"></thead>
                     <tbody id="tbody-${blockId}"></tbody>
                 </table>
             </div>
+            <button onclick="openInAnalysis('${base64Code}')" 
+                class="flex items-center gap-1.5 px-2 py-1 bg-primary text-white hover:bg-primary/90 text-[9px] font-black rounded-md transition-all uppercase tracking-tighter shadow-sm">
+                    <span class="material-symbols-outlined text-[12px]">analytics</span>
+                    OPEN IN NOTEBOOK
+            </button>
         </div>
+
     `);
 
     const thead = document.getElementById(`thead-${blockId}`);
@@ -134,13 +446,19 @@ async function runQuery(base64Code, dbId, blockId) {
         const decoder = new TextDecoder();
         const PREVIEW_LIMIT = 100;
         let totalRows = 0;
+        let dbTotalRows = null; // New state variable to hold the true count
+
+        let buffer = ''; // Add this outside the while loop
 
         while (true) {
             const { value, done } = await reader.read();
             if (done) break;
 
-            const chunk = decoder.decode(value);
-            const lines = chunk.split('\n');
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+
+            // Keep the last (potentially incomplete) line in the buffer
+            buffer = lines.pop();
 
             for (const line of lines) {
                 if (!line.startsWith('data: ')) continue;
@@ -157,29 +475,40 @@ async function runQuery(base64Code, dbId, blockId) {
                             `).join('')}
                         </tr>`;
                 }
+                // Inside the for (const line of lines) loop in runQuery:
 
-                // Stream rows in progressively
+                if (data.type === 'metadata') {
+                    dbTotalRows = data.total_rows;
+                }                // Stream rows in progressively
                 if (data.type === 'rows') {
                     const previousCount = totalRows;
                     totalRows += data.content.length;
-                    rowcount.textContent = `${totalRows} row${totalRows !== 1 ? 's' : ''}`;
 
-                    // Only append if we haven't hit the "Blow up the browser" limit
+                    // Rebuild the HTML completely from state every single time
+                    let displayHtml = '';
+
+                    if (dbTotalRows !== null && dbTotalRows !== "Unknown") {
+                        // Force the string to a Number so toLocaleString() adds the commas (e.g., 1,000)
+                        const formattedTotal = Number(dbTotalRows).toLocaleString();
+                        displayHtml = `<span class="text-primary-soft">Total: ${formattedTotal}</span> <span class="mx-2 text-slate-300">|</span> `;
+                    }
+
+                    displayHtml += `Showing ${totalRows}`;
+                    rowcount.innerHTML = displayHtml;
                     if (previousCount < PREVIEW_LIMIT) {
                         const remainingCapacity = PREVIEW_LIMIT - previousCount;
                         const rowsToRender = data.content.slice(0, remainingCapacity);
 
                         const rowsHtml = rowsToRender.map((row, i) => {
-                            // Re-calculate the actual row index for zebra striping
                             const rowIndex = previousCount + i;
                             return `
-                <tr class="${rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'} hover:bg-primary-soft/30 transition-colors">
-                    ${Object.values(row).map(val => `
-                        <td class="px-3 py-1.5 text-[11px] text-slate-700 font-medium whitespace-nowrap border-b border-slate-100">
-                            ${val === null ? '<span class="text-slate-300 italic">null</span>' : val}
-                        </td>
-                    `).join('')}
-                </tr>`;
+                            <tr class="${rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'} hover:bg-primary-soft/30 transition-colors">
+                                ${Object.values(row).map(val => `
+                                    <td class="px-3 py-1.5 text-[11px] text-slate-700 font-medium whitespace-nowrap border-b border-slate-100">
+                                        ${val === null ? '<span class="text-slate-300 italic">null</span>' : val}
+                                    </td>
+                                `).join('')}
+                            </tr>`;
                         }).join('');
 
                         tbody.insertAdjacentHTML('beforeend', rowsHtml);
@@ -187,13 +516,13 @@ async function runQuery(base64Code, dbId, blockId) {
                         // If we just hit the limit, add a "See more" call to action
                         if (totalRows >= PREVIEW_LIMIT && previousCount < PREVIEW_LIMIT) {
                             tbody.insertAdjacentHTML('afterend', `
-                <div class="p-4 bg-slate-50 border-t border-slate-200 text-center">
-                    <p class="text-[10px] text-slate-500 italic mb-2">Showing first ${PREVIEW_LIMIT} rows.</p>
-                    <button onclick="openInAnalysis('${base64Code}')" class="px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 text-[10px] font-black rounded-lg transition-all">
-                        ANALYZE FULL DATASET →
-                    </button>
-                </div>
-            `);
+                                <div class="p-4 bg-slate-50 border-t border-slate-200 text-center">
+                                    <p class="text-[10px] text-slate-500 italic mb-2">Showing first ${PREVIEW_LIMIT} rows.</p>
+                                    <button onclick="openInAnalysis('${base64Code}')" class="px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 text-[10px] font-black rounded-lg transition-all">
+                                        ANALYZE FULL DATASET →
+                                    </button>
+                                </div>
+                            `);
                         }
                     }
                 }
@@ -327,7 +656,9 @@ eventSource.onerror = function () {
     console.error("Metrics stream error");
 };
 // ----------------------------------------------------------------------------
+// Split stuff
 
+// ----------------------------------------------------------------------------
 async function fetchDatabases() {
     const uri = document.getElementById("uri").value;
     const response = await fetch("/list_databases", {

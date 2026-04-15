@@ -1,14 +1,19 @@
 from flask import Flask
 from flask_session import Session
+from flask_socketio import SocketIO
 import redis
 import sys
-import logging
 
+from src.kernel.socket_events import register_kernel_events
 from src.routes.interface import interface_blueprint
 from src.routes.endpoints import endpoints_blueprint
 from src.config.settings import settings
 from src.core.exception import CustomException
 from src.core.logger import logging
+
+# TODO: RESTRICT CORS IN THE FUTURE, IT CAN LEAD TO REMOTE CODE EXECUTION WHICH IS A NO NO.
+# FAILURE TO DO SO WILL LEED TO PUBLIC HANGING AND BEATING FOR YOU. 
+socketio = SocketIO(cors_allowed_origins="*", async_mode='threading')
 
 def create_app():
     try:
@@ -16,10 +21,9 @@ def create_app():
         app = Flask(__name__)
         app.secret_key = settings.SECRET_KEY
 
-        # Session configuration
         app.config["SESSION_TYPE"] = "redis"
         app.config["SESSION_PERMANENT"] = True
-        app.config['PERMANENT_SESSION_LIFETIME'] = 3600 * 24  # 24 hour
+        app.config['PERMANENT_SESSION_LIFETIME'] = 3600 * 24
         app.config["SESSION_USE_SIGNER"] = True
         app.config["SESSION_KEY_PREFIX"] = "scalable_session:"
         app.config["SESSION_REDIS"] = redis.StrictRedis(
@@ -31,6 +35,10 @@ def create_app():
 
         app.register_blueprint(interface_blueprint, name='interface')
         app.register_blueprint(endpoints_blueprint, name='endpoints')
+
+        socketio.init_app(app)
+
+        register_kernel_events(socketio)
 
         logging.info("Flask app created successfully")
         return app
@@ -44,4 +52,4 @@ if __name__ == "__main__":
     app = create_app()
     print(f"Server started on host: {settings.APP_HOST}")
     sys.stdout.flush()
-    app.run(host=settings.APP_HOST, port=settings.APP_PORT, debug=settings.DEBUG)
+    socketio.run(app, host=settings.APP_HOST, port=settings.APP_PORT, debug=settings.DEBUG)

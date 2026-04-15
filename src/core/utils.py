@@ -28,8 +28,18 @@ def encrypt_creds(creds):
     return _get_cipher().encrypt(str(creds).encode()).decode()
 
 def decrypt_creds(encrypted_creds):
-    return ast.literal_eval(_get_cipher().decrypt(encrypted_creds.encode()).decode())
-
+    try:
+        print('bisnboshbubsrh')
+        cipher = _get_cipher()
+        decrypted_bytes = cipher.decrypt(encrypted_creds.encode())
+        decrypted_str = decrypted_bytes.decode()
+        print(f"Decrypted string: {decrypted_str}")
+        return ast.literal_eval(decrypted_str)
+    except Exception as e:
+        # repr(e) will show you the CLASS of the error (e.g., InvalidToken)
+        logging.error(f"Decryption failed specifically at: {repr(e)}")
+        raise e
+    
 def generate_id():
     """
     Generate a unique identifier.

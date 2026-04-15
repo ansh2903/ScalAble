@@ -414,3 +414,774 @@
 </body>
 
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>ScalAble Studio | AI Chat &amp; Analysis</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Fredoka:wght@400;600;700&family=Pacifico&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00A36C",
+                        "primary-dark": "#065f46",
+                        "primary-soft": "#ecfdf5",
+                        "secondary-accent": "#475569",
+                        "bg-main": "#f8fafc",
+                        "card-border": "#e2e8f0",
+                        "heavy-outline": "#cbd5e1",
+                        "on-surface": "#1c1b1b",
+                        "surface": "#fcf9f8"
+                    },
+                    fontFamily: {
+                        "sans": ["Plus Jakarta Sans", "sans-serif"],
+                        "headline": ["Plus Jakarta Sans", "sans-serif"],
+                        "body": ["Plus Jakarta Sans", "sans-serif"],
+                        "playful": ["Fredoka", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"],
+                        "script": ["Pacifico", "cursive"]
+                    },
+                    borderRadius: {
+                        "organic": "1.25rem",
+                        "pill": "9999px",
+                        "huge": "2rem"
+                    },
+                    boxShadow: {
+                        "tactile": "0 4px 0 0 rgba(0, 163, 108, 0.2)",
+                        "tactile-hover": "0 2px 0 0 rgba(0, 163, 108, 0.3)",
+                        "data-card": "0 4px 15px -5px rgba(0,0,0,0.04), 0 4px 6px -6px rgba(0,0,0,0.04)",
+                        "header-nav": "0 10px 15px -3px rgba(0,163,108,0.05)"
+                    }
+                },
+            },
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer base {
+            body {
+                @apply bg-bg-main text-slate-800 font-body antialiased overflow-hidden;
+            }
+            h1, h2, h3 { @apply font-headline font-extrabold tracking-tight; }
+        }
+        .header-glass {
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(0,163,108,0.1);
+        }
+        .organic-border { border-radius: 60% 40% 70% 30% / 30% 60% 40% 70%; }
+        .heavy-card {
+            @apply bg-white border border-slate-200 rounded-organic transition-all duration-300;
+            box-shadow: 0 4px 0 -1px theme('colors.slate.100');
+        }
+        .nav-link { @apply relative px-3 py-2 text-slate-600 font-semibold transition-colors hover:text-primary; }
+        .nav-link-active { @apply text-primary font-bold; }
+        .nav-link-active::after {
+            content: '';
+            @apply absolute bottom-0 left-3 right-3 h-1 bg-primary rounded-full;
+        }
+        .soft-gradient-bg {
+            background: radial-gradient(circle at 50% -20%, #ecfdf5 0%, #f8fafc 60%);
+        }
+        .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { @apply bg-slate-200 rounded-full; }
+    </style>
+
+    <style>
+        /* ── Landing State ───────────────────────────────── */
+        #landing-state {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            pointer-events: all;
+        }
+        #landing-state.hidden-state {
+            opacity: 0;
+            transform: translateY(-24px);
+            pointer-events: none;
+        }
+
+        /* ── Landing Input Card ──────────────────────────── */
+        #landing-input-card {
+            width: min(600px, 90%);
+            transition: all 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* ── Chat Panel ──────────────────────────────────── */
+        #chat-panel {
+            width: 340px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            background: rgba(255,255,255,0.4);
+            border-right: 1px solid rgba(226,232,240,0.6);
+            padding: 12px;
+            transform: translateX(-100%);
+            opacity: 0;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.5s ease;
+        }
+        #chat-panel.visible {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        /* ── Notebook Panel ──────────────────────────────── */
+        #notebook-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transform: translateX(80px);
+            opacity: 0;
+            pointer-events: none;
+            transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.45s ease;
+            width: 0;
+        }
+        #notebook-panel.visible {
+            transform: translateX(0);
+            opacity: 1;
+            pointer-events: all;
+            width: auto;
+        }
+
+        /* ── Empty area (before chat activates) ─────────── */
+        #empty-area {
+            flex: 1;
+            transition: opacity 0.4s ease;
+        }
+        #empty-area.hidden-state {
+            display: none;
+        }
+
+        /* ── Suggestion chips ────────────────────────────── */
+        .suggestion-chip {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .suggestion-chip:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,163,108,0.15);
+        }
+
+        /* ── Animated dots ───────────────────────────────── */
+        @keyframes blink {
+            0%, 80%, 100% { opacity: 0; }
+            40% { opacity: 1; }
+        }
+        .thinking-dot:nth-child(1) { animation: blink 1.4s 0s infinite; }
+        .thinking-dot:nth-child(2) { animation: blink 1.4s 0.2s infinite; }
+        .thinking-dot:nth-child(3) { animation: blink 1.4s 0.4s infinite; }
+
+        /* ── Analyse btn pulse ───────────────────────────── */
+        @keyframes analysePulse {
+            0%, 100% { box-shadow: 0 4px 0 0 rgba(0,163,108,0.2); }
+            50% { box-shadow: 0 4px 18px 0 rgba(0,163,108,0.35); }
+        }
+        .analyse-btn { animation: analysePulse 2s ease-in-out infinite; }
+    </style>
+</head>
+
+<body class="soft-gradient-bg h-screen">
+
+    <!-- ── Header ───────────────────────────────────────── -->
+    <header class="header-glass fixed top-0 w-full z-50 h-16 flex items-center justify-between px-8">
+        <div class="flex items-center gap-12">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-primary organic-border flex items-center justify-center text-white shadow-tactile">
+                    <span class="material-symbols-outlined text-xl">rocket_launch</span>
+                </div>
+                <span class="text-xl font-black tracking-tighter text-slate-900">ScalAble</span>
+            </div>
+            <nav class="hidden md:flex items-center gap-6">
+                <a class="nav-link text-sm" href="#">Data Deck</a>
+                <a class="nav-link text-sm" href="#">Live Chat</a>
+                <a class="nav-link nav-link-active text-sm" href="#">AI Playground</a>
+            </nav>
+        </div>
+        <div class="flex items-center gap-4">
+            <div class="flex items-center gap-3 bg-white border border-slate-200 px-3 py-1 rounded-lg mr-2">
+                <div class="flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[14px] text-slate-400">memory</span>
+                    <span id="cpu-stat" class="text-[10px] font-bold text-slate-600 uppercase tracking-tight">CPU: 0%</span>
+                </div>
+                <div class="w-px h-3 bg-slate-200"></div>
+                <div class="flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[14px] text-slate-400">database</span>
+                    <span id="ram-stat" class="text-[10px] font-bold text-slate-600 uppercase tracking-tight">RAM: 0GB</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ── Sidebar ──────────────────────────────────────── -->
+    <aside class="fixed left-0 top-0 h-screen w-16 hover:w-56 transition-all duration-300 ease-in-out border-r border-slate-200/50 bg-white z-40 group flex flex-col py-3 px-2 gap-y-3 pt-20">
+        <nav class="flex-1 space-y-1">
+            <a class="flex items-center gap-3 p-2.5 bg-primary-soft text-primary rounded-xl transition-all" href="#">
+                <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">chat_bubble</span>
+                <span class="opacity-0 group-hover:opacity-100 whitespace-nowrap text-sm font-bold transition-all duration-200 group-hover:translate-x-1">Assistant</span>
+            </a>
+            <a class="flex items-center gap-3 p-2.5 text-slate-400 hover:bg-slate-50 hover:text-primary rounded-xl transition-all" href="#">
+                <span class="material-symbols-outlined">auto_awesome_motion</span>
+                <span class="opacity-0 group-hover:opacity-100 whitespace-nowrap text-sm font-bold transition-all duration-200 group-hover:translate-x-1">Notebook</span>
+            </a>
+            <a class="flex items-center gap-3 p-2.5 text-slate-400 hover:bg-slate-50 hover:text-primary rounded-xl transition-all" href="#">
+                <span class="material-symbols-outlined">database</span>
+                <span class="opacity-0 group-hover:opacity-100 whitespace-nowrap text-sm font-bold transition-all duration-200 group-hover:translate-x-1">Explorer</span>
+            </a>
+            <a class="flex items-center gap-3 p-2.5 text-slate-400 hover:bg-slate-50 hover:text-primary rounded-xl transition-all" href="#">
+                <span class="material-symbols-outlined">history</span>
+                <span class="opacity-0 group-hover:opacity-100 whitespace-nowrap text-sm font-bold transition-all duration-200 group-hover:translate-x-1">History</span>
+            </a>
+        </nav>
+        <div class="mt-auto space-y-1">
+            <a class="flex items-center gap-3 p-2.5 text-slate-300 hover:text-slate-500 transition-all" href="#">
+                <span class="material-symbols-outlined">help_outline</span>
+                <span class="opacity-0 group-hover:opacity-100 whitespace-nowrap text-sm font-bold">Help</span>
+            </a>
+            <div class="px-1">
+                <button class="w-full bg-primary text-white py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-[10px] font-black shadow-tactile">NEW SESSION</button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ── Main ─────────────────────────────────────────── -->
+    <main class="ml-16 pt-16 h-screen flex overflow-hidden relative">
+
+        <!-- ════ LANDING STATE ════ -->
+        <div id="landing-state">
+
+            <!-- Greeting -->
+            <div class="text-center mb-8 px-4">
+                <div class="inline-flex items-center gap-2 mb-4 bg-primary-soft border border-primary/15 px-3 py-1.5 rounded-pill">
+                    <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                    <span class="text-[9px] font-black text-primary uppercase tracking-widest">Active Insight Mode</span>
+                </div>
+                <h1 class="text-4xl font-black tracking-tighter text-slate-900 mb-2 leading-tight">
+                    What do you want to<br/>
+                    <span class="text-primary">know today?</span>
+                </h1>
+                <p class="text-sm text-slate-400 font-medium max-w-sm mx-auto">
+                    Ask about your data, request a SQL query, or start a cohort analysis — I'll handle the rest.
+                </p>
+            </div>
+
+            <!-- Input Card -->
+            <div id="landing-input-card" class="heavy-card bg-white overflow-hidden shadow-data-card">
+                <!-- DB selector bar -->
+                <div class="px-3 py-1.5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-xs text-primary">database</span>
+                        <select id="landing_db_id" class="bg-transparent border-none p-0 text-[10px] font-black text-slate-600 focus:ring-0 cursor-pointer uppercase tracking-tight">
+                            <option value="" disabled selected>Select Context</option>
+                            <option value="1">PostgreSQL — Production DB</option>
+                            <option value="2">MySQL — Analytics DB</option>
+                        </select>
+                    </div>
+                    <div id="landing-fileInfo" class="hidden flex items-center gap-1 bg-primary-soft px-2 py-0.5 rounded-full border border-primary/10">
+                        <span class="material-symbols-outlined text-[10px] text-primary">attach_file</span>
+                        <span id="landing-fileName" class="text-[9px] font-bold text-primary truncate max-w-[80px]">file.csv</span>
+                        <button onclick="clearLandingFile()" class="text-primary hover:text-primary-dark ml-1">×</button>
+                    </div>
+                </div>
+
+                <!-- Textarea -->
+                <textarea id="landingInput"
+                    class="w-full bg-transparent border-none focus:ring-0 text-sm resize-none h-20 placeholder:text-slate-300 font-medium p-3 text-slate-800"
+                    placeholder="Ask for an analysis, a query, or anything about your data…"></textarea>
+
+                <!-- Footer row -->
+                <div class="flex justify-between items-center p-2 pt-0">
+                    <div class="flex gap-1">
+                        <input type="file" id="landingFileInput" class="hidden" accept=".csv,.json,.xlsx">
+                        <button onclick="document.getElementById('landingFileInput').click()"
+                            class="p-1.5 hover:bg-primary-soft rounded-lg text-slate-300 hover:text-primary transition-all flex items-center gap-1">
+                            <span class="material-symbols-outlined text-lg">attach_file</span>
+                            <span class="text-[9px] font-black uppercase hidden sm:inline">Upload</span>
+                        </button>
+                    </div>
+                    <button id="landingSendBtn"
+                        class="bg-primary text-white px-5 py-2 rounded-lg text-[10px] font-black flex items-center gap-2 shadow-tactile hover:translate-y-[-1px] active:translate-y-[1px] transition-all">
+                        SEND INSIGHT
+                        <span class="material-symbols-outlined text-xs">send</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Suggestion chips -->
+            <div class="flex flex-wrap justify-center gap-2 mt-5 px-4">
+                <button onclick="fillSuggestion('Show me monthly retention by cohort')" class="suggestion-chip bg-white border border-slate-200 text-[10px] font-black text-slate-600 px-3 py-1.5 rounded-pill shadow-sm">
+                    📊 Monthly retention by cohort
+                </button>
+                <button onclick="fillSuggestion('Top 10 customers by revenue this quarter')" class="suggestion-chip bg-white border border-slate-200 text-[10px] font-black text-slate-600 px-3 py-1.5 rounded-pill shadow-sm">
+                    💰 Top customers by revenue
+                </button>
+                <button onclick="fillSuggestion('Analyse churn rate for the Engineering department')" class="suggestion-chip bg-white border border-slate-200 text-[10px] font-black text-slate-600 px-3 py-1.5 rounded-pill shadow-sm">
+                    📉 Churn rate by department
+                </button>
+                <button onclick="fillSuggestion('What were our peak signups last month?')" class="suggestion-chip bg-white border border-slate-200 text-[10px] font-black text-slate-600 px-3 py-1.5 rounded-pill shadow-sm">
+                    🚀 Peak signups last month
+                </button>
+            </div>
+        </div>
+
+        <!-- ════ CHAT PANEL (hidden until first message) ════ -->
+        <section id="chat-panel">
+
+            <div class="flex items-center justify-between mb-3">
+                <div>
+                    <h2 class="text-lg font-black tracking-tight text-slate-900">ScalAble Assistant</h2>
+                    <div class="flex items-center gap-2 mt-0.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                        <span class="text-[9px] font-black text-primary uppercase tracking-widest">Active Insight Mode</span>
+                    </div>
+                </div>
+                <button class="w-7 h-7 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-primary transition-colors flex items-center justify-center shadow-sm">
+                    <span class="material-symbols-outlined text-base">more_vert</span>
+                </button>
+            </div>
+
+            <!-- Messages -->
+            <div id="chat-messages-container" class="flex-1 overflow-y-auto space-y-2 pr-1 mb-3 scrollbar-thin"></div>
+
+            <!-- Bottom Input -->
+            <div class="heavy-card bg-white overflow-hidden">
+                <div class="px-3 py-1.5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-xs text-primary">database</span>
+                        <select id="selected_db_id" class="bg-transparent border-none p-0 text-[10px] font-black text-slate-600 focus:ring-0 cursor-pointer uppercase tracking-tight">
+                            <option value="" disabled selected>Select Context</option>
+                            <option value="1">PostgreSQL — Production DB</option>
+                            <option value="2">MySQL — Analytics DB</option>
+                        </select>
+                    </div>
+                    <div id="fileInfo" class="hidden flex items-center gap-1 bg-primary-soft px-2 py-0.5 rounded-full border border-primary/10">
+                        <span class="material-symbols-outlined text-[10px] text-primary">attach_file</span>
+                        <span id="fileName" class="text-[9px] font-bold text-primary truncate max-w-[80px]">file.csv</span>
+                        <button onclick="clearFile()" class="text-primary hover:text-primary-dark ml-1">×</button>
+                    </div>
+                </div>
+                <textarea id="messageInput"
+                    class="w-full bg-transparent border-none focus:ring-0 text-xs resize-none h-16 placeholder:text-slate-400 font-bold p-3"
+                    placeholder="Ask for a new analysis…"></textarea>
+                <div class="flex justify-between items-center p-2 pt-0">
+                    <div class="flex gap-1">
+                        <input type="file" id="hiddenFileInput" class="hidden" accept=".csv,.json,.xlsx">
+                        <button onclick="document.getElementById('hiddenFileInput').click()"
+                            class="p-1.5 hover:bg-primary-soft rounded-lg text-slate-400 hover:text-primary transition-all flex items-center gap-1">
+                            <span class="material-symbols-outlined text-lg">attach_file</span>
+                            <span class="text-[9px] font-black uppercase hidden sm:inline">Upload</span>
+                        </button>
+                    </div>
+                    <button id="sendMessageBtn"
+                        class="bg-primary text-white px-4 py-2 rounded-lg text-[10px] font-black flex items-center gap-2 shadow-tactile hover:translate-y-[-1px] active:translate-y-[1px] transition-all">
+                        SEND INSIGHT
+                        <span class="material-symbols-outlined text-xs">send</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ════ EMPTY FLEX FILL (before notebook) ════ -->
+        <div id="empty-area" class="flex-1"></div>
+
+        <!-- ════ NOTEBOOK PANEL ════ -->
+        <section id="notebook-panel" class="bg-transparent flex-col overflow-hidden relative">
+            <div class="w-full px-6 py-2 bg-white border-b border-slate-200 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-2">
+                    <button class="flex items-center gap-1.5 px-4 py-1.5 bg-primary text-white text-[10px] font-black rounded shadow-tactile hover:opacity-90 transition-all uppercase">
+                        <span class="material-symbols-outlined text-sm">database</span> DATA
+                    </button>
+                    <button class="flex items-center gap-1.5 px-4 py-1.5 bg-slate-900 text-white text-[10px] font-black rounded shadow-tactile hover:opacity-90 transition-all uppercase">
+                        <span class="material-symbols-outlined text-sm">analytics</span> ANALYZE
+                    </button>
+                    <button class="flex items-center gap-1.5 px-4 py-1.5 bg-white border border-slate-200 text-slate-700 text-[10px] font-black rounded shadow-sm hover:border-primary/30 transition-all uppercase">
+                        <span class="material-symbols-outlined text-sm">file_export</span> EXPORT
+                    </button>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-1">
+                        <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest mr-1">Kernel:</span>
+                        <select class="text-[10px] font-black text-slate-700 bg-slate-50 border-slate-200 rounded px-2 py-1 focus:ring-primary focus:border-primary">
+                            <option>Python 3.10</option>
+                            <option>Restart Kernel</option>
+                        </select>
+                    </div>
+                    <!-- Close notebook button -->
+                    <button onclick="closeNotebook()" class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded text-[10px] font-black text-slate-500 hover:text-red-400 hover:border-red-200 transition-all">
+                        <span class="material-symbols-outlined text-sm">close</span> CLOSE
+                    </button>
+                </div>
+            </div>
+
+            <header class="px-6 py-3 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="p-1.5 bg-primary-soft organic-border text-primary shadow-sm">
+                        <span class="material-symbols-outlined text-lg">description</span>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-black text-slate-900 tracking-tighter" id="notebook-title">Untitled_Analysis.ipynb</h1>
+                        <div class="flex items-center gap-2 mt-0.5">
+                            <span class="text-[8px] font-black text-white bg-slate-900 px-1.5 py-0.5 rounded uppercase tracking-widest">Active: Python 3.10</span>
+                            <span class="text-[8px] font-black text-primary bg-primary-soft px-1.5 py-0.5 rounded uppercase tracking-widest">System Nominal</span>
+                        </div>
+                    </div>
+                </div>
+                <button class="flex items-center gap-1.5 px-5 py-1.5 bg-primary text-white rounded-lg text-[10px] font-black shadow-tactile hover:translate-y-[-1px] transition-all">
+                    <span class="material-symbols-outlined text-sm" style="font-variation-settings:'FILL' 1;">play_arrow</span> RUN ALL
+                </button>
+            </header>
+
+            <div class="flex-1 overflow-y-auto px-6 pb-6 space-y-3 scrollbar-thin">
+                <div id="notebook-cells" class="space-y-3">
+                    <!-- Injected by AI response -->
+                </div>
+                <div class="py-2">
+                    <button onclick="addCell()"
+                        class="w-full border-2 border-dashed border-slate-200 hover:border-primary/40 text-slate-400 hover:text-primary text-[10px] font-black uppercase tracking-widest py-2 rounded-xl transition-all">
+                        + ADD CELL
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+    // ─── State ──────────────────────────────────────────────
+    let chatActive = false;
+    let notebookOpen = false;
+    let cellCounter = 0;
+    const cells = {};
+
+    // ─── Suggestion chips ────────────────────────────────────
+    function fillSuggestion(text) {
+        document.getElementById('landingInput').value = text;
+        document.getElementById('landingInput').focus();
+    }
+
+    // ─── Activate chat (landing → chat mode) ─────────────────
+    function activateChat() {
+        if (chatActive) return;
+        chatActive = true;
+
+        // Fade out landing
+        document.getElementById('landing-state').classList.add('hidden-state');
+
+        // Sync DB selection
+        const landingDb = document.getElementById('landing_db_id').value;
+        if (landingDb) document.getElementById('selected_db_id').value = landingDb;
+
+        // Show chat panel
+        setTimeout(() => {
+            document.getElementById('chat-panel').classList.add('visible');
+            document.getElementById('empty-area').classList.add('hidden-state');
+            // After landing fades, hide it from layout fully
+            setTimeout(() => {
+                document.getElementById('landing-state').style.display = 'none';
+            }, 500);
+        }, 150);
+    }
+
+    // ─── Open notebook panel ─────────────────────────────────
+    function openNotebook(contextLabel) {
+        if (notebookOpen) return;
+        notebookOpen = true;
+
+        if (contextLabel) {
+            document.getElementById('notebook-title').textContent = contextLabel + '_Analysis.ipynb';
+        }
+
+        const panel = document.getElementById('notebook-panel');
+        panel.style.display = 'flex';
+        // Force reflow
+        panel.getBoundingClientRect();
+        panel.classList.add('visible');
+    }
+
+    function closeNotebook() {
+        notebookOpen = false;
+        const panel = document.getElementById('notebook-panel');
+        panel.classList.remove('visible');
+        setTimeout(() => { panel.style.display = 'none'; }, 550);
+    }
+
+    // ─── Landing send ────────────────────────────────────────
+    document.getElementById('landingSendBtn').addEventListener('click', () => {
+        const msg = document.getElementById('landingInput').value.trim();
+        if (!msg) return;
+        activateChat();
+        // slight delay so panel animates in first
+        setTimeout(() => sendMessage(msg), 320);
+    });
+
+    document.getElementById('landingInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            document.getElementById('landingSendBtn').click();
+        }
+    });
+
+    // ─── Chat send ───────────────────────────────────────────
+    document.getElementById('sendMessageBtn').addEventListener('click', () => {
+        const msg = document.getElementById('messageInput').value.trim();
+        if (!msg) return;
+        document.getElementById('messageInput').value = '';
+        sendMessage(msg);
+    });
+
+    document.getElementById('messageInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            document.getElementById('sendMessageBtn').click();
+        }
+    });
+
+    // ─── Core send ───────────────────────────────────────────
+    async function sendMessage(message) {
+        const dbId = document.getElementById('selected_db_id').value || '1';
+
+        appendMessage('user', message);
+        const assistantMsgId = 'msg-' + Date.now();
+        appendThinking(assistantMsgId);
+
+        // Simulate streaming response (replace with real fetch)
+        await simulateResponse(assistantMsgId, message, dbId);
+    }
+
+    // ─── Simulate AI response (demo) ─────────────────────────
+    async function simulateResponse(msgId, query, dbId) {
+        await sleep(800);
+        removeThinking(msgId);
+
+        const fakeSQL = `SELECT department,\n       COUNT(*) AS total_users,\n       AVG(tenure_months) AS avg_tenure\nFROM employees\nWHERE status = 'active'\nGROUP BY department\nORDER BY total_users DESC\nLIMIT 10;`;
+
+        const blockId = 'qblock-' + Date.now();
+        const safeCode = btoa(unescape(encodeURIComponent(fakeSQL)));
+
+        const responseHtml = `
+            <div class="text-xs leading-snug text-slate-700 font-medium mb-2">
+                Here's a breakdown query for your request. Run it to see the results, then click <strong>Analyse</strong> to open the notebook.
+            </div>
+            ${buildQueryUI(fakeSQL, false, dbId, blockId)}
+            <div class="mt-3 flex items-center gap-2">
+                <button onclick="openAnalysis('${query}')"
+                    class="analyse-btn flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-lg text-[10px] font-black shadow-tactile hover:translate-y-[-1px] transition-all">
+                    <span class="material-symbols-outlined text-sm" style="font-variation-settings:'FILL' 1;">analytics</span>
+                    ANALYSE IN NOTEBOOK
+                </button>
+                <span class="text-[9px] text-slate-400 font-bold">Opens notebook →</span>
+            </div>`;
+
+        setMessageContent(msgId, responseHtml);
+    }
+
+    function openAnalysis(query) {
+        openNotebook(query.split(' ').slice(0,3).join('_').replace(/[^a-zA-Z0-9_]/g,''));
+        // Optionally inject a cell
+        addCell(`# Auto-generated from: ${query}\n# Modify as needed\nimport pandas as pd\n\ndf = pd.read_sql(sql, conn)\ndf.head(20)`);
+    }
+
+    // ─── Message helpers ─────────────────────────────────────
+    const chatContainer = document.getElementById('chat-messages-container');
+
+    function appendMessage(role, text, id = null) {
+        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        let html = '';
+        if (role === 'user') {
+            html = `
+                <div class="flex gap-2 flex-row-reverse animate-in fade-in duration-300">
+                    <div class="bg-primary text-white px-2.5 py-2 rounded-xl rounded-tr-none shadow-tactile max-w-[92%]">
+                        <p class="text-xs leading-snug font-bold">${text}</p>
+                        <span class="text-[8px] text-primary-soft/80 mt-1 block font-black uppercase tracking-wider">You • ${time}</span>
+                    </div>
+                </div>`;
+        } else {
+            html = `
+                <div class="flex gap-2 duration-300" id="${id}">
+                    <div class="w-7 h-7 rounded-xl bg-primary organic-border flex-shrink-0 flex items-center justify-center shadow-tactile">
+                        <span class="material-symbols-outlined text-white text-xs" style="font-variation-settings:'FILL' 1;">auto_awesome</span>
+                    </div>
+                    <div class="bg-white px-2.5 py-2 rounded-xl rounded-tl-none border border-slate-100 shadow-data-card max-w-[92%] min-w-0">
+                        <div id="text-${id}" class="text-xs leading-snug text-slate-700 font-medium"></div>
+                        <span class="text-[8px] text-slate-400 mt-1 block font-black uppercase tracking-wider">Assistant • ${time}</span>
+                    </div>
+                </div>`;
+        }
+        chatContainer.insertAdjacentHTML('beforeend', html);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        return id;
+    }
+
+    function appendThinking(id) {
+        const html = `
+            <div class="flex gap-2 duration-300" id="${id}">
+                <div class="w-7 h-7 rounded-xl bg-primary organic-border flex-shrink-0 flex items-center justify-center shadow-tactile">
+                    <span class="material-symbols-outlined text-white text-xs" style="font-variation-settings:'FILL' 1;">auto_awesome</span>
+                </div>
+                <div class="bg-white px-3 py-3 rounded-xl rounded-tl-none border border-slate-100 shadow-data-card">
+                    <div id="text-${id}" class="flex items-center gap-1">
+                        <span class="thinking-dot w-1.5 h-1.5 rounded-full bg-primary/60 inline-block"></span>
+                        <span class="thinking-dot w-1.5 h-1.5 rounded-full bg-primary/60 inline-block"></span>
+                        <span class="thinking-dot w-1.5 h-1.5 rounded-full bg-primary/60 inline-block"></span>
+                    </div>
+                </div>
+            </div>`;
+        chatContainer.insertAdjacentHTML('beforeend', html);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function removeThinking(id) {
+        // Keep the bubble but clear the dots
+    }
+
+    function setMessageContent(id, html) {
+        const el = document.getElementById(`text-${id}`);
+        if (el) el.innerHTML = html;
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    // ─── Query UI builder ────────────────────────────────────
+    function buildQueryUI(code, isStreaming = false, dbId = '', blockId = null) {
+        if (!blockId) blockId = 'qblock-' + Date.now();
+        const safeCode = isStreaming ? '' : btoa(unescape(encodeURIComponent(code.trim())));
+        const btnState = isStreaming ? 'opacity-50 pointer-events-none' : '';
+        return `
+        <div id="${blockId}" class="my-2 bg-slate-900 rounded-xl overflow-hidden border border-slate-700 shadow-md w-full">
+            <div class="flex justify-between items-center px-3 py-2 bg-slate-800/80 border-b border-slate-700">
+                <div class="flex items-center gap-2 opacity-80">
+                    <span class="material-symbols-outlined text-[14px] text-primary">terminal</span>
+                    <span class="text-[9px] uppercase font-black tracking-widest text-primary">SQL Command</span>
+                </div>
+                <div class="flex gap-2 ${btnState}">
+                    <button onclick="editQuery('${safeCode}')" class="flex items-center gap-1 px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300 text-[9px] font-bold transition-all">
+                        <span class="material-symbols-outlined text-[11px]">edit</span>EDIT
+                    </button>
+                    <button onclick="runQuery('${safeCode}', '${dbId}', '${blockId}')" class="flex items-center gap-1 px-2 py-1 rounded bg-primary/20 hover:bg-primary/40 text-primary text-[9px] font-bold transition-all">
+                        <span class="material-symbols-outlined text-[11px]">play_arrow</span>RUN
+                    </button>
+                </div>
+            </div>
+            <div class="p-3 font-mono text-[12px] text-slate-300 whitespace-pre-wrap overflow-x-auto leading-relaxed">${code.trim()}</div>
+        </div>`;
+    }
+
+    function editQuery(b64) { if (b64) alert('Editing:\n' + decodeURIComponent(escape(atob(b64)))); }
+
+    async function runQuery(base64Code, dbId, blockId) {
+        if (!base64Code || !dbId) return;
+        const sql = decodeURIComponent(escape(atob(base64Code)));
+        const queryBlock = document.getElementById(blockId);
+        if (!queryBlock) return;
+        const existingResult = document.getElementById(`result-${blockId}`);
+        if (existingResult) existingResult.remove();
+        queryBlock.insertAdjacentHTML('afterend', `
+            <div id="result-${blockId}" class="mt-1 mb-2 rounded-xl border border-slate-200 overflow-hidden bg-white shadow-data-card">
+                <div class="flex items-center gap-2 px-3 py-2 bg-slate-50 border-b border-slate-100">
+                    <span class="material-symbols-outlined text-[13px] text-primary">table</span>
+                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-500">Query Result</span>
+                    <span id="rowcount-${blockId}" class="ml-auto text-[9px] font-black text-slate-400"></span>
+                </div>
+                <div class="overflow-x-auto max-h-48 overflow-y-auto scrollbar-thin">
+                    <table class="w-full text-[11px]">
+                        <thead id="thead-${blockId}" class="sticky top-0 bg-slate-50 border-b border-slate-200"></thead>
+                        <tbody id="tbody-${blockId}"></tbody>
+                    </table>
+                </div>
+            </div>`);
+
+        // Demo: render fake rows
+        await sleep(600);
+        document.getElementById(`thead-${blockId}`).innerHTML = `<tr>${['Department','Total Users','Avg Tenure'].map(c=>`<th class="px-3 py-2 text-left text-[9px] font-black uppercase tracking-wider text-slate-500">${c}</th>`).join('')}</tr>`;
+        const fakeRows = [['Engineering',142,24.3],['Marketing',88,18.7],['Sales',201,15.2],['Product',54,31.0]];
+        document.getElementById(`tbody-${blockId}`).innerHTML = fakeRows.map((r,i)=>`
+            <tr class="${i%2===0?'bg-white':'bg-slate-50/50'} hover:bg-primary-soft/30 transition-colors">
+                ${r.map(v=>`<td class="px-3 py-1.5 text-[11px] text-slate-700 font-medium border-b border-slate-100">${v}</td>`).join('')}
+            </tr>`).join('');
+        document.getElementById(`rowcount-${blockId}`).textContent = `${fakeRows.length} rows`;
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    // ─── Notebook cells ──────────────────────────────────────
+    function addCell(initialCode = '') {
+        cellCounter++;
+        const cellId = `cell-${cellCounter}`;
+        document.getElementById('notebook-cells').insertAdjacentHTML('beforeend', `
+        <div id="${cellId}" class="heavy-card bg-white border-slate-100 overflow-hidden">
+            <div class="flex items-center justify-between px-3 py-1.5 bg-slate-50 border-b border-slate-100">
+                <span id="${cellId}-count" class="text-[9px] font-black text-slate-400 uppercase tracking-widest">In [ ] — Python</span>
+                <div class="flex items-center gap-1">
+                    <button onclick="runCell('${cellId}')" class="flex items-center gap-1 px-2 py-1 bg-primary text-white text-[9px] font-black rounded hover:opacity-90 transition-all">
+                        <span class="material-symbols-outlined text-[11px]" style="font-variation-settings:'FILL' 1">play_arrow</span>RUN
+                    </button>
+                    <button onclick="deleteCell('${cellId}')" class="p-1 text-slate-300 hover:text-red-400 transition-colors rounded">
+                        <span class="material-symbols-outlined text-[13px]">delete</span>
+                    </button>
+                </div>
+            </div>
+            <textarea id="${cellId}-input"
+                class="w-full bg-slate-950 text-slate-200 font-mono text-[12px] p-3 border-none focus:ring-0 resize-none leading-relaxed min-h-[80px]"
+                placeholder="# Write Python here..."
+                onkeydown="handleCellKeydown(event, '${cellId}')"
+                oninput="autoResizeCell(this)"
+                spellcheck="false">${initialCode}</textarea>
+            <div id="${cellId}-output" class="hidden border-t border-slate-100"></div>
+        </div>`);
+        cells[cellId] = {
+            outputEl: document.getElementById(`${cellId}-output`),
+            countEl: document.getElementById(`${cellId}-count`),
+            inputEl: document.getElementById(`${cellId}-input`)
+        };
+        document.getElementById(`${cellId}-input`).focus();
+        autoResizeCell(document.getElementById(`${cellId}-input`));
+    }
+
+    function deleteCell(id) { document.getElementById(id)?.remove(); delete cells[id]; }
+    function autoResizeCell(t) { t.style.height='auto'; t.style.height=Math.max(80,t.scrollHeight)+'px'; }
+    function handleCellKeydown(e, id) {
+        if (e.key==='Enter'&&(e.ctrlKey||e.shiftKey)){e.preventDefault();runCell(id);}
+        if (e.key==='Tab'){e.preventDefault();const t=e.target,s=t.selectionStart;t.value=t.value.slice(0,s)+'    '+t.value.slice(t.selectionEnd);t.selectionStart=t.selectionEnd=s+4;}
+    }
+    function runCell(id) {
+        const cell = cells[id]; if (!cell) return;
+        const code = cell.inputEl.value.trim(); if (!code) return;
+        cell.outputEl.innerHTML=''; cell.outputEl.classList.remove('hidden');
+        cell.countEl.textContent='In [*] — Running...';
+        // socket.emit('kernel_execute', { cell_id: id, code });
+        setTimeout(()=>{ cell.countEl.textContent='In [✓] — Complete'; }, 1200);
+    }
+
+    // ─── Util ────────────────────────────────────────────────
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    function clearFile() { document.getElementById('hiddenFileInput').value=''; document.getElementById('fileInfo').classList.add('hidden'); }
+    function clearLandingFile() { document.getElementById('landingFileInput').value=''; document.getElementById('landing-fileInfo').classList.add('hidden'); }
+
+    // Init notebook panel as hidden
+    document.getElementById('notebook-panel').style.display = 'none';
+    </script>
+</body>
+</html>

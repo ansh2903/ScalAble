@@ -244,15 +244,13 @@ def execute():
             if not raw_data:
                 return jsonify({"status": "error", "message": "Connection not found"}), 404
 
-            print(raw_data)
-            print(query)
-            print(selected_id)
             db_manager = DatabaseConnector(raw_data)
             def generate_stream():
                 try:
                     # This loop actually triggers the execution in DuckDB
                     for chunk in db_manager.query_execute(query=query):
-                        yield f"data: {json.dumps(chunk)}\n\n"
+                        # IN FUTURE MAKE SURE TO FIND ANOTHER WAY OTHER THAN default=str THING
+                        yield f"data: {json.dumps(chunk, default=str)}\n\n"
                         
                 except Exception as e:
                     logging.error(f"Stream error: {str(e)}")
@@ -264,38 +262,6 @@ def execute():
     except Exception as e:
         logging.error(f"Query execution error: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
-
-# ---------------------------------------------------------------------------------------------------------------
-# kernel specific
-
-@endpoints_blueprint.route('/kernel/execute', methods=['POST'])
-def kernel_execute():
-    code = request.form.get('code')
-    session_id = session.get('session_id') or session.sid
-    kernel = get_kernel(session_id)
-
-    def generate():
-        for chunk in kernel.execute(code):
-            yield f"data: {json.dumps(chunk)}\n\n"
-
-    return Response(stream_with_context(generate()), mimetype='text/event-stream')
-
-@endpoints_blueprint.route('/kernel/interrupt', methods=['POST'])
-def kernel_interrupt():
-    session_id = session.get('session_id') or session.sid
-    get_kernel(session_id).interrupt()
-    return jsonify({"status": "ok"})
-
-@endpoints_blueprint.route('/kernel/restart', methods=['POST'])
-def kernel_restart():
-    session_id = session.get('session_id') or session.sid
-    get_kernel(session_id).restart()
-    return jsonify({"status": "ok"})
-
-@endpoints_blueprint.route('/kernel/available', methods=['GET'])
-def kernel_available():
-    return jsonify({"kernels": SessionKernel.available_kernels()})
-
 
 @endpoints_blueprint.route('/download/<fmt>', methods=['GET'])
 def download(fmt):

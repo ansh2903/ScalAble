@@ -301,47 +301,45 @@ def file_to_db(config, file_path, table_name, ext):
         _close(tunnel, conn, cur)
 
 def execute(query, config):
-    """
-    DuckDB streaming execution layer.
-    Yields chunks of data safely back to the connector.
-    """
     tunnel = None
     conn = None
     try:
-        # 1. Open the pipes and get the URI
         tunnel, duckdb_uri = _setup_duckdb_route(config)
-
-        # 2. Spin up the DuckDB Kernel
         conn = duckdb.connect(':memory:')
-        conn.execute("SET memory_limit = '1GB';") # Protect the 16GB RAM!
+        conn.execute("SET memory_limit = '1GB';") 
         
-        # 3. Load extension and Attach
         conn.execute("INSTALL postgres; LOAD postgres;")
         conn.execute(f"ATTACH '{duckdb_uri}' AS remote_db (TYPE POSTGRES);")
-        conn.execute("USE remote_db;")
-
-        # Set schema if needed
+        conn.execute('USE remote_db;')
+        
         schema = config.get('schema')
         if schema:
             conn.execute(f"SET search_path = {schema};")
 
-        # 4. Execute and Stream
-        # fetch_record_batch prevents Python from loading the whole DB into RAM
-        result_reader = conn.execute(query).fetch_record_batch(rows_per_batch=100)
+        rel = conn.sql(query)
         
-        # Yield Headers first
-        columns = [field.name for field in result_reader.schema]
-        yield {"type": "columns", "content": columns}
+        # 1. Yield Headers
+        yield {"type": "columns", "content": rel.columns}
 
-        # Yield Data chunks
-        for batch in result_reader:
-            yield {"type": "rows", "content": batch.to_pylist()}
+        # 2. Get Total Count (THE FIX)
+        # Wrapping the user's query in a subquery guarantees an accurate count
+        # and forces Postgres to do the heavy lifting over the network.
+        try:
+            count_query = f"SELECT COUNT(*) FROM ({str(query).strip(';')}) AS _count_tbl;"
+            total_count = conn.execute(count_query).fetchone()[0]
+            print(total_count)
+            yield {"type": "metadata", "total_rows": total_count}
+        except Exception as e:
+            print(f"Count Error: {e}") # Helpful for debugging your console
+            yield {"type": "metadata", "total_rows": "Unknown"}
 
+        # 3. Fetch Preview
+        preview_data = rel.limit(100).fetch_arrow_table().to_pylist()
+        yield {"type": "rows", "content": preview_data}
     except Exception as e:
         yield {"type": "error", "content": str(e)}
     
     finally:
-        # 5. Clean up the pipes immediately after streaming finishes
         if conn:
             conn.close()
         if tunnel:

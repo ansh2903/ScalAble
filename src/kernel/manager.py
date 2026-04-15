@@ -5,23 +5,45 @@ from src.core.logger import logging
 from src.core.exception import CustomException
 
 class SessionKernel:
-    def __init__(self, kernel_name='python3'):
+    def __init__(self, kernel_name='python3', startup_code=''):
         self.km = KernelManager(kernel_name=kernel_name)
         self.km.start_kernel()
         self.kc = self.km.client()
         self.kc.start_channels()
-        self.wait_for_ready()
+        self._wait_for_ready()
+        self.user_startup_code = startup_code
+        self._inject_startup_config()
         logging.info(f"Kernel started: {kernel_name}")
+
+    def _inject_startup_config(self):
+        BASE_STARTUP = """
+    try:
+        import plotly.io as pio
+        # 'plotly_mimetype' is the cleanest way to just get the raw JSON bundle
+        pio.renderers.default = "plotly_mimetype"
+    except ImportError:
+        pass
+    try:
+        pass
+        # import matplotlib
+        # matplotlib.use('Agg') 
+    except ImportError:
+        pass
+    """
+        full_code = BASE_STARTUP + '\n' + self.user_startup_code
+        for _ in self.execute(full_code):
+            pass
+
     
     def _wait_for_ready(self):
         while True:
             try:
-                msg = self.kc.get_iopub_msg(timeout=10)
-                if (msg['header']['msg_type'] == 'status' and msg['content']['execution_state'] == 'idle'):
+                msg = self.kc.get_iopub_msg(timeout=30)  # 10 → 30
+                if (msg['header']['msg_type'] == 'status' and 
+                        msg['content']['execution_state'] == 'idle'):
                     break
-            
             except Exception:
-                logging.info('Kernel Timeout.')
+                logging.info('Kernel ready wait timed out — continuing anyway')
                 break
 
     def execute(self, code):
@@ -96,7 +118,8 @@ class SessionKernel:
     def restart(self):
         self.km.restart_kernel()
         self._wait_for_ready()
-        logging('Kernel Restarted')
+        self._inject_startup_config()
+        logging.info('Kernel Restarted')
 
     def shutdown(self):
         self.kc.stop_channels()
@@ -105,4 +128,4 @@ class SessionKernel:
 
     @staticmethod
     def available_kernels():
-        return list(KernelSpecManager().get_all_specs().keys)
+        return list(KernelSpecManager().get_all_specs().keys())

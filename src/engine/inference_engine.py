@@ -116,7 +116,7 @@ class InferenceEngine:
             raise ValueError(f"Provider {self.provider} not supported.")
 
     def get_query_prompt(self):
-        system_instructions = """You are a professional {db_type} query generation expert. 
+        system_instructions = """You are a professional {db_type} query generation expert who is thorough with everything. 
         Convert natural language into executable {db_type} queries and behave like a friendly assistant.
 
         DATABASE METADATA:
@@ -141,7 +141,7 @@ class InferenceEngine:
             ("system", system_instructions),
             MessagesPlaceholder(variable_name="history"),
             ("human", "{input}"),
-        ])
+        ])  
 
         return prompt        
 

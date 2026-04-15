@@ -16,7 +16,6 @@ class DatabaseConnector:
         self.strategy = raw_data.get('strategy')
         self.sslmode = raw_data.get('sslmode', None)
         self.creds = raw_data.get('credentials')
-        print(self.creds)
         self.connector = self._load_connector()
 
     def _load_connector(self):
@@ -38,8 +37,10 @@ class DatabaseConnector:
     def query_execute(self, query):
         try:
             logging.info(f"Executing '{query}' on {self.db_type}")
-            # Since connector.execute is now a generator, we loop and yield
-            for chunk in self.connector.execute(query, decrypt_creds(self.creds)):
+            print('sahanhgonswo', self.creds)
+            creds = decrypt_creds(self.creds)
+            print('gbwnuhbuhfd', creds)
+            for chunk in self.connector.execute(query, creds):
                  yield chunk
                  
         except Exception as e:
