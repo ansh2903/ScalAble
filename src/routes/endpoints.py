@@ -4,13 +4,12 @@ import importlib
 from src.connectors.connector import DatabaseConnector
 from src.engine.model_manager import get_engine, reset_engine
 from src.engine.query_executor import run_query
-from src.kernel.manager import SessionKernel
-from src.kernel.store import get_kernel, destroy_kernel
-from src.core.utils import model_ls, encrypt_creds, downloadable_json, downloadable_excel, downloadable_csv, load_settings, save_settings, is_running_in_docker
+from src.core.utils import model_ls, decrypt_creds, encrypt_creds, downloadable_json, downloadable_excel, downloadable_csv, load_settings, save_settings, is_running_in_docker
 from src.config.settings import VENDOR_CONFIG, PROVIDER_FIELDS
 
 import psutil
 import time
+import uuid
 import pandas as pd
 from datetime import datetime
 import tempfile
@@ -232,8 +231,8 @@ def ask():
             "error": "An error occurred while processing your request. Please try again."
         }), 500
 
-@endpoints_blueprint.route('/query-execution', methods=["POST"])
-def execute():
+@endpoints_blueprint.route('/query-preview', methods=["POST"])
+def preview():
     try:
         if request.method == "POST":
             query = request.form.get("query")
@@ -248,7 +247,7 @@ def execute():
             def generate_stream():
                 try:
                     # This loop actually triggers the execution in DuckDB
-                    for chunk in db_manager.query_execute(query=query):
+                    for chunk in db_manager.preview_execute(query=query):
                         # IN FUTURE MAKE SURE TO FIND ANOTHER WAY OTHER THAN default=str THING
                         yield f"data: {json.dumps(chunk, default=str)}\n\n"
                         
@@ -261,6 +260,35 @@ def execute():
             return Response(stream_with_context(generate_stream()), mimetype='text/event-stream')
     except Exception as e:
         logging.error(f"Query execution error: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@endpoints_blueprint.route('/view-data-extraction', methods=['POST'])
+def extraction():
+    try:
+        query = request.form.get('query')
+        dbid = request.form.get('id')
+        stream_name = request.form.get('stream_name')
+        connection = session.get("connections", [])
+        raw_data = next((c for c in connection if str(c['id']) == str(dbid)), None)
+        batch_row_size=None
+        memory_ceiling=None
+        
+        if not raw_data:
+            return jsonify({"status": "error", "message": "Connection not found"}), 404
+
+        db_manager = DatabaseConnector(raw_data)
+        status, path = db_manager.view_data_extraction(query=query, stream_name=stream_name, memory_ceiling=memory_ceiling if memory_ceiling else None, batch_row_size=batch_row_size if batch_row_size else None)
+
+        if status != 'success':
+            return jsonify({'status': status, 'message': 'failed to collect data from view'})
+        
+        return jsonify({
+            "status": status,
+            "path": path
+        })
+
+    except Exception as e:
+        logging.error(f"data-stream error: {str(e)}", exc_info=True)  # exc_info gives you the full traceback
         return jsonify({"status": "error", "message": str(e)}), 500
 
 @endpoints_blueprint.route('/download/<fmt>', methods=['GET'])

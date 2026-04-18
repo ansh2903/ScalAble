@@ -2,11 +2,13 @@ import psycopg2
 from psycopg2 import OperationalError
 from sshtunnel import SSHTunnelForwarder
 import duckdb
+import pyarrow.parquet as pq
 import urllib.parse
 import pandas as pd
 import openpyxl
+import shutil
 import csv
-import sys
+import os
 import io
 
 from src.core.exception import CustomException
@@ -300,50 +302,94 @@ def file_to_db(config, file_path, table_name, ext):
     finally:
         _close(tunnel, conn, cur)
 
-def execute(query, config):
+# For iterator generation
+def data_extraction(stream_name, query, config, memory_ceiling=None, batch_row_size=None):
+    tunnel = None
+    conn = None
+    writer = None
+    stream_dir = f'src/temp/{stream_name}'
+    os.makedirs(stream_dir, exist_ok=True)
+
+    source_path = f'{stream_dir}/source.parquet'
+    working_path = f'{stream_dir}/working.parquet'
+
+    try:
+        tunnel, duckdb_uri = _setup_duckdb_route(config)
+        conn = duckdb.connect(':memory:')
+
+        conn.execute(f"SET memory_limit = '{memory_ceiling if memory_ceiling else '1GB'}';")
+        conn.execute("INSTALL postgres; LOAD postgres;")
+        conn.execute(f"ATTACH '{duckdb_uri}' AS remote_db (TYPE POSTGRES);")
+        conn.execute('USE remote_db;')
+
+        schema = config.get('schema')
+        if schema:
+            conn.execute(f"SET search_path = {schema};")
+
+        batch_size = batch_row_size if batch_row_size else 10
+        reader = conn.sql(query).fetch_arrow_reader(batch_size)
+        logging.info('reader object for data extraction created')
+        
+        for batch in reader:
+            if writer is None:
+                writer = pq.ParquetWriter(source_path, batch.schema, compression='snappy')
+
+            writer.write_batch(batch)
+
+        shutil.copy2(source_path, working_path)
+        logging.info(f'directory {stream_dir} created, data added')
+
+        return 'success', stream_dir
+    
+    except Exception as e:
+        logging.info(f"Streaming failed: {str(e)}")
+        return {'status': 'error', 'message': str(e)}
+    
+    finally:
+        if writer: writer.close()
+        if tunnel: tunnel.close()
+        if conn: conn.close()
+
+# For preview of the view
+def preview_execute(query, config):
     tunnel = None
     conn = None
     try:
         tunnel, duckdb_uri = _setup_duckdb_route(config)
         conn = duckdb.connect(':memory:')
         conn.execute("SET memory_limit = '1GB';") 
-        
         conn.execute("INSTALL postgres; LOAD postgres;")
         conn.execute(f"ATTACH '{duckdb_uri}' AS remote_db (TYPE POSTGRES);")
         conn.execute('USE remote_db;')
-        
+
         schema = config.get('schema')
         if schema:
             conn.execute(f"SET search_path = {schema};")
 
         rel = conn.sql(query)
-        
-        # 1. Yield Headers
         yield {"type": "columns", "content": rel.columns}
 
-        # 2. Get Total Count (THE FIX)
-        # Wrapping the user's query in a subquery guarantees an accurate count
-        # and forces Postgres to do the heavy lifting over the network.
         try:
             count_query = f"SELECT COUNT(*) FROM ({str(query).strip(';')}) AS _count_tbl;"
             total_count = conn.execute(count_query).fetchone()[0]
-            print(total_count)
-            yield {"type": "metadata", "total_rows": total_count}
-        except Exception as e:
-            print(f"Count Error: {e}") # Helpful for debugging your console
-            yield {"type": "metadata", "total_rows": "Unknown"}
+        except Exception:
+            total_count = "Unknown"
 
-        # 3. Fetch Preview
         preview_data = rel.limit(100).fetch_arrow_table().to_pylist()
+
+        yield {
+            "type": "metadata",
+            "total_rows": total_count,
+            "preview_count": len(preview_data)
+        }
+
         yield {"type": "rows", "content": preview_data}
+
     except Exception as e:
         yield {"type": "error", "content": str(e)}
-    
     finally:
-        if conn:
-            conn.close()
-        if tunnel:
-            tunnel.stop()
+        if conn: conn.close()
+        if tunnel: tunnel.stop()
 
 def _setup_duckdb_route(config):
     tunnel = None
@@ -383,3 +429,29 @@ def _setup_duckdb_route(config):
             uri += "?" + "&".join(ssl_params)
 
     return tunnel, uri
+    
+
+# arrow flight for later implementation 
+'''
+import pyarrow.flight as fl
+
+class StreamFlightServer(fl.FlightServerBase):
+    def __init__(self):
+        super().__init__("grpc://localhost:8815")
+        self._streams = {}  # stream_id → RecordBatchReader
+
+    def register(self, stream_id, reader):
+        self._streams[stream_id] = reader
+
+    def do_get(self, context, ticket):
+        stream_id = ticket.ticket.decode()
+        reader = self._streams.get(stream_id)
+        if not reader:
+            raise fl.FlightServerError("Stream not found")
+        return fl.RecordBatchStream(reader)
+
+import pyarrow.flight as fl
+client = fl.connect("grpc://localhost:8815")
+reader = client.do_get(fl.Ticket(b"your-stream-id"))
+batch = reader.read_chunk().data  # Arrow RecordBatch
+'''

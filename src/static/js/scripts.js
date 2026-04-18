@@ -115,6 +115,7 @@ function runCell(cellId) {
     cell.outputEl.innerHTML = '';
     cell.outputEl.classList.remove('hidden');
     cell.countEl.textContent = 'In [*] — Running...';
+    addCell();
 
     socket.emit('kernel_execute', { cell_id: cellId, code });
 }
@@ -383,14 +384,81 @@ sendMessageBtn.addEventListener('click', async () => {
     }
 });
 
-function openInAnalysis(base64Code) {
-    switchToSplitView();
+// This function creates the modal, asks for inputs, and calculates chunks dynamically
+function triggerStreamConfig(base64Code, dbId, totalRows) {
+    const modalId = `modal-${Date.now()}`;
 
-    const pythonBoilerplate = `# Whatever the fuck`;
+    const modalHtml = `
+    <div id="${modalId}" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-200">
+            
+            <div class="bg-slate-50 px-4 py-3 border-b border-slate-200">
+                <h3 class="text-xs font-black uppercase tracking-widest text-slate-700 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[16px] text-primary">terminal</span>
+                    Initialize Notebook Stream
+                </h3>
+            </div>
 
-    addCell(pythonBoilerplate);
+            <div class="p-5 space-y-4">
+                <div>
+                    <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Notebook Variable Name</label>
+                    <input type="text" id="stream-name-${modalId}" value="dataset_stream" autofocus
+                        class="w-full text-xs font-mono px-3 py-2 border border-slate-200 rounded-md focus:ring-2 focus:ring-primary focus:border-primary outline-none text-slate-700">
+                    <p class="mt-2 text-[9px] text-slate-400 italic">
+                        Stream will respect the memory ceiling defined in your Global Settings.
+                    </p>
+                </div>
+            </div>
+
+            <div class="px-4 py-3 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
+                <button onclick="document.getElementById('${modalId}').remove()" class="px-4 py-1.5 text-[10px] font-black tracking-wider text-slate-500 hover:bg-slate-200 rounded-md transition-colors">CANCEL</button>
+                <button id="btn-confirm-${modalId}" class="px-4 py-1.5 text-[10px] font-black uppercase tracking-wider text-white bg-primary hover:bg-primary/90 rounded-md transition-colors shadow-sm">
+                    START STREAM
+                </button>
+            </div>
+        </div>
+    </div>`;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    // Focus the input automatically
+    document.getElementById(`stream-name-${modalId}`).select();
+
+    document.getElementById(`btn-confirm-${modalId}`).addEventListener('click', () => {
+        const streamName = document.getElementById(`stream-name-${modalId}`).value.trim() || 'dataset_stream';
+        document.getElementById(modalId).remove();
+        executeAnalysisStream(base64Code, dbId, totalRows, streamName);
+    });
 }
 
+async function executeAnalysisStream(base64Code, dbId, totalRows, streamName) {
+    const sql = decodeURIComponent(escape(atob(base64Code)));
+    switchToSplitView();
+
+    const formData = new FormData();
+    formData.append('query', sql);
+    formData.append('id', dbId);
+    formData.append('stream_name', streamName); 
+
+    try {
+        const response = await fetch('/view-data-extraction', { method: 'POST', body: formData });
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            const pythonBoilerplate = `
+print(f"stored '${streamName}' at (${result.path})")
+`;
+
+    addCell(pythonBoilerplate);
+
+        } else {
+            console.error("Backend failed to initialize stream:", result.message);
+        }
+
+    } catch (err) {
+        console.error("Network error during stream initialization", err);
+    }
+}
 // Add these empty functions to handle the button clicks
 async function runQuery(base64Code, dbId, blockId) {
     if (!base64Code || !dbId) return;
@@ -422,10 +490,10 @@ async function runQuery(base64Code, dbId, blockId) {
                     <tbody id="tbody-${blockId}"></tbody>
                 </table>
             </div>
-            <button onclick="openInAnalysis('${base64Code}')" 
+            <button id="btn-analysis-${blockId}" onclick="triggerStreamConfig('${base64Code}', '${dbId}', 0)" 
                 class="flex items-center gap-1.5 px-2 py-1 bg-primary text-white hover:bg-primary/90 text-[9px] font-black rounded-md transition-all uppercase tracking-tighter shadow-sm">
                     <span class="material-symbols-outlined text-[12px]">analytics</span>
-                    OPEN IN NOTEBOOK
+                    OPEN  IN  NOTEBOOK
             </button>
         </div>
 
@@ -434,14 +502,13 @@ async function runQuery(base64Code, dbId, blockId) {
     const thead = document.getElementById(`thead-${blockId}`);
     const tbody = document.getElementById(`tbody-${blockId}`);
     const rowcount = document.getElementById(`rowcount-${blockId}`);
-    let totalRows = 0;
 
     const formData = new FormData();
     formData.append('query', sql);
     formData.append('id', dbId);
 
     try {
-        const response = await fetch('/query-execution', { method: 'POST', body: formData });
+        const response = await fetch('/query-preview', { method: 'POST', body: formData });
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         const PREVIEW_LIMIT = 100;
@@ -477,10 +544,15 @@ async function runQuery(base64Code, dbId, blockId) {
                 }
                 // Inside the for (const line of lines) loop in runQuery:
 
-                if (data.type === 'metadata') {
-                    dbTotalRows = data.total_rows;
-                }                // Stream rows in progressively
-                if (data.type === 'rows') {
+if (data.type === 'metadata') {
+    dbTotalRows = data.total_rows;
+    
+    // Minimal Update: Find the button and rewrite its onclick handler
+    const analysisBtn = document.getElementById(`btn-analysis-${blockId}`);
+    if (analysisBtn) {
+        // We use the decoded/original values since they are already in the scope
+analysisBtn.setAttribute('onclick', `triggerStreamConfig('${base64Code}', '${dbId}', ${dbTotalRows})`);    }
+}                if (data.type === 'rows') {
                     const previousCount = totalRows;
                     totalRows += data.content.length;
 
@@ -490,7 +562,7 @@ async function runQuery(base64Code, dbId, blockId) {
                     if (dbTotalRows !== null && dbTotalRows !== "Unknown") {
                         // Force the string to a Number so toLocaleString() adds the commas (e.g., 1,000)
                         const formattedTotal = Number(dbTotalRows).toLocaleString();
-                        displayHtml = `<span class="text-primary-soft">Total: ${formattedTotal}</span> <span class="mx-2 text-slate-300">|</span> `;
+                        displayHtml = `<span class="text-[9px] font-black text-slate-400">Total: ${formattedTotal}</span> <span class="mx-2 text-slate-300">|</span> `;
                     }
 
                     displayHtml += `Showing ${totalRows}`;
@@ -513,17 +585,6 @@ async function runQuery(base64Code, dbId, blockId) {
 
                         tbody.insertAdjacentHTML('beforeend', rowsHtml);
 
-                        // If we just hit the limit, add a "See more" call to action
-                        if (totalRows >= PREVIEW_LIMIT && previousCount < PREVIEW_LIMIT) {
-                            tbody.insertAdjacentHTML('afterend', `
-                                <div class="p-4 bg-slate-50 border-t border-slate-200 text-center">
-                                    <p class="text-[10px] text-slate-500 italic mb-2">Showing first ${PREVIEW_LIMIT} rows.</p>
-                                    <button onclick="openInAnalysis('${base64Code}')" class="px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 text-[10px] font-black rounded-lg transition-all">
-                                        ANALYZE FULL DATASET →
-                                    </button>
-                                </div>
-                            `);
-                        }
                     }
                 }
                 if (data.type === 'error') {
@@ -546,7 +607,6 @@ async function runQuery(base64Code, dbId, blockId) {
             </tr>`;
     }
 }
-
 
 function editQuery(base64Code) {
     if (!base64Code) return;
@@ -655,109 +715,3 @@ eventSource.onmessage = function (event) {
 eventSource.onerror = function () {
     console.error("Metrics stream error");
 };
-// ----------------------------------------------------------------------------
-// Split stuff
-
-// ----------------------------------------------------------------------------
-async function fetchDatabases() {
-    const uri = document.getElementById("uri").value;
-    const response = await fetch("/list_databases", {
-        method: "POST",
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uri })
-    });
-
-    const data = await response.json();
-    populateSelect("db-select", data.databases);
-
-    document.getElementById("db-section").style.display = "block";
-    document.getElementById("collection-section").style.display = "none";
-    document.getElementById("query-section").style.display = "none";
-}
-
-async function fetchCollections() {
-    const uri = document.getElementById("uri").value;
-    const db = document.getElementById("db-select").value;
-    const response = await fetch("/list_collections", {
-        method: "POST",
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uri, database: db })
-    });
-
-    const data = await response.json();
-    populateSelect("collection-select", data.collections);
-
-    document.getElementById("collection-section").style.display = "block";
-    document.getElementById("query-section").style.display = "block";
-}
-
-// Utility to populate a dropdown
-function populateSelect(selectId, items) {
-    const select = document.getElementById(selectId);
-    select.innerHTML = "";
-    items.forEach(item => {
-        const option = document.createElement("option");
-        option.value = item;
-        option.text = item;
-        select.appendChild(option);
-    });
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-    // Sidebar toggle
-    const sidebar = document.querySelector('.sidebar');
-    const toggleBtn = document.getElementById('sidebar-toggle');
-    const closeBtn = document.getElementById("sidebar-close");
-
-    if (closeBtn && sidebar) {
-        closeBtn.addEventListener('click', () => {
-            sidebar.classList.remove('open');
-            toggleBtn?.setAttribute('aria-expanded', 'false');
-        });
-    }
-
-    const toggleSidebar = () => {
-        const isOpen = sidebar.classList.toggle('open');
-        toggleBtn?.setAttribute('aria-expanded', isOpen);
-    };
-
-    toggleBtn?.addEventListener('click', toggleSidebar);
-    closeBtn?.addEventListener('click', () => {
-        sidebar.classList.remove('open');
-        toggleBtn?.setAttribute('aria-expanded', 'false');
-    });
-
-    window.addEventListener('resize', () => {
-        if (window.innerWidth > 1024) {
-            sidebar?.classList.remove('open');
-            toggleBtn?.setAttribute('aria-expanded', 'false');
-        }
-    });
-
-    // Optional preload: MongoDB example (for connected clients)
-    const dbSelect = document.getElementById("db-select");
-    const colSelect = document.getElementById("collection-select");
-
-    if (dbSelect && colSelect) {
-        fetch("/api/databases")
-            .then(res => res.json())
-            .then(dbs => populateSelect("db-select", dbs));
-
-        dbSelect.addEventListener("change", () => {
-            fetch(`/api/collections/${dbSelect.value}`)
-                .then(res => res.json())
-                .then(cols => populateSelect("collection-select", cols));
-        });
-    }
-});
-
-document.addEventListener('DOMContentLoaded', function () {
-    const dbSelect = document.getElementById('selected_db');
-    dbSelect.addEventListener('change', function () {
-        const selectedOption = dbSelect.options[dbSelect.selectedIndex];
-        if (selectedOption.value === 'configure_db') {
-            window.location.href = selectedOption.getAttribute('data-link');
-        }
-    });
-});
-

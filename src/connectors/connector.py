@@ -5,7 +5,6 @@ to the database
 '''
 
 import importlib
-import duckdb
 from src.core.utils import decrypt_creds
 from src.core.logger import logging
 
@@ -34,13 +33,23 @@ class DatabaseConnector:
         logging.info(f"Metadata fetch for {self.db_type} returned status: {status}, metadata: {metadata}")
         return status, metadata
     
-    def query_execute(self, query):
+    def view_data_extraction(self, stream_name, query, memory_ceiling, batch_row_size):
         try:
-            logging.info(f"Executing '{query}' on {self.db_type}")
-            print('sahanhgonswo', self.creds)
+            logging.info('Initiating data ingestion')
+            
             creds = decrypt_creds(self.creds)
-            print('gbwnuhbuhfd', creds)
-            for chunk in self.connector.execute(query, creds):
+            status, path = self.connector.data_extraction(stream_name=stream_name, query=query, config=creds, memory_ceiling=memory_ceiling, batch_row_size=batch_row_size)
+
+            return status, path
+
+        except Exception as e:
+            pass
+    
+    def preview_execute(self, query):
+        try:
+            logging.info(f"Generating preview of '{query}' on {self.db_type}")
+            creds = decrypt_creds(self.creds)
+            for chunk in self.connector.preview_execute(query, creds):
                  yield chunk
                  
         except Exception as e:
