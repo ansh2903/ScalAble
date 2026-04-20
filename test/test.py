@@ -1,22 +1,20 @@
-import requests
-import json
+from src.core.logger import logging
+from src.core.exception import CustomException
+import sys
 
-model = 'huihui_ai/deepseek-r1-abliterated:8b'
-prompt = 'write a long response. this is a test'
+def test_logic():
+    try:
+        # Simulate a typical "stupid user" or data error
+        a = 1 / 0
+    except Exception as e:
+        # Create our detailed exception
+        custom_err = CustomException(e)
+        
+        # Log the detailed message via your logger
+        logging.error(custom_err)
+        
+        # Re-raise it if you want the app to stop
+        raise custom_err
 
-payload = {
-    'model': model,
-    'prompt': prompt,
-    'stream': True,
-}
-
-def get_streamed_response(payload):
-    output = requests.post('http://localhost:11434/api/generate', json=payload, stream=True)
-    for token in output.iter_lines():
-        token = json.loads(token)
-        yield token.get('response')
-
-output = get_streamed_response(payload)
-
-for token in output:
-    print(token, end='')
+if __name__ == "__main__":
+    test_logic()

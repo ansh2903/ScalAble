@@ -103,6 +103,29 @@
         .scrollbar-thin::-webkit-scrollbar-thumb {
             @apply bg-slate-200 rounded-full;
         }
+        /* Sidebar Typography */
+        #storage-used {
+            font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
+            letter-spacing: -0.05em;
+        }
+
+        /* Tree Animation */
+        .stream-chevron-rotated {
+            transform: rotate(45deg); /* Slight tilt is more modern than 90deg */
+        }
+
+        /* Subtle Indent */
+        .border-l {
+            border-color: rgba(226, 232, 240, 0.6);
+        }
+
+        /* File management drop zone animation */
+        .drop-zone-active {
+            @apply border-primary/40 bg-primary-soft/20;
+        }
+
+        .query-mode-btn { @apply text-slate-400 grayscale opacity-70; }
+        .query-mode-btn.active { @apply bg-white text-primary shadow-sm grayscale-0 opacity-100; }
     </style>
     <style>
         /* --- 1. LANDING STATE (Centered) --- */
@@ -195,96 +218,176 @@
         </div>
     </header>
 
-    <aside id="sidebar" class="fixed left-0 top-0 h-screen z-40 flex" style="width:56px; transition: width 0.25s ease;">
+<aside id="sidebar" class="fixed left-0 top-0 h-screen z-40">
 
-        <!-- Icon Rail -->
-        <div
-            class="w-14 min-w-[56px] flex flex-col items-center py-3 gap-1 border-r border-slate-200/50 bg-white pt-20">
-            <button onclick="openSidePanel('files')" id="tab-files"
-                class="sidebar-tab w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:text-primary hover:bg-primary-soft transition-all relative group/tip">
-                <span class="material-symbols-outlined text-[20px]">folder_open</span>
-                <span class="sidebar-tip">Files</span>
-            </button>
-            <button onclick="openSidePanel('notebook')" id="tab-notebook"
-                class="sidebar-tab w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:text-primary hover:bg-primary-soft transition-all relative group/tip">
-                <span class="material-symbols-outlined text-[20px]">auto_awesome_motion</span>
-                <span class="sidebar-tip">Notebook</span>
-            </button>
-            <button onclick="openSidePanel('history')" id="tab-history"
-                class="sidebar-tab w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:text-primary hover:bg-primary-soft transition-all relative group/tip">
-                <span class="material-symbols-outlined text-[20px]">history</span>
-                <span class="sidebar-tip">History</span>
-            </button>
+    <!-- Icon Rail -->
+    <div class="w-14 h-full flex flex-col items-center py-3 gap-1 border-r border-slate-100 bg-white pt-20 relative z-10">
+        <button onclick="openSidePanel('database')" id="tab-files"
+            class="sidebar-tab w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-primary hover:bg-primary-soft transition-all relative group/tip">
+            <span class="material-symbols-outlined text-[19px]">Database</span>
+            <span class="sidebar-tip">Database</span>
+        </button>
+        <button onclick="openSidePanel('files')" id="tab-files"
+            class="sidebar-tab w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-primary hover:bg-primary-soft transition-all relative group/tip">
+            <span class="material-symbols-outlined text-[19px]">folder_open</span>
+            <span class="sidebar-tip">Files</span>
+        </button>
+        <button onclick="openSidePanel('notebook')" id="tab-notebook"
+            class="sidebar-tab w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-primary hover:bg-primary-soft transition-all relative group/tip">
+            <span class="material-symbols-outlined text-[19px]">auto_awesome_motion</span>
+            <span class="sidebar-tip">Notebook</span>
+        </button>
+        <button onclick="openSidePanel('history')" id="tab-history"
+            class="sidebar-tab w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-primary hover:bg-primary-soft transition-all relative group/tip">
+            <span class="material-symbols-outlined text-[19px]">history</span>
+            <span class="sidebar-tip">History</span>
+        </button>
 
-            <div class="mt-auto flex flex-col items-center gap-1 w-full border-t border-slate-100 pt-2">
-                <button
-                    class="sidebar-tab w-10 h-10 flex items-center justify-center rounded-xl text-slate-300 hover:text-slate-500 transition-all relative group/tip">
-                    <span class="material-symbols-outlined text-[20px]">help_outline</span>
-                    <span class="sidebar-tip">Help</span>
+        <div class="mt-auto flex flex-col items-center gap-1 w-full border-t border-slate-100 pt-2">
+            <button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-300 hover:text-slate-500 transition-all relative group/tip">
+                <span class="material-symbols-outlined text-[19px]">settings</span>
+                <span class="sidebar-tip">Settings</span>
+            </button>
+            <button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-300 hover:text-slate-500 transition-all relative group/tip">
+                <span class="material-symbols-outlined text-[19px]">help_outline</span>
+                <span class="sidebar-tip">Help</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Overlay Panel — absolutely positioned to the right of the rail -->
+    <div id="side-panel"
+        class="absolute top-0 left-14 h-full bg-white border-r border-slate-200 flex flex-col overflow-hidden"
+        style="width:220px; transform:translateX(-220px); transition:transform 0.2s cubic-bezier(0.4,0,0.2,1); box-shadow:4px 0 24px -4px rgba(0,0,0,0.04);">
+
+<div id="panel-database" class="side-panel-content hidden flex-col h-full">
+    <div class="px-3 py-3 border-b border-slate-100 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-[14px] text-primary">database</span>
+            <span class="text-[9px] font-black uppercase tracking-widest text-slate-600">Schema Browser</span>
+        </div>
+        <button onclick="closeSidePanel()"
+            class="w-6 h-6 flex items-center justify-center rounded-md text-slate-300 hover:text-slate-600 hover:bg-slate-100 transition-all">
+            <span class="material-symbols-outlined text-[15px]">close</span>
+        </button>
+    </div>
+
+    <div id="db-summary" class="px-4 py-4 border-b border-slate-100 bg-slate-50/30">
+        <div class="flex flex-col gap-0.5">
+            <span id="db-name-label" class="text-[9px] font-black text-primary uppercase tracking-widest">No Database Selected</span>
+            <div class="flex items-center gap-3 mt-1">
+                <div class="flex flex-col">
+                    <span id="table-count" class="text-xs font-black text-slate-700">0</span>
+                    <span class="text-[8px] text-slate-400 uppercase font-bold">Tables</span>
+                </div>
+                <div class="w-px h-6 bg-slate-200"></div>
+                <div class="flex flex-col">
+                    <span id="schema-name" class="text-xs font-black text-slate-700">-</span>
+                    <span class="text-[8px] text-slate-400 uppercase font-bold">Schema</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="px-2 py-2">
+        <div class="relative">
+            <span class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-[14px] text-slate-400">search</span>
+            <input type="text" placeholder="Filter tables..." 
+                class="w-full pl-7 pr-2 py-1.5 bg-slate-100 border-none rounded-md text-[10px] font-bold focus:ring-1 focus:ring-primary/30">
+        </div>
+    </div>
+
+    <div id="schema-tree" class="flex-1 overflow-y-auto px-2 pb-3 space-y-1 scrollbar-thin">
+        <div class="text-[9px] text-slate-400 text-center py-20 font-bold italic">
+            Select a connection to view schema
+        </div>
+    </div>
+
+    <div class="shrink-0 p-2 border-t border-slate-100">
+        <button onclick="refreshSchema()"
+            class="w-full flex items-center justify-center gap-1.5 py-1.5 text-[9px] font-black uppercase tracking-wider text-slate-400 hover:text-primary hover:bg-primary-soft rounded-lg transition-all">
+            <span class="material-symbols-outlined text-[13px]">refresh</span> Sync Metadata
+        </button>
+    </div>
+</div>        <!-- Files Panel -->
+        <div id="panel-files" class="side-panel-content hidden flex-col h-full">
+            <div class="px-3 py-3 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[14px] text-primary">folder_open</span>
+                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-600">File Manager</span>
+                </div>
+                <button onclick="closeSidePanel()"
+                    class="w-6 h-6 flex items-center justify-center rounded-md text-slate-300 hover:text-slate-600 hover:bg-slate-100 transition-all">
+                    <span class="material-symbols-outlined text-[15px]">close</span>
+                </button>
+            </div>
+
+            <div class="px-4 py-5 border-b border-slate-100 bg-slate-50/30">
+                <div class="flex flex-col gap-0.5">
+                    <span class="text-[9px] font-medium text-slate-400 uppercase tracking-widest">Workspace Volume</span>
+                    <div class="flex items-center gap-2">
+                        <span id="storage-used" class="text-lg font-mono font-medium text-slate-600 tracking-tighter">0.00 MB</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-2 pt-3">
+                <button onclick="document.getElementById('fi').click()" 
+                    class="w-full py-2 border border-dashed border-slate-200 rounded-md flex items-center justify-center gap-2 hover:border-primary/30 hover:bg-primary-soft/30 transition-all group">
+                    <span class="material-symbols-outlined text-[16px] text-slate-400 group-hover:text-primary">upload_file</span>
+                    <span class="text-[10px] font-bold text-slate-400 group-hover:text-primary">Drop or Import</span>
+                </button>
+            </div>
+
+            <div id="stream-list" class="flex-1 overflow-y-auto px-2 pb-3 mt-2 space-y-1.5 scrollbar-thin">
+                <div class="text-[9px] text-slate-400 text-center py-8 font-bold">No streams yet</div>
+            </div>
+
+            <div class="shrink-0 p-2 border-t border-slate-100">
+                <button onclick="loadStreams()"
+                    class="w-full flex items-center justify-center gap-1.5 py-1.5 text-[9px] font-black uppercase tracking-wider text-slate-400 hover:text-primary hover:bg-primary-soft rounded-lg transition-all">
+                    <span class="material-symbols-outlined text-[13px]">refresh</span> Refresh
                 </button>
             </div>
         </div>
 
-        <!-- Slide-out Panel -->
-        <div id="side-panel" class="h-full bg-white border-r border-slate-200/50 flex flex-col overflow-hidden"
-            style="width:0; transition: width 0.25s ease; overflow:hidden;">
-
-            <!-- Files Panel -->
-            <div id="panel-files" class="side-panel-content hidden flex-col h-full" style="width:200px;">
-                <div class="px-3 py-3 border-b border-slate-100 flex items-center justify-between shrink-0">
-                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-500">File Manager</span>
-                    <button onclick="closeSidePanel()" class="text-slate-300 hover:text-slate-500 transition-colors">
-                        <span class="material-symbols-outlined text-[16px]">close</span>
-                    </button>
+        <!-- Notebook Panel -->
+        <div id="panel-notebook" class="side-panel-content hidden flex-col h-full">
+            <div class="px-3 py-3 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[14px] text-primary">auto_awesome_motion</span>
+                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-600">Notebook</span>
                 </div>
-
-                <!-- Storage Bar -->
-                <div class="mx-3 mt-3 mb-2 p-2.5 bg-slate-50 rounded-lg border border-slate-100 shrink-0">
-                    <div class="flex justify-between items-center mb-1.5">
-                        <span class="text-[8px] font-black uppercase tracking-widest text-slate-400">Storage</span>
-                        <span id="storage-used" class="text-[8px] font-black text-slate-600">— / —</span>
-                    </div>
-                    <div class="h-1 bg-slate-200 rounded-full overflow-hidden">
-                        <div id="storage-bar" class="h-full bg-primary rounded-full transition-all" style="width:0%">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Stream List -->
-                <div id="stream-list" class="flex-1 overflow-y-auto px-3 pb-3 space-y-2 scrollbar-thin">
-                    <div class="text-[9px] text-slate-400 text-center py-6 font-bold">No streams yet</div>
-                </div>
+                <button onclick="closeSidePanel()"
+                    class="w-6 h-6 flex items-center justify-center rounded-md text-slate-300 hover:text-slate-600 hover:bg-slate-100 transition-all">
+                    <span class="material-symbols-outlined text-[15px]">close</span>
+                </button>
             </div>
-
-            <!-- Notebook Panel -->
-            <div id="panel-notebook" class="side-panel-content hidden flex-col h-full" style="width:200px;">
-                <div class="px-3 py-3 border-b border-slate-100 flex items-center justify-between shrink-0">
-                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-500">Notebook</span>
-                    <button onclick="closeSidePanel()" class="text-slate-300 hover:text-slate-500 transition-colors">
-                        <span class="material-symbols-outlined text-[16px]">close</span>
-                    </button>
-                </div>
-                <div class="flex-1 flex items-center justify-center">
-                    <span class="text-[9px] text-slate-400 font-bold">Coming soon</span>
-                </div>
+            <div class="flex-1 flex items-center justify-center">
+                <span class="text-[9px] text-slate-400 font-bold">Coming soon</span>
             </div>
-
-            <!-- History Panel -->
-            <div id="panel-history" class="side-panel-content hidden flex-col h-full" style="width:200px;">
-                <div class="px-3 py-3 border-b border-slate-100 flex items-center justify-between shrink-0">
-                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-500">History &
-                        Versions</span>
-                    <button onclick="closeSidePanel()" class="text-slate-300 hover:text-slate-500 transition-colors">
-                        <span class="material-symbols-outlined text-[16px]">close</span>
-                    </button>
-                </div>
-                <div class="flex-1 flex items-center justify-center">
-                    <span class="text-[9px] text-slate-400 font-bold">No history yet</span>
-                </div>
-            </div>
-
         </div>
-    </aside>
+
+        <!-- History Panel -->
+        <div id="panel-history" class="side-panel-content hidden flex-col h-full">
+            <div class="px-3 py-3 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[14px] text-primary">history</span>
+                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-600">History</span>
+                </div>
+                <button onclick="closeSidePanel()"
+                    class="w-6 h-6 flex items-center justify-center rounded-md text-slate-300 hover:text-slate-600 hover:bg-slate-100 transition-all">
+                    <span class="material-symbols-outlined text-[15px]">close</span>
+                </button>
+            </div>
+            <div class="flex-1 flex items-center justify-center">
+                <span class="text-[9px] text-slate-400 font-bold">No history yet</span>
+            </div>
+        </div>
+
+    </div>
+</aside>
+
     <main id="app-viewport" data-view="landing" class="ml-16 pt-16 h-screen flex overflow-hidden">
         <!-- Notebook Split -->
         <section id="notebook-panel"
@@ -395,70 +498,6 @@
                     </div>
                 </div>
 
-                <div class="heavy-card p-3 bg-white border-slate-100">
-                    <div class="flex items-end justify-between mb-3">
-                        <div>
-                            <h3 class="text-lg font-black text-slate-900 tracking-tight">Retention Matrix</h3>
-                            <p class="text-[10px] text-slate-400 font-bold mt-0.5">Cohort survival rate by tenure months
-                            </p>
-                        </div>
-                        <div class="flex gap-1 p-1 bg-slate-50 rounded border border-slate-100">
-                            <span class="w-2.5 h-2.5 rounded bg-primary-soft"></span>
-                            <span class="w-2.5 h-2.5 rounded bg-primary/40"></span>
-                            <span class="w-2.5 h-2.5 rounded bg-primary/70"></span>
-                            <span class="w-2.5 h-2.5 rounded bg-primary"></span>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-12 gap-1">
-                        <div
-                            class="col-span-1 py-1 text-[8px] font-black text-slate-400 text-right pr-2 border-r border-slate-100">
-                            M1</div>
-                        <div class="col-span-11 grid grid-cols-11 gap-1">
-                            <div
-                                class="h-7 bg-primary rounded flex items-center justify-center text-[8px] text-white font-black shadow-sm">
-                                100%</div>
-                            <div
-                                class="h-7 bg-primary/90 rounded flex items-center justify-center text-[8px] text-white font-black">
-                                98%</div>
-                            <div
-                                class="h-7 bg-primary/80 rounded flex items-center justify-center text-[8px] text-white font-black">
-                                95%</div>
-                            <div class="h-7 bg-primary/70 rounded"></div>
-                            <div class="h-7 bg-primary/60 rounded"></div>
-                            <div class="h-7 bg-primary/50 rounded"></div>
-                            <div class="h-7 bg-primary/40 rounded"></div>
-                            <div class="h-7 bg-primary/30 rounded"></div>
-                            <div class="h-7 bg-primary/20 rounded"></div>
-                            <div class="h-7 bg-primary/10 rounded"></div>
-                            <div class="h-7 bg-slate-50 rounded"></div>
-                        </div>
-                        <div
-                            class="col-span-1 py-1 text-[8px] font-black text-slate-400 text-right pr-2 border-r border-slate-100">
-                            M2</div>
-                        <div class="col-span-11 grid grid-cols-11 gap-1">
-                            <div class="h-7 bg-primary rounded"></div>
-                            <div class="h-7 bg-primary/80 rounded"></div>
-                            <div
-                                class="h-7 bg-primary/60 rounded flex items-center justify-center text-[8px] text-white font-black">
-                                84%</div>
-                            <div class="h-7 bg-primary/40 rounded"></div>
-                            <div class="h-7 bg-primary/20 rounded"></div>
-                            <div class="h-7 bg-slate-50 rounded"></div>
-                            <div class="h-7 bg-slate-50 rounded"></div>
-                            <div class="h-7 bg-slate-50 rounded"></div>
-                            <div class="h-7 bg-slate-50 rounded"></div>
-                            <div class="h-7 bg-slate-50 rounded"></div>
-                            <div class="h-7 bg-slate-50 rounded"></div>
-                        </div>
-                    </div>
-                    <div class="mt-3 pt-3 border-t border-dashed border-slate-100 flex items-start gap-2">
-                        <div class="p-1 bg-primary-soft rounded text-primary">
-                            <span class="material-symbols-outlined text-sm">analytics</span>
-                        </div>
-                        <p class="text-[9px] text-slate-600 font-bold italic leading-tight">Observation: Significant
-                            drop observed in Month 3 for Cohort Q2.</p>
-                    </div>
-                </div>
             </div>
         </section>
 
@@ -504,6 +543,21 @@
                             </option>
                             {% endfor %}
                         </select>
+
+                        <!-- Switching from Ai and manual data querying -->
+                        <div class="flex bg-slate-200/50 p-0.5 rounded-md gap-0.5">
+                        <button type="button" onclick="setQueryMode('ai')" id="mode-ai"
+                            class="query-mode-btn active px-2 py-1 rounded-[4px] flex items-center gap-1 transition-all">
+                            <span class="material-symbols-outlined text-[10px]">auto_awesome</span>
+                            <span class="text-[8px] font-black uppercase tracking-tighter">AI</span>
+                        </button>
+                        <button type="button" onclick="setQueryMode('manual')" id="mode-manual"
+                            class="query-mode-btn px-2 py-1 rounded-[4px] flex items-center gap-1 transition-all">
+                            <span class="material-symbols-outlined text-[10px]">terminal</span>
+                            <span class="text-[8px] font-black uppercase tracking-tighter">Manual</span>
+                        </button>
+                    </div>
+
                     </div>
                     <div id="fileInfo"
                         class="hidden flex items-center gap-1 bg-primary-soft px-2 py-0.5 rounded-full border border-primary/10">
@@ -542,6 +596,9 @@
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/sidepanel.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/notebook.js') }}"></script>
+
     <script>
         // ─── Layout State & Resizer Controller ─────────────────────────────
 
@@ -585,172 +642,6 @@
             document.addEventListener('mouseup', () => {
                 isResizing = false;
             });
-        }
-
-        // ─── Sidebar Panel Controller ─────────────────────────────────
-        let activeSidePanel = null;
-
-        function openSidePanel(name) {
-            const panel = document.getElementById('side-panel');
-            const sidebar = document.getElementById('sidebar');
-
-            if (activeSidePanel === name) {
-                closeSidePanel();
-                return;
-            }
-
-            document.querySelectorAll('.side-panel-content').forEach(p => p.classList.add('hidden'));
-            document.querySelectorAll('.sidebar-tab').forEach(t => t.classList.remove('active'));
-
-            const target = document.getElementById(`panel-${name}`);
-            const tab = document.getElementById(`tab-${name}`);
-            if (target) { target.classList.remove('hidden'); target.style.display = 'flex'; }
-            if (tab) tab.classList.add('active');
-
-            panel.style.width = '200px';
-            sidebar.style.width = '256px'; // 56px rail + 200px panel
-            document.getElementById('app-viewport').style.marginLeft = '256px';
-            activeSidePanel = name;
-
-            if (name === 'files') loadStreams();
-        }
-
-        function closeSidePanel() {
-            const panel = document.getElementById('side-panel');
-            const sidebar = document.getElementById('sidebar');
-
-            panel.style.width = '0';
-            sidebar.style.width = '56px';
-            document.getElementById('app-viewport').style.marginLeft = '56px';
-            document.querySelectorAll('.sidebar-tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.side-panel-content').forEach(p => {
-                p.classList.add('hidden');
-                p.style.display = '';
-            });
-            activeSidePanel = null;
-        }
-
-        // ─── Stream File Manager ──────────────────────────────────────
-        async function loadStreams() {
-            try {
-                const res = await fetch('/streams');
-                const streams = await res.json();
-                renderStreams(streams);
-            } catch (e) {
-                document.getElementById('stream-list').innerHTML =
-                    '<div class="text-[9px] text-red-400 text-center py-6 font-bold">Failed to load</div>';
-            }
-        }
-
-        function renderStreams(streams) {
-            const list = document.getElementById('stream-list');
-
-            if (!streams.length) {
-                list.innerHTML = '<div class="text-[9px] text-slate-400 text-center py-6 font-bold">No streams yet</div>';
-                return;
-            }
-
-            // Update storage bar
-            const totalBytes = streams.reduce((acc, s) =>
-                acc + Object.values(s.files).reduce((a, f) => a + f.size_bytes, 0), 0);
-            const MAX_BYTES = 10 * 1024 ** 3; // 10GB ceiling
-            document.getElementById('storage-used').textContent =
-                `${fmtSize(totalBytes)} / 10 GB`;
-            document.getElementById('storage-bar').style.width =
-                `${Math.min((totalBytes / MAX_BYTES) * 100, 100).toFixed(1)}%`;
-
-            list.innerHTML = streams.map(stream => `
-        <div class="stream-card-inner mb-2" id="sc-${stream.name}">
-            <div class="flex items-center gap-2 px-2.5 py-2 bg-slate-50 cursor-pointer"
-                 onclick="toggleStreamCard('${stream.name}')">
-                <span class="material-symbols-outlined text-[13px] text-primary">database</span>
-                <span class="text-[9px] font-black text-slate-700 flex-1 truncate">${stream.name}</span>
-                <span class="material-symbols-outlined text-[13px] text-slate-300 stream-chevron-${stream.name}">chevron_right</span>
-            </div>
-            <div id="files-${stream.name}" class="hidden px-1.5 py-1.5 space-y-0.5">
-                ${renderFileRow(stream.name, 'source.parquet', stream.files['source.parquet'], false)}
-                ${stream.files['working.parquet'] ? renderFileRow(stream.name, 'working.parquet', stream.files['working.parquet'], true) : ''}
-            </div>
-        </div>
-    `).join('');
-        }
-
-        function renderFileRow(streamName, fileName, meta, isMutable) {
-            if (!meta) return '';
-            const badge = meta.memory_safe
-                ? `<span class="text-[7px] font-black px-1 py-0.5 rounded bg-primary-soft text-primary uppercase">mem safe</span>`
-                : `<span class="text-[7px] font-black px-1 py-0.5 rounded bg-amber-50 text-amber-600 uppercase">batch req</span>`;
-            const typeBadge = isMutable
-                ? `<span class="text-[7px] font-black px-1 py-0.5 rounded bg-purple-50 text-purple-600 uppercase">working</span>`
-                : `<span class="text-[7px] font-black px-1 py-0.5 rounded bg-blue-50 text-blue-600 uppercase">source</span>`;
-            const icon = isMutable ? 'edit_document' : 'description';
-
-            const actions = isMutable ? `
-        <button class="file-action-btn" title="Reset to source" onclick="resetStream('${streamName}')">
-            <span class="material-symbols-outlined text-[13px]">restart_alt</span>
-        </button>
-        <button class="file-action-btn" title="Copy path" onclick="copyPath('src/temp/${streamName}/${fileName}')">
-            <span class="material-symbols-outlined text-[13px]">content_copy</span>
-        </button>
-        <button class="file-action-btn" title="Download" onclick="downloadFile('${streamName}', '${fileName}')">
-            <span class="material-symbols-outlined text-[13px]">download</span>
-        </button>
-        <button class="file-action-btn danger" title="Delete stream" onclick="deleteStream('${streamName}')">
-            <span class="material-symbols-outlined text-[13px]">delete</span>
-        </button>` : `
-        <button class="file-action-btn" title="Copy path" onclick="copyPath('src/temp/${streamName}/${fileName}')">
-            <span class="material-symbols-outlined text-[13px]">content_copy</span>
-        </button>
-        <button class="file-action-btn" title="Download" onclick="downloadFile('${streamName}', '${fileName}')">
-            <span class="material-symbols-outlined text-[13px]">download</span>
-        </button>`;
-
-            return `
-        <div class="stream-file-row group/file">
-            <span class="material-symbols-outlined text-[14px] text-slate-400">${icon}</span>
-            <div class="flex-1 min-w-0">
-                <div class="text-[9px] font-black text-slate-700 truncate">${fileName}</div>
-                <div class="flex items-center gap-1 mt-0.5">${badge}${typeBadge}
-                    <span class="text-[8px] text-slate-400">${meta.size_pretty}</span>
-                </div>
-            </div>
-            <div class="flex gap-0.5 opacity-0 group-hover/file:opacity-100 transition-opacity">${actions}</div>
-        </div>`;
-        }
-
-        function toggleStreamCard(name) {
-            const files = document.getElementById(`files-${name}`);
-            const chevron = document.querySelector(`.stream-chevron-${name}`);
-            const isOpen = !files.classList.contains('hidden');
-            files.classList.toggle('hidden', isOpen);
-            if (chevron) chevron.style.transform = isOpen ? '' : 'rotate(90deg)';
-        }
-
-        async function deleteStream(name) {
-            if (!confirm(`Delete stream "${name}" and all its files?`)) return;
-            await fetch(`/streams/${name}`, { method: 'DELETE' });
-            loadStreams();
-        }
-
-        async function resetStream(name) {
-            if (!confirm(`Reset working.parquet to source checkpoint?`)) return;
-            await fetch(`/streams/${name}/reset`, { method: 'POST' });
-            loadStreams();
-        }
-
-        function downloadFile(streamName, fileName) {
-            window.location.href = `/streams/${streamName}/${fileName}`;
-        }
-
-        function copyPath(path) {
-            navigator.clipboard.writeText(path);
-        }
-
-        function fmtSize(b) {
-            if (b < 1024) return `${b} B`;
-            if (b < 1024 ** 2) return `${(b / 1024).toFixed(1)} KB`;
-            if (b < 1024 ** 3) return `${(b / 1024 ** 2).toFixed(1)} MB`;
-            return `${(b / 1024 ** 3).toFixed(2)} GB`;
         }
     </script>
 

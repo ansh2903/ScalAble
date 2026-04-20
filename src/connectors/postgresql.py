@@ -6,7 +6,6 @@ import pyarrow.parquet as pq
 import urllib.parse
 import pandas as pd
 import openpyxl
-import shutil
 import csv
 import os
 import io
@@ -330,13 +329,17 @@ def data_extraction(stream_name, query, config, memory_ceiling=None, batch_row_s
         reader = conn.sql(query).fetch_arrow_reader(batch_size)
         logging.info('reader object for data extraction created')
         
-        for batch in reader:
-            if writer is None:
-                writer = pq.ParquetWriter(source_path, batch.schema, compression='snappy')
+        fmt = 'parquet'
+        if fmt == 'parquet':
+            for batch in reader:
+                if writer is None:
+                    writer = pq.ParquetWriter(source_path, batch.schema, compression='snappy')
 
-            writer.write_batch(batch)
+                writer.write_batch(batch)
 
-        shutil.copy2(source_path, working_path)
+        else:
+            raise Exception
+
         logging.info(f'directory {stream_dir} created, data added')
 
         return 'success', stream_dir

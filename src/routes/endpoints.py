@@ -4,12 +4,11 @@ import importlib
 from src.connectors.connector import DatabaseConnector
 from src.engine.model_manager import get_engine, reset_engine
 from src.engine.query_executor import run_query
-from src.core.utils import model_ls, decrypt_creds, encrypt_creds, downloadable_json, downloadable_excel, downloadable_csv, load_settings, save_settings, is_running_in_docker
+from src.core.utils import file_size_fmt, model_ls, encrypt_creds, downloadable_json, downloadable_excel, downloadable_csv, load_settings, save_settings, is_running_in_docker
 from src.config.settings import VENDOR_CONFIG, PROVIDER_FIELDS
 
 import psutil
 import time
-import uuid
 import pandas as pd
 from datetime import datetime
 import tempfile
@@ -208,7 +207,7 @@ def ask():
             selected_conn = next((c for c in session.get('connections', []) if str(c['id']) == str(db_id)), None)
             db_type=selected_conn.get("db_type")
             metadata = selected_conn.get("metadata", {})
-
+            print(selected_conn)
 
             # Needs change - should not be initializing model on every request
             model = get_engine()
@@ -530,8 +529,52 @@ def models_list():
         
     try:
         models = model_ls(provider)
-        print(models)
         return jsonify(models)
     except Exception as e:
         logging.error(f"Failed to fetch models for {provider}: {e}")
         return jsonify({"error": "Could not connect to provider"}), 500
+    
+@endpoints_blueprint.route('/streams')
+def files():
+    try:
+        base_path = 'src/temp'
+        streams = []
+        MEMORY_THRESHOLD = 1 * 1024**3 # 1GB
+
+        if not os.path.exists(base_path):
+            return jsonify([])
+
+        for stream_name in os.listdir(base_path):
+            stream_path = os.path.join(base_path, stream_name)
+            if os.path.isdir(stream_path):
+                stream_info = {"name": stream_name, "files": {}}
+                
+                for file_name in ['source.parquet']:
+                    file_path = os.path.join(stream_path, file_name)
+                    if os.path.exists(file_path):
+                        size = os.path.getsize(file_path)
+                        stream_info["files"][file_name] = {
+                            "size_bytes": size,
+                            "size_pretty": file_size_fmt(size), # Helper for backend display
+                            "memory_safe": size < MEMORY_THRESHOLD
+                        }
+
+                if stream_info["files"]:
+                    streams.append(stream_info)
+                    
+        return jsonify(streams)
+    except Exception as e:
+        pass
+
+@endpoints_blueprint.route('/api/metadata/<int:db_id>')
+def get_db_metadata(db_id):
+    connections = session.get('connections', [])
+    selected_conn = next((c for c in connections if c['id'] == db_id), None)
+    
+    if not selected_conn:
+        return jsonify({"error": "Not found"}), 404
+        
+    # Optional: You could trigger a fresh DatabaseConnector(selected_conn).get_metadata() 
+    # here if you want it to be truly 'live' upon refresh. For now no since it is expensive on db I/O
+    
+    return jsonify({"metadata": selected_conn.get('metadata', {})})
