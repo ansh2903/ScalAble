@@ -1,5 +1,5 @@
-from src.core.logger import logging
-from src.core.exception import CustomException
+from spore._logger import logging
+from spore._exception import CustomException
 import sys
 
 def test_logic():

@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Fredoka:wght@400;600;700&family=Pacifico&display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet" />
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00A36C",
+                        "primary-dark": "#065f46",
+                        "primary-soft": "#ecfdf5",
+                        "secondary-accent": "#475569",
+                        "bg-main": "#f8fafc",
+                        "card-border": "#e2e8f0",
+                        "heavy-outline": "#cbd5e1"
+                    },
+                    fontFamily: {
+                        "sans": ["Plus Jakarta Sans", "sans-serif"],
+                        "headline": ["Plus Jakarta Sans", "sans-serif"],
+                        "body": ["Plus Jakarta Sans", "sans-serif"],
+                        "playful": ["Fredoka", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"],
+                        "script": ["Pacifico", "cursive"]
+                    },
+                    borderRadius: {
+                        "organic": "2.5rem",
+                        "pill": "9999px"
+                    },
+                    boxShadow: {
+                        "tactile": "0 6px 0 0 rgba(0, 163, 108, 0.2)",
+                        "tactile-hover": "0 3px 0 0 rgba(0, 163, 108, 0.3)",
+                        "data-card": "0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04)",
+                        "header-nav": "0 10px 15px -3px rgba(0, 163, 108, 0.05)"
+                    }
+                },
+            },
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer base {
+            body {
+                @apply bg-bg-main text-slate-800 font-body antialiased;
+            }
+            h1, h2, h3 {
+                @apply font-headline font-extrabold tracking-tight;
+            }
+        }
+        .header-glass {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(0, 163, 108, 0.1);
+        }
+        .organic-border {
+            border-radius: 60% 40% 70% 30% / 30% 60% 40% 70%;
+        }
+        .heavy-card {
+            @apply bg-white border-2 border-slate-200 rounded-organic transition-all duration-300;
+            box-shadow: 0 12px 0 -4px theme('colors.slate.100');
+        }
+        .heavy-card:hover {
+            @apply border-primary/30;
+            transform: translateY(-2px);
+            box-shadow: 0 16px 0 -4px rgba(0, 163, 108, 0.1);
+        }
+        .custom-range {
+            @apply h-2 w-full bg-slate-200 rounded-full appearance-none cursor-pointer;
+        }
+        .custom-range::-webkit-slider-thumb {
+            @apply appearance-none w-6 h-6 bg-primary rounded-full border-4 border-white shadow-lg transition-transform hover:scale-125 active:scale-95;
+        }
+        .soft-gradient-bg {
+            background: radial-gradient(circle at 50% -20%, #ecfdf5 0%, #f8fafc 60%);
+        }
+        .nav-link {
+            @apply relative px-3 py-2 text-slate-600 font-semibold transition-colors hover:text-primary;
+        }
+        .nav-link-active {
+            @apply text-white font-bold;
+        }
+        .nav-link-active::after {
+            content: '';
+            @apply absolute bottom-0 left-3 right-3 h-1 bg-primary rounded-full;
+        }
+        .script-text {
+            @apply font-script text-primary not-italic;
+            text-transform: none;
+        }
+        .form-input-clean {
+            @apply w-full bg-white border-2 border-slate-200 rounded-2xl px-4 py-2.5 text-sm font-medium focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all outline-none;
+        }
+        .form-label-clean {
+            @apply text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-2 px-1;
+        }
+        .fade-in {
+            animation: fadeIn 0.2s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        [x-cloak] { display: none !important; }
+
+        /* Flash messages */
+        .flash-success { @apply bg-primary/10 border border-primary/30 text-primary-dark rounded-2xl px-5 py-3 text-sm font-bold flex items-center gap-2; }
+        .flash-error   { @apply bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl px-5 py-3 text-sm font-bold flex items-center gap-2; }
+
+        /* API key input eye toggle */
+        .api-key-wrap { @apply relative; }
+        .api-key-wrap input { @apply pr-12; }
+        .api-key-wrap button { @apply absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors; }
+
+    </style>
+</head>
+
+<body class="soft-gradient-bg min-h-screen">
+    <!-- TopNavBar (Glassmorphic) -->
+    <header class="header-glass fixed top-0 w-full z-50 h-16 border-b border-black/5">
+        <div class="max-w-[1400px] mx-auto h-full flex items-center justify-between px-6 md:px-8">
+
+            <div class="flex items-center gap-3 group cursor-pointer">
+                <div class="w-9 h-9 flex items-center justify-center relative">
+                    <svg class="w-full h-full" fill="none" viewbox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M16 30 C 16 20, 10 16, 13 6" fill="none" stroke="#059669" stroke-linecap="round"
+                            stroke-width="2.5"></path>
+                        <path d="M16 30 C 18 22, 24 18, 21 10" fill="none" stroke="#10b981" stroke-linecap="round"
+                            stroke-width="2"></path>
+                        <circle cx="13" cy="6" fill="#059669" r="3.5"></circle>
+                        <circle cx="21" cy="10" fill="#10b981" r="2.5"></circle>
+                        <circle cx="25" cy="18" fill="#34d399" r="1.5"></circle>
+                        <circle cx="8" cy="20" fill="#059669" r="2"></circle>
+                    </svg>
+                </div>
+                <span class="text-2xl font-playful font-bold tracking-tight text-slate-900"
+                    style="font-family: 'Pacifico', cursive;">
+                    Spore
+                </span>
+            </div>
+
+            <nav class=" md:flex items-center bg-black/5 rounded-full px-2 py-1 border border-black/5">
+                <a class="nav-link nav-link-active px-4 py-1.5 rounded-full text-xs font-bold bg-emerald-600 shadow-sm"
+                    href="/">
+                    Mission Control
+                </a>
+                <a class="nav-link px-4 py-1.5 rounded-full text-xs font-medium transition-all hover:bg-white/50"
+                    href="/connections">
+                    Connection Center
+                </a>
+                <a class="nav-link px-4 py-1.5 rounded-full text-xs font-medium transition-all hover:bg-white/50"
+                    href="/settings">
+                    Calibration
+                </a>
+            </nav>
+        </div>
+    </header>
+    <!-- Main Canvas -->
+    <main class="max-w-7xl mx-auto w-full flex flex-col px-8 pt-24 pb-10 space-y-10"> <!-- Welcome Banner -->
+        <section
+            class="relative overflow-hidden bg-white border border-emerald-100 rounded-[2.5rem] p-8 md:p-12 shadow-[0_20px_50px_rgba(0,163,108,0.05)]">
+            <div class="absolute -right-12 -top-12 w-64 h-64 bg-emerald-50 rounded-full blur-3xl opacity-60"></div>
+            <div class="absolute right-20 bottom-10 w-32 h-32 bg-emerald-100/40 rounded-full blur-2xl"></div>
+
+            <div class="absolute right-10 top-10 animate-bounce duration-[3000ms]">
+                <svg width="40" height="40" viewBox="0 0 40 40" fill="none" class="opacity-20 text-emerald-600">
+                    <circle cx="20" cy="20" r="4" fill="currentColor" />
+                    <circle cx="32" cy="12" r="2" fill="currentColor" />
+                    <circle cx="10" cy="28" r="1.5" fill="currentColor" />
+                </svg>
+            </div>
+
+            <div class="relative z-10 flex flex-col md:flex-row justify-between items-end gap-8">
+                <div class="flex-1">
+                    <div
+                        class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 mb-6">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-emerald-700 font-mono">Status:
+                            Active Culture</span>
+                    </div>
+
+                    <h2 class="text-4xl md:text-5xl font-bold text-slate-900 tracking-tight mb-4">
+                        Welcome back to <br />the <span class="text-emerald-600"
+                            style="font-family: 'Pacifico', cursive;">Laboratory</span>
+                    </h2>
+
+                    <p class="text-slate-500 text-lg max-w-xl leading-relaxed">
+                        Your local environment is primed. <span class="text-slate-900 font-semibold">3
+                            source-spores</span> are ready for capture and local analysis.
+                        Push-down compute protocols are standing by.
+                    </p>
+                </div>
+
+                <div class="flex flex-col items-end gap-4">
+                    <div class="hidden md:flex gap-4 mb-2">
+                        <div class="text-right border-r border-slate-200 pr-4">
+                            <p class="text-[10px] uppercase font-mono text-slate-400">Memory Pressure</p>
+                            <p class="text-sm font-bold text-slate-700">0.04%</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] uppercase font-mono text-slate-400">Connected Sources</p>
+                            <p class="text-sm font-bold text-slate-700">12</p>
+                        </div>
+                    </div>
+
+                    <a href="/chat">
+                        <button
+                            class="group relative px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold flex items-center gap-3 transition-all hover:scale-[1.02] hover:bg-emerald-600 active:scale-95 shadow-xl">
+                            <span
+                                class="material-symbols-outlined text-emerald-400 group-hover:text-white transition-colors">biotech</span>
+                            Initiate New Capture
+                            <span class="opacity-30 group-hover:translate-x-1 transition-transform">→</span>
+                        </button>
+                    </a>
+                </div>
+            </div>
+        </section>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            <!-- Workspaces Section -->
+            <section class="lg:col-span-2 space-y-6">
+                <div class="flex justify-between items-end px-2">
+                    <h3 class="text-2xl font-extrabold text-on-surface tracking-tight">Recent Workspaces</h3>
+                    <a class="text-sm font-bold text-primary hover:text-[#008c5c] transition-colors" href="#">View
+                        All</a>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Workspace Card 1 -->
+                    <div
+                        class="bg-surface-bright rounded-3xl p-8 shadow-heavy border border-surface-container-high hover:border-primary/30 hover:shadow-[0_20px_40px_-10px_rgba(0,163,108,0.1)] transition-all cursor-pointer group flex flex-col gap-6">
+                        <div class="flex justify-between items-start">
+                            <div
+                                class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center text-on-surface group-hover:bg-primary group-hover:text-white transition-colors duration-300">
+                                <span class="material-symbols-outlined text-[28px]">payments</span>
+                            </div>
+                            <button class="text-secondary hover:text-on-surface transition-colors p-1"><span
+                                    class="material-symbols-outlined">more_horiz</span></button>
+                        </div>
+                        <div>
+                            <h4 class="font-extrabold text-xl text-on-surface mb-2 tracking-tight">Finance Deep Dive
+                            </h4>
+                            <p class="text-sm text-secondary line-clamp-2 leading-relaxed font-medium">Quarterly
+                                revenue analysis and forecasting models for Q3.</p>
+                        </div>
+                        <div class="mt-auto flex justify-between items-center pt-6 border-t border-surface-container">
+                            <span class="text-xs font-bold text-secondary uppercase tracking-wider">Updated 2h
+                                ago</span>
+                            <div class="flex -space-x-2">
+                                <img alt="Collaborator" class="w-8 h-8 rounded-full border-2 border-surface-bright"
+                                    data-alt="professional headshot of a woman with soft lighting and neutral background"
+                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuCB2DKW9TTG-_uMDVYFE3KDfdxRx-nVVdlHb0qBftxAkwgc1oTAZT41kjsZlNUTqJJAmFImLHyaXSQmlizdqfyj1LhVu0RqAi78Xl9jIScEu7Ze6tdxc0iHi6yTRYUuagXnqFLkPMl8GiA4It1VwFRlptYICUR2gdhcblDQjTvEa-chmLUDOqHU67NiCJvI2i7v_CU2Ma3dZJyOhy8Oc38dXm1RoYb7_V_9qgrqSPp3QjXX-562jloIDrTAmaHEUgKKgZmWhJvtV0aS" />
+                                <div
+                                    class="w-8 h-8 rounded-full border-2 border-surface-bright bg-surface-container-high flex items-center justify-center text-xs font-bold text-on-surface">
+                                    +2</div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Workspace Card 2 -->
+                    <div
+                        class="bg-surface-bright rounded-3xl p-8 shadow-heavy border border-surface-container-high hover:border-primary/30 hover:shadow-[0_20px_40px_-10px_rgba(0,163,108,0.1)] transition-all cursor-pointer group flex flex-col gap-6">
+                        <div class="flex justify-between items-start">
+                            <div
+                                class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center text-on-surface group-hover:bg-primary group-hover:text-white transition-colors duration-300">
+                                <span class="material-symbols-outlined text-[28px]">group_remove</span>
+                            </div>
+                            <button class="text-secondary hover:text-on-surface transition-colors p-1"><span
+                                    class="material-symbols-outlined">more_horiz</span></button>
+                        </div>
+                        <div>
+                            <h4 class="font-extrabold text-xl text-on-surface mb-2 tracking-tight">User Churn
+                                Analysis</h4>
+                            <p class="text-sm text-secondary line-clamp-2 leading-relaxed font-medium">Investigating
+                                drop-off rates in the onboarding flow.</p>
+                        </div>
+                        <div class="mt-auto flex justify-between items-center pt-6 border-t border-surface-container">
+                            <span class="text-xs font-bold text-secondary uppercase tracking-wider">Updated 5h
+                                ago</span>
+                            <div class="flex -space-x-2">
+                                <img alt="Collaborator" class="w-8 h-8 rounded-full border-2 border-surface-bright"
+                                    data-alt="professional headshot of a man with soft lighting and neutral background"
+                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZOuq7_FOdeg--i87E5oJIEnxHOQBHw6a-infiu4nLSyPO-PcK9wdJ7yiEB8nfE8Vd9kKUfTDuLdJWD54vzsc_tYXTHXDL_acpoHkseG6SHbJ-XL6t8T4lO475D_UxJf7NDn9K7lvkjCoVvplnwRPU4Ezx-8tSZQDOg8dFT9TT2AszqfFLnUg809V04Qn7WVuuZ2xHFeVl0dO66RJgaO-2M4mVLjfZqo6nc3vOO521DGAAUyNPyZYtNRf2zPU27m_7jAYwCAUzMIIi" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <!-- Data Connections Section -->
+            <section class="space-y-6">
+                <div class="flex justify-between items-end px-2">
+                    <h3 class="text-2xl font-extrabold text-on-surface tracking-tight">Data Connections</h3>
+                    <button class="text-secondary hover:text-primary transition-colors p-1"><span
+                            class="material-symbols-outlined">add</span></button>
+                </div>
+                <div
+                    class="bg-surface-bright rounded-3xl p-3 shadow-heavy border border-surface-container-high flex flex-col gap-2">
+                    <!-- Connection 1 -->
+                    <div
+                        class="p-4 rounded-2xl flex items-center justify-between group cursor-pointer hover:bg-surface-container transition-colors">
+                        <div class="flex items-center gap-4">
+                            <div
+                                class="w-12 h-12 rounded-xl bg-surface flex items-center justify-center text-on-surface border border-surface-container-high">
+                                <span class="material-symbols-outlined text-[24px]">database</span>
+                            </div>
+                            <div>
+                                <h5 class="font-bold text-sm text-on-surface">Production DB</h5>
+                                <p class="text-xs text-secondary font-mono mt-0.5">PostgreSQL</p>
+                            </div>
+                        </div>
+                        <div
+                            class="flex items-center gap-2 bg-primary/10 px-3 py-1.5 rounded-full border border-primary/20">
+                            <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                            <span
+                                class="text-[10px] font-extrabold text-primary uppercase tracking-widest font-mono">Live</span>
+                        </div>
+                    </div>
+                    <!-- Connection 2 -->
+                    <div
+                        class="p-4 rounded-2xl flex items-center justify-between group cursor-pointer hover:bg-surface-container transition-colors">
+                        <div class="flex items-center gap-4">
+                            <div
+                                class="w-12 h-12 rounded-xl bg-surface flex items-center justify-center text-on-surface border border-surface-container-high">
+                                <span class="material-symbols-outlined text-[24px]">storage</span>
+                            </div>
+                            <div>
+                                <h5 class="font-bold text-sm text-on-surface">Events Stream</h5>
+                                <p class="text-xs text-secondary font-mono mt-0.5">MongoDB</p>
+                            </div>
+                        </div>
+                        <div
+                            class="flex items-center gap-2 bg-primary/10 px-3 py-1.5 rounded-full border border-primary/20">
+                            <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                            <span
+                                class="text-[10px] font-extrabold text-primary uppercase tracking-widest font-mono">Live</span>
+                        </div>
+                    </div>
+                    <!-- Connection 3 -->
+                    <div
+                        class="p-4 rounded-2xl flex items-center justify-between group cursor-pointer hover:bg-surface-container transition-colors">
+                        <div class="flex items-center gap-4">
+                            <div
+                                class="w-12 h-12 rounded-xl bg-surface flex items-center justify-center text-on-surface border border-surface-container-high">
+                                <span class="material-symbols-outlined text-[24px]">cloud</span>
+                            </div>
+                            <div>
+                                <h5 class="font-bold text-sm text-on-surface">Analytics Warehouse</h5>
+                                <p class="text-xs text-secondary font-mono mt-0.5">Snowflake</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-full">
+                            <span class="w-2 h-2 rounded-full bg-secondary"></span>
+                            <span
+                                class="text-[10px] font-extrabold text-secondary uppercase tracking-widest font-mono">Syncing</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+        <!-- Mission Control Advice -->
+        <section
+            class="mt-4 bg-gradient-to-r from-surface-container to-surface-bright rounded-3xl p-6 shadow-heavy border border-surface-container-high flex items-center gap-6">
+            <div
+                class="w-12 h-12 rounded-2xl bg-surface-bright shadow-sm flex items-center justify-center text-primary shrink-0 border border-surface-container-high">
+                <span class="material-symbols-outlined text-[24px]">rocket_launch</span>
+            </div>
+            <div class="flex-1">
+                <h4 class="font-bold text-base text-on-surface mb-1">Mission Control Advice</h4>
+                <p class="text-sm text-secondary font-medium">Consider pausing non-essential cron jobs. The
+                    Production DB is experiencing a 15% latency spike during peak indexing.</p>
+            </div>
+            <button
+                class="text-sm font-bold text-primary hover:text-[#008c5c] transition-colors whitespace-nowrap bg-white px-4 py-2 rounded-xl border border-surface-container-high shadow-sm hover:shadow-md">Review
+                Metrics</button>
+        </section>
+    </main>
+</body>
+
+</html>
