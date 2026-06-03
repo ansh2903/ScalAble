@@ -16,7 +16,9 @@ IMPORTANT — ADBC bind parameter limitation:
   Ref: https://arrow.apache.org/adbc/current/python/recipe/postgresql.html
 """
 
+import json
 import os
+import time
 import urllib.parse
 import duckdb
 from typing import Any, Generator
@@ -32,11 +34,15 @@ from ..base import BaseSource, SourceKind, SourceCapabilities
 from ..utils import (
     QueryKind,
     classify_query,
+    make_batch_sink,
+    normalize_output_format,
     normalize_preview_limit,
+    source_filename,
     status_row,
     strip_query_terminator,
     wrap_count_query,
     wrap_preview_query,
+    write_empty_dataset,
 )
 from spore._logger import logging
 from spore._config.settings import settings
@@ -299,9 +305,22 @@ class PostgreSQLSource(BaseSource):
 
                     cur.execute(wrap_preview_query(body, preview_limit, default_limit=100))
                     arrow_table = cur.fetch_arrow_table()
+                    sample_rows = int(arrow_table.num_rows)
+                    sample_bytes = int(arrow_table.nbytes)
+                    est_total_bytes = (
+                        round(sample_bytes / sample_rows * total_rows)
+                        if isinstance(total_rows, int) and sample_rows > 0
+                        else None
+                    )
 
                     yield {"type": "columns",  "content": arrow_table.schema.names}
-                    yield {"type": "metadata", "total_rows": total_rows}
+                    yield {
+                        "type": "metadata",
+                        "total_rows": total_rows,
+                        "sample_rows": sample_rows,
+                        "sample_bytes": sample_bytes,
+                        "est_total_bytes": est_total_bytes,
+                    }
                     yield {"type": "rows",     "content": arrow_table.to_pylist()}
                     return
 
@@ -310,11 +329,16 @@ class PostgreSQLSource(BaseSource):
                     arrow_table = cur.fetch_arrow_table()
                     rows = arrow_table.to_pylist()
                     returned = len(rows)
+                    sample_rows = int(arrow_table.num_rows)
+                    sample_bytes = int(arrow_table.nbytes)
 
                     yield {"type": "columns",  "content": arrow_table.schema.names}
                     yield {
                         "type": "metadata",
-                        "total_rows": returned
+                        "total_rows": returned,
+                        "sample_rows": sample_rows,
+                        "sample_bytes": sample_bytes,
+                        "est_total_bytes": sample_bytes,
                     }
                     yield {"type": "rows", "content": rows}
 
@@ -337,9 +361,16 @@ class PostgreSQLSource(BaseSource):
 
                 affected = getattr(cur, "rowcount", None)
                 summary = status_row(body, kind, affected)
+                sample_bytes = len(json.dumps(summary, default=str).encode("utf-8"))
 
                 yield {"type": "columns",  "content": list(summary.keys())}
-                yield {"type": "metadata", "total_rows": 1}
+                yield {
+                    "type": "metadata",
+                    "total_rows": 1,
+                    "sample_rows": 1,
+                    "sample_bytes": sample_bytes,
+                    "est_total_bytes": sample_bytes,
+                }
                 yield {"type": "rows",     "content": [summary]}
 
         except Exception as e:
@@ -355,26 +386,24 @@ class PostgreSQLSource(BaseSource):
         destination_path: str | None = None,
         memory_ceiling: str = '1GB',
         batch_row_size: int = 10000,
-    ) -> tuple[str, str]:
+        output_format: str = "parquet",
+    ) -> Generator[dict, None, None]:
         """
         True streaming ingest via DuckDB fetch_arrow_reader().
 
-        Why not ADBC here?
-        ADBC fetch_arrow_table() materialises the full result — on a
-        40 GB table that blows memory. DuckDB's fetch_arrow_reader(N)
-        yields one RecordBatch of N rows per iteration, bounding peak
-        memory regardless of table size.
-
-        SSH tunnel is handled by BaseSource.tunnel_context() — DuckDB
-        needs the resolved host/port for ATTACH, not an ADBC connection.
+        Yields SSE chunks: start → progress (per batch) → done | error.
+        Writes ``streams/<name>/source.<ext>`` where ``<ext>`` is determined
+        by ``output_format`` (parquet/csv/tsv/json/excel).
         """
+        fmt = normalize_output_format(output_format)
         dest = destination_path or settings.SPORE_DATA_DIR
         stream_dir = os.path.join(dest, "streams", stream_name)
         os.makedirs(stream_dir, exist_ok=True)
-        source_path = os.path.join(stream_dir, "source.parquet")
+        source_path = os.path.join(stream_dir, source_filename(fmt))
 
-        writer = duck = None
+        sink = duck = None
         c = self.config
+        t0 = time.monotonic()
 
         try:
             with self.tunnel_context() as (host, port):
@@ -390,34 +419,78 @@ class PostgreSQLSource(BaseSource):
                 if schema:
                     duck.execute(f"SET search_path = {_qi(schema)};")
 
+                body = strip_query_terminator(query)
+                try:
+                    est_total_rows = duck.sql(wrap_count_query(body)).fetchone()[0]
+                except Exception:
+                    est_total_rows = None
+
                 reader = duck.sql(query).fetch_arrow_reader(batch_row_size)
-                total_rows = 0
+                rows_so_far = 0
+                bytes_so_far = 0
+                batch_index = 0
+                est_total_bytes = None
+                start_sent = False
 
                 for batch in reader:
-                    if writer is None:
-                        writer = pq.ParquetWriter(source_path, batch.schema, compression="snappy")
-                    writer.write_batch(batch)
-                    total_rows += batch.num_rows
+                    if sink is None:
+                        sink = make_batch_sink(source_path, batch.schema, fmt)
+                    sink.write_batch(batch)
+                    rows_so_far += batch.num_rows
+                    bytes_so_far += batch.nbytes
+                    batch_index += 1
 
-                if writer is None:
+                    if not start_sent:
+                        if est_total_rows and rows_so_far:
+                            est_total_bytes = round(bytes_so_far / rows_so_far * est_total_rows)
+                        yield {
+                            "type": "start",
+                            "stream_name": stream_name,
+                            "format": fmt,
+                            "est_total_rows": est_total_rows,
+                            "est_total_bytes": est_total_bytes,
+                        }
+                        start_sent = True
+
+                    yield {
+                        "type": "progress",
+                        "rows_so_far": rows_so_far,
+                        "bytes_so_far": bytes_so_far,
+                        "batch_index": batch_index,
+                    }
+
+                if sink is None:
+                    if not start_sent:
+                        yield {
+                            "type": "start",
+                            "stream_name": stream_name,
+                            "format": fmt,
+                            "est_total_rows": est_total_rows,
+                            "est_total_bytes": None,
+                        }
+                        start_sent = True
+
                     arrow_schema = duck.sql(query).arrow().schema
-                    empty_arrays = [
-                        pa.array([], type=arrow_schema.field(i).type)
-                        for i in range(arrow_schema.num_fields)
-                    ]
-                    empty_table = pa.table(empty_arrays, names=arrow_schema.names)
-                    pq.write_table(empty_table, source_path, compression="snappy")
+                    write_empty_dataset(source_path, arrow_schema, fmt)
 
-            logging.info(f"[postgresql] ingested {total_rows} rows → {source_path}")
-            return "success", stream_dir
+            logging.info(f"[postgresql] ingested {rows_so_far} rows → {source_path}")
+            yield {
+                "type": "done",
+                "path": stream_dir,
+                "format": fmt,
+                "filename": os.path.basename(source_path),
+                "total_rows": rows_so_far,
+                "total_bytes": bytes_so_far,
+                "elapsed_ms": int((time.monotonic() - t0) * 1000),
+            }
 
         except Exception as e:
             logging.error(f"[postgresql] ingest failed: {e}")
-            return "error", str(e)
+            yield {"type": "error", "content": str(e)}
 
         finally:
-            if writer:
-                writer.close()
+            if sink:
+                sink.close()
             if duck:
                 duck.close()
 

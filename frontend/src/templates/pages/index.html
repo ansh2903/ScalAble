@@ -195,9 +195,11 @@
                     </h2>
 
                     <p class="text-slate-500 text-lg max-w-xl leading-relaxed">
-                        Your local environment is primed. <span class="text-slate-900 font-semibold">3
-                            source-spores</span> are ready for capture and local analysis.
-                        Push-down compute protocols are standing by.
+                        Your local environment is primed.
+                        <span class="text-slate-900 font-semibold">{{ workspaces|length }} workspace{{ 's' if workspaces|length != 1 else '' }}</span>
+                        and
+                        <span class="text-slate-900 font-semibold">{{ connections|length }} connection{{ 's' if connections|length != 1 else '' }}</span>
+                        ready for capture and local analysis.
                     </p>
                 </div>
 
@@ -213,15 +215,13 @@
                         </div>
                     </div>
 
-                    <a href="/chat">
-                        <button
-                            class="group relative px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold flex items-center gap-3 transition-all hover:scale-[1.02] hover:bg-emerald-600 active:scale-95 shadow-xl">
-                            <span
-                                class="material-symbols-outlined text-emerald-400 group-hover:text-white transition-colors">biotech</span>
-                            Initiate New Capture
-                            <span class="opacity-30 group-hover:translate-x-1 transition-transform">→</span>
-                        </button>
-                    </a>
+                    <button type="button" onclick="createWorkspace()"
+                        class="group relative px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold flex items-center gap-3 transition-all hover:scale-[1.02] hover:bg-emerald-600 active:scale-95 shadow-xl">
+                        <span
+                            class="material-symbols-outlined text-emerald-400 group-hover:text-white transition-colors">add</span>
+                        New Workspace
+                        <span class="opacity-30 group-hover:translate-x-1 transition-transform">→</span>
+                    </button>
                 </div>
             </div>
         </section>
@@ -229,68 +229,60 @@
             <!-- Workspaces Section -->
             <section class="lg:col-span-2 space-y-6">
                 <div class="flex justify-between items-end px-2">
-                    <h3 class="text-2xl font-extrabold text-on-surface tracking-tight">Recent Workspaces</h3>
-                    <a class="text-sm font-bold text-primary hover:text-[#008c5c] transition-colors" href="#">View
-                        All</a>
+                    <h3 class="text-2xl font-extrabold text-on-surface tracking-tight">Workspaces</h3>
+                    <button type="button" onclick="createWorkspace()"
+                        class="text-sm font-bold text-primary hover:text-[#008c5c] transition-colors flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[16px]">add</span> New
+                    </button>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Workspace Card 1 -->
+                <div id="workspace-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {% if workspaces %}
+                    {% for ws in workspaces %}
                     <div
-                        class="bg-surface-bright rounded-3xl p-8 shadow-heavy border border-surface-container-high hover:border-primary/30 hover:shadow-[0_20px_40px_-10px_rgba(0,163,108,0.1)] transition-all cursor-pointer group flex flex-col gap-6">
+                        class="workspace-card bg-white rounded-3xl p-8 shadow-heavy border border-slate-200 hover:border-primary/30 hover:shadow-[0_20px_40px_-10px_rgba(0,163,108,0.1)] transition-all cursor-pointer group flex flex-col gap-6"
+                        data-workspace-id="{{ ws.id }}"
+                        onclick="openWorkspace('{{ ws.id }}')">
                         <div class="flex justify-between items-start">
                             <div
-                                class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center text-on-surface group-hover:bg-primary group-hover:text-white transition-colors duration-300">
-                                <span class="material-symbols-outlined text-[28px]">payments</span>
+                                class="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-700 group-hover:bg-primary group-hover:text-white transition-colors duration-300">
+                                <span class="material-symbols-outlined text-[28px]">folder_open</span>
                             </div>
-                            <button class="text-secondary hover:text-on-surface transition-colors p-1"><span
-                                    class="material-symbols-outlined">more_horiz</span></button>
+                            <div class="flex items-center gap-1" onclick="event.stopPropagation()">
+                                <button type="button" title="Edit"
+                                    onclick="editWorkspace('{{ ws.id }}', '{{ ws.name }}', '{{ ws.description }}')"
+                                    class="text-slate-400 hover:text-primary transition-colors p-1">
+                                    <span class="material-symbols-outlined text-[20px]">edit</span>
+                                </button>
+                                <button type="button" title="Delete"
+                                    onclick="deleteWorkspace('{{ ws.id }}', '{{ ws.name }}')"
+                                    class="text-slate-400 hover:text-red-500 transition-colors p-1">
+                                    <span class="material-symbols-outlined text-[20px]">delete</span>
+                                </button>
+                            </div>
                         </div>
                         <div>
-                            <h4 class="font-extrabold text-xl text-on-surface mb-2 tracking-tight">Finance Deep Dive
-                            </h4>
-                            <p class="text-sm text-secondary line-clamp-2 leading-relaxed font-medium">Quarterly
-                                revenue analysis and forecasting models for Q3.</p>
+                            <h4 class="font-extrabold text-xl text-slate-900 mb-2 tracking-tight">{{ ws.name }}</h4>
+                            <p class="text-sm text-slate-500 line-clamp-2 leading-relaxed font-medium">
+                                {{ ws.description or 'No description' }}
+                            </p>
                         </div>
-                        <div class="mt-auto flex justify-between items-center pt-6 border-t border-surface-container">
-                            <span class="text-xs font-bold text-secondary uppercase tracking-wider">Updated 2h
-                                ago</span>
-                            <div class="flex -space-x-2">
-                                <img alt="Collaborator" class="w-8 h-8 rounded-full border-2 border-surface-bright"
-                                    data-alt="professional headshot of a woman with soft lighting and neutral background"
-                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuCB2DKW9TTG-_uMDVYFE3KDfdxRx-nVVdlHb0qBftxAkwgc1oTAZT41kjsZlNUTqJJAmFImLHyaXSQmlizdqfyj1LhVu0RqAi78Xl9jIScEu7Ze6tdxc0iHi6yTRYUuagXnqFLkPMl8GiA4It1VwFRlptYICUR2gdhcblDQjTvEa-chmLUDOqHU67NiCJvI2i7v_CU2Ma3dZJyOhy8Oc38dXm1RoYb7_V_9qgrqSPp3QjXX-562jloIDrTAmaHEUgKKgZmWhJvtV0aS" />
-                                <div
-                                    class="w-8 h-8 rounded-full border-2 border-surface-bright bg-surface-container-high flex items-center justify-center text-xs font-bold text-on-surface">
-                                    +2</div>
-                            </div>
+                        <div class="mt-auto flex justify-between items-center pt-6 border-t border-slate-100">
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider workspace-updated"
+                                data-updated="{{ ws.updated_at }}">Updated —</span>
+                            <span class="text-[10px] font-mono text-slate-400 truncate max-w-[120px]">{{ ws.created_at }}…</span>
                         </div>
                     </div>
-                    <!-- Workspace Card 2 -->
-                    <div
-                        class="bg-surface-bright rounded-3xl p-8 shadow-heavy border border-surface-container-high hover:border-primary/30 hover:shadow-[0_20px_40px_-10px_rgba(0,163,108,0.1)] transition-all cursor-pointer group flex flex-col gap-6">
-                        <div class="flex justify-between items-start">
-                            <div
-                                class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center text-on-surface group-hover:bg-primary group-hover:text-white transition-colors duration-300">
-                                <span class="material-symbols-outlined text-[28px]">group_remove</span>
-                            </div>
-                            <button class="text-secondary hover:text-on-surface transition-colors p-1"><span
-                                    class="material-symbols-outlined">more_horiz</span></button>
-                        </div>
-                        <div>
-                            <h4 class="font-extrabold text-xl text-on-surface mb-2 tracking-tight">User Churn
-                                Analysis</h4>
-                            <p class="text-sm text-secondary line-clamp-2 leading-relaxed font-medium">Investigating
-                                drop-off rates in the onboarding flow.</p>
-                        </div>
-                        <div class="mt-auto flex justify-between items-center pt-6 border-t border-surface-container">
-                            <span class="text-xs font-bold text-secondary uppercase tracking-wider">Updated 5h
-                                ago</span>
-                            <div class="flex -space-x-2">
-                                <img alt="Collaborator" class="w-8 h-8 rounded-full border-2 border-surface-bright"
-                                    data-alt="professional headshot of a man with soft lighting and neutral background"
-                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZOuq7_FOdeg--i87E5oJIEnxHOQBHw6a-infiu4nLSyPO-PcK9wdJ7yiEB8nfE8Vd9kKUfTDuLdJWD54vzsc_tYXTHXDL_acpoHkseG6SHbJ-XL6t8T4lO475D_UxJf7NDn9K7lvkjCoVvplnwRPU4Ezx-8tSZQDOg8dFT9TT2AszqfFLnUg809V04Qn7WVuuZ2xHFeVl0dO66RJgaO-2M4mVLjfZqo6nc3vOO521DGAAUyNPyZYtNRf2zPU27m_7jAYwCAUzMIIi" />
-                            </div>
-                        </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="col-span-full rounded-3xl border-2 border-dashed border-slate-200 p-12 text-center">
+                        <span class="material-symbols-outlined text-4xl text-slate-300 mb-3">folder_off</span>
+                        <p class="text-sm text-slate-500 font-medium mb-4">No workspaces yet. Create one to start analyzing.</p>
+                        <button type="button" onclick="createWorkspace()"
+                            class="inline-flex items-center gap-2 px-4 py-2 rounded-pill bg-primary text-white text-xs font-black uppercase tracking-widest">
+                            <span class="material-symbols-outlined text-[14px]">add</span> Create Workspace
+                        </button>
                     </div>
+                    {% endif %}
                 </div>
             </section>
             <!-- Data Connections Section -->
@@ -325,6 +317,7 @@
             </section>
         </div>
     </main>
+    <script src="{{ url_for('static', filename='js/workspaces.js') }}"></script>
 </body>
 
 </html>

@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Generator
+
+import pyarrow as pa
 
 from ..base import BaseSource, SourceCapabilities, SourceKind
+from ._preview import ingest_excel, preview_excel
 from ._utils import _stat
 from spore._logger import logging
 
@@ -19,7 +22,7 @@ class ExcelFileSource(BaseSource):
     kind = SourceKind.FILE
     capabilities = SourceCapabilities(
         can_preview=True,
-        can_ingest=False,
+        can_ingest=True,
         can_stream=False,
         needs_ssh=False,
         needs_credentials=False,
@@ -43,7 +46,7 @@ class ExcelFileSource(BaseSource):
 
         try:
             import pandas as pd
-        except ImportError as e:
+        except ImportError:
             return False, {"error": "pandas is required for excel metadata"}  # type: ignore[return-value]
 
         try:
@@ -52,7 +55,6 @@ class ExcelFileSource(BaseSource):
 
             entities: dict[str, dict] = {}
             for sheet in xls.sheet_names:
-                # Read a small sample to infer columns/dtypes.
                 df = pd.read_excel(xls, sheet_name=sheet, nrows=200)
                 cols = [str(c) for c in df.columns]
                 dtypes = {str(k): str(v) for k, v in df.dtypes.to_dict().items()}
@@ -75,3 +77,18 @@ class ExcelFileSource(BaseSource):
             logging.error(f"[excel_file] metadata failed: {e}")
             return False, {}
 
+    def preview(self, query: str, limit: int = 100) -> Generator[dict, None, None]:
+        yield from preview_excel(self.config, query, limit)
+
+    def ingest(
+        self,
+        stream_name: str,
+        query: str,
+        destination_path: str | None = None,
+        memory_ceiling: str = "1GB",
+        batch_row_size: int = 10000,
+        output_format: str = "parquet",
+    ) -> Generator[dict, None, None]:
+        yield from ingest_excel(
+            self.config, stream_name, query, output_format, batch_row_size
+        )

@@ -6,7 +6,15 @@ from uuid_extensions import uuid7
 
 from spore._routes.utils import generate_blueprint
 from spore._connectors import SourceConnector
-from spore._connectors.utils import is_secret_field, persist_upload, purge_connection_secrets
+from spore._connectors.utils import (
+    connection_stream_dir,
+    is_data_field,
+    is_secret_field,
+    persist_data_file,
+    persist_upload,
+    purge_connection_data,
+    purge_connection_secrets,
+)
 from spore._config.settings import VENDOR_CONFIG, COMMON_LAYERS
 
 from spore._utils import encrypt_creds
@@ -127,11 +135,17 @@ def test_connection():
 def delete_connector(conn_id):
     try:
         connections = session.get("connections", [])
+        removed = next(
+            (c for c in connections if str(c.get("id")) == str(conn_id)),
+            None,
+        )
         connections = [conn for conn in connections if str(conn.get("id")) != str(conn_id)]
         session["connections"] = connections
         session.modified = True
 
         purge_connection_secrets(conn_id)
+        if removed:
+            purge_connection_data(removed.get("_stream_dir"))
         flash("Database deleted successfully.", "success")
         return redirect(url_for('connections.connections'))
     except Exception as e:
@@ -145,13 +159,20 @@ def registry():
     kind, source_type, name, desc, use_ssh, use_ssl, data = _parse_form_flags(data)
 
     conn_id = str(uuid7())
+    stream_dir: str | None = None
 
     try:
         if request.files:
             for file_key in request.files:
                 f = request.files[file_key]
-                if f and f.filename and is_secret_field(file_key):
+                if not (f and f.filename):
+                    continue
+                if is_secret_field(file_key):
                     data[file_key] = persist_upload(conn_id, file_key, f)
+                elif is_data_field(file_key):
+                    if stream_dir is None:
+                        stream_dir = connection_stream_dir(name, conn_id)
+                    data[file_key] = persist_data_file(stream_dir, file_key, f)
 
         connector = SourceConnector(
             kind=kind,
@@ -164,6 +185,7 @@ def registry():
         ok, msg = connector.test()
         if not ok:
             purge_connection_secrets(conn_id)
+            purge_connection_data(stream_dir)
             flash(f"Connection failed: {msg}", "error")
             return redirect(url_for("connections.new_connector"))
 
@@ -172,7 +194,7 @@ def registry():
             metadata = {}
 
         conns = session.get("connections", [])
-        conns.append({
+        entry = {
             "id": conn_id,
             "name": name,
             "kind": kind,
@@ -183,7 +205,10 @@ def registry():
             "use_ssh": use_ssh,
             "use_ssl": use_ssl,
             "created_at": __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        })
+        }
+        if stream_dir:
+            entry["_stream_dir"] = stream_dir
+        conns.append(entry)
         session["connections"] = conns
         session.modified = True
 
@@ -193,5 +218,6 @@ def registry():
     except Exception as e:
         logging.error(f"registry failed: {e}")
         purge_connection_secrets(conn_id)
+        purge_connection_data(stream_dir)
         flash(f"System error: {e}", "error")
         return redirect(url_for("connections.new_connector"))

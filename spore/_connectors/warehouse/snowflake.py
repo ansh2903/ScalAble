@@ -2,11 +2,16 @@
 Snowflake warehouse connector — remote pushdown preview + streaming ingest to Parquet.
 """
 
+import json
 import os
 
-import pyarrow.parquet as pq
-
 from ..base import BaseSource, SourceKind, SourceCapabilities
+from ..utils import (
+    make_batch_sink,
+    normalize_output_format,
+    source_filename,
+    write_empty_dataset,
+)
 from spore._config.settings import settings
 from spore._logger import logging
 
@@ -131,9 +136,23 @@ class SnowflakeSource(BaseSource):
                 cur.execute(f"SELECT * FROM ({query.rstrip(';')}) AS _q LIMIT {int(limit)}")
                 cols = [d[0] for d in cur.description]
                 rows = [dict(zip(cols, row)) for row in cur.fetchall()]
+                sample_rows = len(rows)
+                sample_bytes = len(json.dumps(rows, default=str).encode("utf-8"))
+                est_total_bytes = (
+                    round(sample_bytes / sample_rows * total_rows)
+                    if isinstance(total_rows, int) and sample_rows > 0
+                    else None
+                )
 
                 yield {"type": "columns", "content": cols}
-                yield {"type": "metadata", "total_rows": total_rows, "preview_count": len(rows)}
+                yield {
+                    "type": "metadata",
+                    "total_rows": total_rows,
+                    "preview_count": len(rows),
+                    "sample_rows": sample_rows,
+                    "sample_bytes": sample_bytes,
+                    "est_total_bytes": est_total_bytes,
+                }
                 yield {"type": "rows", "content": rows}
         except Exception as e:
             logging.error(f"[snowflake] preview failed: {e}")
@@ -146,15 +165,18 @@ class SnowflakeSource(BaseSource):
         destination_path: str | None = None,
         memory_ceiling: str = "1GB",
         batch_row_size: int = 10_000,
+        output_format: str = "parquet",
     ) -> tuple[str, str]:
         import pyarrow as pa
 
+        fmt = normalize_output_format(output_format)
         dest = destination_path or settings.SPORE_DATA_DIR
         stream_dir = os.path.join(dest, "streams", stream_name)
         os.makedirs(stream_dir, exist_ok=True)
-        source_path = os.path.join(stream_dir, "source.parquet")
+        source_path = os.path.join(stream_dir, source_filename(fmt))
 
-        writer = None
+        sink = None
+        cols: list[str] = []
         try:
             with self.connection_context() as conn:
                 cur = conn.cursor()
@@ -167,15 +189,16 @@ class SnowflakeSource(BaseSource):
                     batch = pa.RecordBatch.from_pydict(
                         {cols[i]: [r[i] for r in rows] for i in range(len(cols))}
                     )
-                    if writer is None:
-                        writer = pq.ParquetWriter(source_path, batch.schema, compression="snappy")
-                    writer.write_batch(batch)
-            if writer is None:
-                pq.write_table(pa.table({}), source_path)
+                    if sink is None:
+                        sink = make_batch_sink(source_path, batch.schema, fmt)
+                    sink.write_batch(batch)
+            if sink is None:
+                empty_schema = pa.schema([(c, pa.string()) for c in cols])
+                write_empty_dataset(source_path, empty_schema, fmt)
             return "success", stream_dir
         except Exception as e:
             logging.error(f"[snowflake] ingest failed: {e}")
             return "error", str(e)
         finally:
-            if writer:
-                writer.close()
+            if sink:
+                sink.close()

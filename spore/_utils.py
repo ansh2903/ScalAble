@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 import os
 import ast
 import csv
-import uuid
+from uuid_extensions import uuid7
 import json
 import dill
 
@@ -48,7 +48,7 @@ def generate_id():
     Returns:
         str: A unique identifier as a string.
     """
-    return str(uuid.uuid4()).hex
+    return uuid7().hex
 
 def validate_query(query: str) -> bool:
     '''

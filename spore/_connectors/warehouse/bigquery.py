@@ -5,9 +5,13 @@ BigQuery warehouse connector — remote pushdown preview + streaming ingest to P
 import json
 import os
 
-import pyarrow.parquet as pq
-
 from ..base import BaseSource, SourceKind, SourceCapabilities
+from ..utils import (
+    make_batch_sink,
+    normalize_output_format,
+    source_filename,
+    write_empty_dataset,
+)
 from spore._config.settings import settings
 from spore._logger import logging
 
@@ -83,6 +87,8 @@ class BigQuerySource(BaseSource):
             table = job.result()
             arrow = table.to_arrow()
             rows = arrow.to_pylist()
+            sample_rows = int(arrow.num_rows)
+            sample_bytes = int(arrow.nbytes)
 
             count_job = client.query(f"SELECT COUNT(*) AS cnt FROM ({query.rstrip(';')})")
             try:
@@ -90,8 +96,21 @@ class BigQuerySource(BaseSource):
             except Exception:
                 total_rows = "unknown"
 
+            est_total_bytes = (
+                round(sample_bytes / sample_rows * total_rows)
+                if isinstance(total_rows, int) and sample_rows > 0
+                else None
+            )
+
             yield {"type": "columns", "content": arrow.schema.names}
-            yield {"type": "metadata", "total_rows": total_rows, "preview_count": len(rows)}
+            yield {
+                "type": "metadata",
+                "total_rows": total_rows,
+                "preview_count": len(rows),
+                "sample_rows": sample_rows,
+                "sample_bytes": sample_bytes,
+                "est_total_bytes": est_total_bytes,
+            }
             yield {"type": "rows", "content": rows}
         except Exception as e:
             logging.error(f"[bigquery] preview failed: {e}")
@@ -104,17 +123,28 @@ class BigQuerySource(BaseSource):
         destination_path: str | None = None,
         memory_ceiling: str = "1GB",
         batch_row_size: int = 10_000,
+        output_format: str = "parquet",
     ) -> tuple[str, str]:
+        fmt = normalize_output_format(output_format)
         dest = destination_path or settings.SPORE_DATA_DIR
         stream_dir = os.path.join(dest, "streams", stream_name)
         os.makedirs(stream_dir, exist_ok=True)
-        source_path = os.path.join(stream_dir, "source.parquet")
+        source_path = os.path.join(stream_dir, source_filename(fmt))
 
         try:
             client = self._client()
             job = client.query(query)
             arrow_table = job.result().to_arrow(max_results=None)
-            pq.write_table(arrow_table, source_path, compression="snappy")
+
+            if arrow_table.num_rows == 0:
+                write_empty_dataset(source_path, arrow_table.schema, fmt)
+            else:
+                sink = make_batch_sink(source_path, arrow_table.schema, fmt)
+                try:
+                    for batch in arrow_table.to_batches(max_chunksize=batch_row_size):
+                        sink.write_batch(batch)
+                finally:
+                    sink.close()
             return "success", stream_dir
         except Exception as e:
             logging.error(f"[bigquery] ingest failed: {e}")

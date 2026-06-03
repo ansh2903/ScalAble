@@ -2,10 +2,18 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
 from enum import Enum
+from typing import Protocol
+
+import pyarrow as pa
+import pyarrow.csv as pa_csv
+import pyarrow.parquet as pq
+
+from werkzeug.utils import secure_filename
 
 from spore._config.settings import settings
 
@@ -13,6 +21,8 @@ from spore._config.settings import settings
 # ── connection secrets (volume-backed cert/key storage) ─────────────────────
 
 SECRETS_SUBDIR = "secrets"
+STREAMS_SUBDIR = "streams"
+
 SECRET_FIELDS = frozenset({
     "sslrootcert",
     "sslcert",
@@ -23,13 +33,26 @@ SECRET_FIELDS = frozenset({
     "client_cert",
     "client_key",
     "ca_bundle",
-    "file_path",
 })
+
+DATA_FIELDS = frozenset({"file_path"})
 
 
 def is_secret_field(name: str) -> bool:
-    """Return True if ``name`` is a file-backed credential field."""
+    """Return True if ``name`` is a file-backed credential field (certs/keys)."""
     return name in SECRET_FIELDS
+
+
+def is_data_field(name: str) -> bool:
+    """Return True if ``name`` is an uploaded data file field (CSV, etc.)."""
+    return name in DATA_FIELDS
+
+
+def slugify_conn_name(name: str, fallback: str = "source") -> str:
+    """Filesystem-safe slug from a connection display name."""
+    slug = re.sub(r"[^a-z0-9]+", "_", (name or "").strip().lower())
+    slug = re.sub(r"_+", "_", slug).strip("_")
+    return slug or fallback
 
 
 def connection_secrets_dir(conn_id: str) -> str:
@@ -58,6 +81,42 @@ def purge_connection_secrets(conn_id: str) -> None:
     path = os.path.join(settings.SPORE_DATA_DIR, SECRETS_SUBDIR, str(conn_id))
     if os.path.isdir(path):
         shutil.rmtree(path, ignore_errors=True)
+
+
+def connection_stream_dir(conn_name: str, conn_id: str) -> str:
+    """Return (and create) ``streams/<slug>`` for uploaded data files."""
+    base = slugify_conn_name(conn_name, fallback=str(conn_id))
+    root = os.path.join(settings.SPORE_DATA_DIR, STREAMS_SUBDIR)
+    os.makedirs(root, exist_ok=True)
+
+    candidate = base
+    suffix = 2
+    while os.path.exists(os.path.join(root, candidate)):
+        candidate = f"{base}-{suffix}"
+        suffix += 1
+
+    path = os.path.join(root, candidate)
+    os.makedirs(path, mode=0o755, exist_ok=True)
+    return path
+
+
+def persist_data_file(stream_dir: str, field: str, file_storage) -> str:
+    """Save an uploaded data file under a stream folder; return its path."""
+    if not file_storage or not getattr(file_storage, "filename", None):
+        raise ValueError(f"No file provided for field {field!r}")
+
+    raw_name = file_storage.filename or "upload"
+    name = secure_filename(raw_name) or "upload"
+    dest_path = os.path.join(stream_dir, name)
+
+    file_storage.save(dest_path)
+    return dest_path
+
+
+def purge_connection_data(stream_dir: str | None) -> None:
+    """Remove a connection's uploaded data stream directory."""
+    if stream_dir and os.path.isdir(stream_dir):
+        shutil.rmtree(stream_dir, ignore_errors=True)
 
 
 # ── preview limits ─────────────────────────────────────────────────────────
@@ -162,6 +221,147 @@ def status_row(query: str, kind: QueryKind, rows_affected: int | None) -> dict:
     else:
         affected = "—"
     return {"operation": operation, "rows_affected": affected, "status": "OK"}
+
+
+# ── ingest output formats ───────────────────────────────────────────────────
+#
+# Connector ingest pipelines write the resulting rows to disk as
+# ``streams/<name>/source.<ext>``. The user picks the format from the data
+# panel; this module owns the mapping plus a uniform per-batch sink so the
+# connector layer doesn't care which writer it's talking to.
+
+SOURCE_EXT: dict[str, str] = {
+    "parquet": "parquet",
+    "csv": "csv",
+    "tsv": "tsv",
+    "json": "json",
+    "excel": "xlsx",
+}
+
+
+def normalize_output_format(fmt: str | None) -> str:
+    """Coerce an arbitrary user-supplied label into a known format key."""
+    key = (fmt or "parquet").strip().lower()
+    aliases = {
+        "xlsx": "excel",
+        "xls": "excel",
+        "ndjson": "json",
+        "jsonl": "json",
+    }
+    key = aliases.get(key, key)
+    return key if key in SOURCE_EXT else "parquet"
+
+
+def source_filename(output_format: str) -> str:
+    """``source.<ext>`` for the given format key."""
+    return f"source.{SOURCE_EXT[normalize_output_format(output_format)]}"
+
+
+class BatchSink(Protocol):
+    """Per-batch writer used by streaming ingest paths."""
+
+    def write_batch(self, batch: pa.RecordBatch) -> None: ...
+    def close(self) -> None: ...
+
+
+class _ParquetSink:
+    def __init__(self, path: str, schema: pa.Schema):
+        self._writer = pq.ParquetWriter(path, schema, compression="snappy")
+
+    def write_batch(self, batch: pa.RecordBatch) -> None:
+        self._writer.write_batch(batch)
+
+    def close(self) -> None:
+        self._writer.close()
+
+
+class _CSVSink:
+    def __init__(self, path: str, schema: pa.Schema, delimiter: str = ","):
+        self._writer = pa_csv.CSVWriter(
+            path,
+            schema,
+            write_options=pa_csv.WriteOptions(
+                include_header=True,
+                delimiter=delimiter,
+            ),
+        )
+
+    def write_batch(self, batch: pa.RecordBatch) -> None:
+        self._writer.write_batch(batch)
+
+    def close(self) -> None:
+        self._writer.close()
+
+
+class _JSONLSink:
+    """Newline-delimited JSON. Writes one row per line; safe for huge result sets."""
+
+    def __init__(self, path: str, schema: pa.Schema):
+        self._fh = open(path, "w", encoding="utf-8")
+
+    def write_batch(self, batch: pa.RecordBatch) -> None:
+        for row in batch.to_pylist():
+            self._fh.write(json.dumps(row, default=str))
+            self._fh.write("\n")
+
+    def close(self) -> None:
+        self._fh.close()
+
+
+class _ExcelSink:
+    """openpyxl write-only mode — append rows as they arrive, save on close."""
+
+    def __init__(self, path: str, schema: pa.Schema):
+        from openpyxl import Workbook  # type: ignore
+
+        self._path = path
+        self._wb = Workbook(write_only=True)
+        self._ws = self._wb.create_sheet("data")
+        self._ws.append([f.name for f in schema])
+
+    @staticmethod
+    def _coerce(value):
+        # openpyxl accepts numbers, strings, datetimes; anything else gets stringified.
+        import datetime as _dt
+
+        if value is None or isinstance(
+            value, (str, int, float, bool, _dt.datetime, _dt.date, _dt.time)
+        ):
+            return value
+        return str(value)
+
+    def write_batch(self, batch: pa.RecordBatch) -> None:
+        for row in batch.to_pylist():
+            self._ws.append([self._coerce(v) for v in row.values()])
+
+    def close(self) -> None:
+        self._wb.save(self._path)
+
+
+def make_batch_sink(path: str, schema: pa.Schema, output_format: str) -> BatchSink:
+    """Build a per-batch writer for ``output_format`` rooted at ``path``."""
+    fmt = normalize_output_format(output_format)
+    if fmt == "parquet":
+        return _ParquetSink(path, schema)
+    if fmt == "csv":
+        return _CSVSink(path, schema, delimiter=",")
+    if fmt == "tsv":
+        return _CSVSink(path, schema, delimiter="\t")
+    if fmt == "json":
+        return _JSONLSink(path, schema)
+    if fmt == "excel":
+        return _ExcelSink(path, schema)
+    raise ValueError(f"Unsupported output format: {output_format!r}")
+
+
+def write_empty_dataset(path: str, schema: pa.Schema, output_format: str) -> None:
+    """Write a zero-row dataset for the given format. Closes the sink immediately."""
+    sink = make_batch_sink(path, schema, output_format)
+    try:
+        empty = pa.RecordBatch.from_pylist([], schema=schema)
+        sink.write_batch(empty)
+    finally:
+        sink.close()
 
 
 # ── HTTP TLS helpers (REST / GraphQL) ───────────────────────────────────────

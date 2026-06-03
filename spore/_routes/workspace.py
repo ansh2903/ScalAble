@@ -1,4 +1,5 @@
-from flask import stream_with_context, render_template, Response, jsonify, request, session, flash, current_app
+from flask import stream_with_context, render_template, Response, jsonify, request, session, flash, current_app, send_file
+from pathlib import Path
 import importlib
 
 from spore._connectors import SourceConnector
@@ -6,6 +7,9 @@ from spore._engine.model_manager import get_engine
 from spore._engine.query_executor import run_query
 from spore._utils import file_size_fmt, decrypt_creds, downloadable_json, downloadable_excel, downloadable_csv, load_settings
 from spore._routes.utils import generate_blueprint
+from spore._workspace.store import get_workspace_store
+from spore._compute.query import query_stream
+from spore._compute.relations import reconcile_relations, scan_stream
 
 import psutil
 import time
@@ -19,20 +23,40 @@ from spore._logger import logging
 
 workspace_blueprint = generate_blueprint('workspace')
 
-@workspace_blueprint.route('/chat', methods = ['GET', 'POST'])
+def _resolve_workspace(workspace_id: str | None):
+    """Load workspace by id or ensure a default exists."""
+    store = get_workspace_store()
+    if workspace_id:
+        ws = store.get_workspace(workspace_id)
+        if ws:
+            store.touch_workspace(workspace_id)
+            return ws, store.get_state(workspace_id)
+    ws = store.ensure_default_workspace()
+    store.touch_workspace(ws["id"])
+    return ws, store.get_state(ws["id"])
+
+
+@workspace_blueprint.route('/chat', methods=['GET', 'POST'])
 def chat():
     try:
         settings = load_settings() or {}
         provider, model = settings.get("provider", None), settings.get("model", None)
-
         connections = session.get('connections', [])
-        print("Connections in session:", connections)
-
+        workspace_id = request.args.get('workspace_id')
+        workspace, workspace_state = _resolve_workspace(workspace_id)
     except Exception as e:
         logging.error(f"Error fetching connections: {str(e)}")
-        connections = {}
+        connections = []
+        workspace, workspace_state = _resolve_workspace(None)
 
-    return render_template("pages/chat.html", connections=connections, provider=provider, model=model)
+    return render_template(
+        "pages/chat.html",
+        connections=connections,
+        provider=provider,
+        model=model,
+        workspace=workspace,
+        workspace_state=workspace_state,
+    )
 
 @workspace_blueprint.route('/chat/ask', methods=['POST'])
 def ask():
@@ -247,46 +271,236 @@ def system_metrics():
 
     return Response(generate(), mimetype='text/event-stream')
 
-@workspace_blueprint.route('/streams')
-def files():
-    try:
-        base_path = 'data/streams'
-        streams = []
-        MEMORY_THRESHOLD = 1 * 1024**3 # 1GB
-
-        if not os.path.exists(base_path):
-            return jsonify([])
-
-        for stream_name in os.listdir(base_path):
-            stream_path = os.path.join(base_path, stream_name)
-            if os.path.isdir(stream_path):
-                stream_info = {"name": stream_name, "files": {}}
-                
-                for file_name in ['source.parquet']:
-                    file_path = os.path.join(stream_path, file_name)
-                    if os.path.exists(file_path):
-                        size = os.path.getsize(file_path)
-                        stream_info["files"][file_name] = {
-                            "size_bytes": size,
-                            "size_pretty": file_size_fmt(size), # Helper for backend display
-                            "memory_safe": size < MEMORY_THRESHOLD
-                        }
-
-                if stream_info["files"]:
-                    streams.append(stream_info)
-                    
-        return jsonify(streams)
-    except Exception as e:
-        pass
-
 @workspace_blueprint.route('/api/metadata/<string:db_id>')
 def get_db_metadata(db_id):
     connections = session.get('connections', [])
-    # IMPORTANT: Ensure you are comparing types correctly here!
-    # If connections[i]['id'] is a string, compare as string.
     selected_conn = next((c for c in connections if str(c['id']) == str(db_id)), None)
     
     if not selected_conn:
         return jsonify({"error": "Not found"}), 404
         
     return jsonify({"metadata": selected_conn.get('metadata', {})})
+
+
+# ── Workspace management API ────────────────────────────────────────────────
+
+
+@workspace_blueprint.route('/api/workspaces', methods=['GET'])
+def api_list_workspaces():
+    store = get_workspace_store()
+    return jsonify({"workspaces": store.list_workspaces()})
+
+
+@workspace_blueprint.route('/api/workspaces', methods=['POST'])
+def api_create_workspace():
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
+    if not name:
+        return jsonify({"error": "name is required"}), 400
+    description = (data.get("description") or "").strip()
+    store = get_workspace_store()
+    ws = store.create_workspace(name, description)
+    return jsonify({"workspace": ws}), 201
+
+
+@workspace_blueprint.route('/api/workspaces/<string:workspace_id>', methods=['GET'])
+def api_get_workspace(workspace_id):
+    store = get_workspace_store()
+    ws = store.get_workspace(workspace_id)
+    if not ws:
+        return jsonify({"error": "Not found"}), 404
+    return jsonify({
+        "workspace": ws,
+        "state": store.get_state(workspace_id),
+    })
+
+
+@workspace_blueprint.route('/api/workspaces/<string:workspace_id>', methods=['PATCH'])
+def api_patch_workspace(workspace_id):
+    data = request.get_json(silent=True) or {}
+    store = get_workspace_store()
+    ws = store.update_workspace(
+        workspace_id,
+        name=data.get("name"),
+        description=data.get("description"),
+    )
+    if not ws:
+        return jsonify({"error": "Not found"}), 404
+    return jsonify({"workspace": ws})
+
+
+@workspace_blueprint.route('/api/workspaces/<string:workspace_id>', methods=['DELETE'])
+def api_delete_workspace(workspace_id):
+    store = get_workspace_store()
+    if not store.delete_workspace(workspace_id):
+        return jsonify({"error": "Not found"}), 404
+    remaining = store.list_workspaces()
+    if not remaining:
+        store.create_workspace("Default Workspace", "Your first analysis workspace")
+    return jsonify({"ok": True})
+
+
+@workspace_blueprint.route('/api/workspaces/<string:workspace_id>/activate', methods=['POST'])
+def api_activate_workspace(workspace_id):
+    store = get_workspace_store()
+    ws = store.get_workspace(workspace_id)
+    if not ws:
+        return jsonify({"error": "Not found"}), 404
+    store.touch_workspace(workspace_id)
+    return jsonify({
+        "workspace": store.get_workspace(workspace_id),
+        "state": store.get_state(workspace_id),
+    })
+
+
+@workspace_blueprint.route('/api/workspaces/<string:workspace_id>/state', methods=['GET'])
+def api_get_workspace_state(workspace_id):
+    store = get_workspace_store()
+    if not store.get_workspace(workspace_id):
+        return jsonify({"error": "Not found"}), 404
+    state = store.get_state(workspace_id)
+    return jsonify({"state": state})
+
+
+@workspace_blueprint.route('/api/workspaces/<string:workspace_id>/state', methods=['PATCH'])
+def api_patch_workspace_state(workspace_id):
+    store = get_workspace_store()
+    if not store.get_workspace(workspace_id):
+        return jsonify({"error": "Not found"}), 404
+    data = request.get_json(silent=True) or {}
+    state = store.patch_state(workspace_id, data)
+    return jsonify({"state": state})
+
+
+@workspace_blueprint.route('/api/workspaces/<string:workspace_id>/history', methods=['GET'])
+def api_list_history(workspace_id):
+    store = get_workspace_store()
+    if not store.get_workspace(workspace_id):
+        return jsonify({"error": "Not found"}), 404
+    limit = min(int(request.args.get("limit", 50)), 200)
+    return jsonify({"history": store.list_history(workspace_id, limit=limit)})
+
+
+@workspace_blueprint.route('/api/workspaces/<string:workspace_id>/history', methods=['POST'])
+def api_append_history(workspace_id):
+    store = get_workspace_store()
+    if not store.get_workspace(workspace_id):
+        return jsonify({"error": "Not found"}), 404
+    data = request.get_json(silent=True) or {}
+    if not data:
+        return jsonify({"error": "entry payload required"}), 400
+    entry = store.append_history(workspace_id, data)
+    return jsonify({"entry": entry}), 201
+
+
+@workspace_blueprint.route('/api/workspaces/<string:workspace_id>/history', methods=['DELETE'])
+def api_clear_history(workspace_id):
+    store = get_workspace_store()
+    if not store.get_workspace(workspace_id):
+        return jsonify({"error": "Not found"}), 404
+    store.clear_history(workspace_id)
+    return jsonify({"ok": True})
+
+
+@workspace_blueprint.route('/api/workspaces/<string:workspace_id>/relations', methods=['GET'])
+def api_workspace_relations(workspace_id):
+    store = get_workspace_store()
+    if not store.get_workspace(workspace_id):
+        return jsonify({"error": "Not found"}), 404
+    state = store.get_state(workspace_id) or {}
+    data = reconcile_relations(state.get("data") or {})
+    store.patch_state(workspace_id, {"data": data})
+    return jsonify({"relations": data.get("relations") or {}})
+
+
+@workspace_blueprint.route('/api/workspaces/<string:workspace_id>/relations/register', methods=['POST'])
+def api_register_relation(workspace_id):
+    store = get_workspace_store()
+    if not store.get_workspace(workspace_id):
+        return jsonify({"error": "Not found"}), 404
+    body = request.get_json(silent=True) or {}
+    stream_name = (body.get("stream_name") or body.get("name") or "").strip()
+    if not stream_name:
+        return jsonify({"error": "stream_name required"}), 400
+    try:
+        entry = scan_stream(stream_name)
+    except (FileNotFoundError, ValueError) as e:
+        return jsonify({"error": str(e)}), 404
+    if body.get("conn_id"):
+        entry["source"] = {
+            "conn_id": str(body["conn_id"]),
+            "query": body.get("query"),
+        }
+    if body.get("cell_id"):
+        entry["source"] = {"cell_id": str(body["cell_id"])}
+
+    state = store.get_state(workspace_id) or {}
+    data = reconcile_relations(state.get("data") or {})
+    relations = data.get("relations") or {}
+    relations[stream_name] = {**(relations.get(stream_name) or {}), **entry}
+    data["relations"] = relations
+    store.patch_state(workspace_id, {"data": data})
+    return jsonify({"relation": entry})
+
+
+@workspace_blueprint.route('/api/workspaces/<string:workspace_id>/dashboard/export', methods=['GET'])
+def api_dashboard_export(workspace_id):
+    store = get_workspace_store()
+    ws = store.get_workspace(workspace_id)
+    if not ws:
+        return jsonify({"error": "Not found"}), 404
+    state = store.get_state(workspace_id) or {}
+    dashboard = state.get("dashboard") or {}
+    widgets = dashboard.get("widgets") or []
+    export_widgets = []
+    max_rows = 500
+
+    for w in widgets:
+        src = w.get("source") or {}
+        ref = src.get("ref") or src.get("stream")
+        if not ref:
+            continue
+        try:
+            data = query_stream(
+                ref,
+                transform=w.get("transform"),
+                limit=max_rows,
+            )
+            export_widgets.append({
+                "id": w.get("id"),
+                "type": w.get("type"),
+                "title": w.get("title"),
+                "encoding": w.get("encoding") or {},
+                "style": w.get("style") or {},
+                "layout": w.get("layout") or {},
+                "data": {
+                    "columns": data.get("columns"),
+                    "rows": (data.get("rows") or [])[:max_rows],
+                },
+            })
+        except Exception as e:
+            logging.warning(f"export widget {w.get('id')} skipped: {e}")
+
+    static_root = Path(__file__).resolve().parents[2] / "frontend" / "src" / "templates" / "pages" / "static"
+    echarts_path = static_root / "js" / "vendor" / "echarts.min.js"
+    echarts_inline = ""
+    if echarts_path.is_file():
+        echarts_inline = echarts_path.read_text(encoding="utf-8", errors="replace")
+
+    html = render_template(
+        "pages/dashboard_export.html",
+        workspace=ws,
+        dashboard=dashboard,
+        widgets=export_widgets,
+        echarts_inline=echarts_inline,
+    )
+
+    from io import BytesIO
+    buf = BytesIO(html.encode("utf-8"))
+    filename = f"{ws.get('name', 'dashboard')}.dash.html".replace(" ", "_")
+    return send_file(
+        buf,
+        mimetype="text/html",
+        as_attachment=True,
+        download_name=filename,
+    )

@@ -52,8 +52,21 @@ class SourceConnector:
 
     def ingest(self, stream_name: str, query: str, **kwargs):
         if not self._connector.capabilities.can_ingest:
-            raise RuntimeError(f"{self.source_type} does not support ingestion.")
-        return self._connector.ingest(stream_name=stream_name, query=query, **kwargs)
+            yield {"type": "error", "content": f"{self.source_type} does not support ingestion."}
+            return
+        try:
+            result = self._connector.ingest(stream_name=stream_name, query=query, **kwargs)
+            if hasattr(result, "__iter__") and not isinstance(result, tuple):
+                yield from result
+            else:
+                status, payload = result
+                if status == "success":
+                    yield {"type": "done", "path": payload, "total_rows": None, "total_bytes": None}
+                else:
+                    yield {"type": "error", "content": payload}
+        except Exception as e:
+            logging.error(f"[{self.source_type}] ingest failed: {e}")
+            yield {"type": "error", "content": str(e)}
 
     def file_to_db(self, file_path: str, table_name: str) -> dict:
         if not hasattr(self._connector, "file_to_db"):

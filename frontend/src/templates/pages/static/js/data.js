@@ -79,42 +79,206 @@
         if (el) el.textContent = text;
     }
 
+    // ── Result rows cache + pagination ──────────────────────────────────────
+    //
+    // We keep the full stream of rows in memory and only render a single page
+    // into the DOM at a time. This keeps the table responsive even when the
+    // user pulls thousands of rows (large innerHTML / layout cost grows
+    // linearly otherwise and freezes the tab).
+
+    const DEFAULT_PAGE_SIZE = 20;
+
+    let _allRows = [];
+    let _columnCount = 0;
+    let _filteredIndices = null; // null = no filter active
+    let _currentPage = 0;
+    let _pageSize = DEFAULT_PAGE_SIZE;
+
+    function resetResultsState() {
+        _allRows = [];
+        _columnCount = 0;
+        _filteredIndices = null;
+        _currentPage = 0;
+    }
+
+    function visibleRowCount() {
+        return _filteredIndices ? _filteredIndices.length : _allRows.length;
+    }
+
+    function pageCount() {
+        const total = visibleRowCount();
+        return Math.max(1, Math.ceil(total / _pageSize));
+    }
+
+    function clampPage() {
+        const pages = pageCount();
+        if (_currentPage >= pages) _currentPage = pages - 1;
+        if (_currentPage < 0) _currentPage = 0;
+    }
+
+    function rowMatchesTerm(row, term) {
+        if (!term) return true;
+        const values = Object.values(row);
+        for (let i = 0; i < values.length; i++) {
+            const v = values[i];
+            if (v !== null && v !== undefined && String(v).toLowerCase().includes(term)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     function clearResultTable() {
         const head = document.getElementById('data-result-head-row');
         const body = document.getElementById('data-result-tbody');
         if (head) head.innerHTML = '';
         if (body) body.innerHTML = '';
+        resetResultsState();
+        renderPager();
         updateMatchCounter();
     }
 
     function renderColumns(cols) {
+        _columnCount = (cols || []).length;
         const head = document.getElementById('data-result-head-row');
         if (!head) return;
-        head.innerHTML = cols.map(c => `
+        head.innerHTML = (cols || []).map(c => `
             <th class="px-3 py-2 text-left text-[9px] font-black tracking-wider text-slate-500 whitespace-nowrap">${escapeHtml(c)}</th>
         `).join('');
     }
 
-    function appendRows(rows) {
+    function rowHtml(row, globalIndex) {
+        const stripe = globalIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/50';
+        const cells = Object.values(row).map((v) => {
+            const cell = (v === null || v === undefined)
+                ? '<span class="text-slate-300 italic">null</span>'
+                : escapeHtml(String(v));
+            return `<td class="px-3 py-1.5 text-[11px] text-slate-700 font-medium whitespace-nowrap border-b border-slate-100">${cell}</td>`;
+        }).join('');
+        return `<tr class="${stripe} hover:bg-primary-soft/30 transition-colors">${cells}</tr>`;
+    }
+
+    function renderCurrentPage() {
+        clampPage();
         const body = document.getElementById('data-result-tbody');
         if (!body) return;
 
-        const startIndex = body.querySelectorAll('tr').length;
+        const start = _currentPage * _pageSize;
+        const end = start + _pageSize;
 
-        const html = rows.map((row, i) => {
-            const rowIndex = startIndex + i;
-            const stripe = rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/50';
-            const cells = Object.values(row).map((v) => {
-                const cell = (v === null || v === undefined)
-                    ? '<span class="text-slate-300 italic">null</span>'
-                    : escapeHtml(String(v));
-                return `<td class="px-3 py-1.5 text-[11px] text-slate-700 font-medium whitespace-nowrap border-b border-slate-100">${cell}</td>`;
-            }).join('');
-            return `<tr class="${stripe} hover:bg-primary-soft/30 transition-colors">${cells}</tr>`;
-        }).join('');
+        let html;
+        if (_filteredIndices) {
+            const pageIdx = _filteredIndices.slice(start, end);
+            html = pageIdx.map(idx => rowHtml(_allRows[idx], idx)).join('');
+        } else {
+            const pageRows = _allRows.slice(start, end);
+            html = pageRows.map((row, i) => rowHtml(row, start + i)).join('');
+        }
 
-        body.insertAdjacentHTML('beforeend', html);
-        applyResultFilter();
+        body.innerHTML = html;
+        renderPager();
+        updateMatchCounter();
+    }
+
+    function renderPager() {
+        const pager = document.getElementById('data-result-pager');
+        if (!pager) return;
+
+        const total = visibleRowCount();
+        const pages = pageCount();
+        clampPage();
+
+        if (_allRows.length === 0) {
+            pager.classList.add('hidden');
+            pager.classList.remove('flex');
+            return;
+        }
+
+        const isOnResults = !document.getElementById('data-results-pane')?.classList.contains('hidden');
+        pager.classList.toggle('hidden', !isOnResults);
+        pager.classList.toggle('flex', isOnResults);
+
+        const info = document.getElementById('data-result-pager-info');
+        if (info) {
+            if (total === 0) {
+                info.textContent = 'No matches';
+            } else {
+                const startN = _currentPage * _pageSize + 1;
+                const endN = Math.min(total, (_currentPage + 1) * _pageSize);
+                info.textContent = `${startN.toLocaleString()}–${endN.toLocaleString()} of ${total.toLocaleString()}`;
+            }
+        }
+
+        const pageLabel = document.getElementById('data-result-pager-page');
+        if (pageLabel) pageLabel.textContent = `Page ${_currentPage + 1} / ${pages}`;
+
+        const atFirst = _currentPage === 0;
+        const atLast = (_currentPage + 1) >= pages;
+        const first = document.getElementById('data-result-pager-first');
+        const prev = document.getElementById('data-result-pager-prev');
+        const next = document.getElementById('data-result-pager-next');
+        const last = document.getElementById('data-result-pager-last');
+        if (first) first.disabled = atFirst;
+        if (prev) prev.disabled = atFirst;
+        if (next) next.disabled = atLast;
+        if (last) last.disabled = atLast;
+
+        const sizeSelect = document.getElementById('data-result-page-size');
+        if (sizeSelect && String(sizeSelect.value) !== String(_pageSize)) {
+            sizeSelect.value = String(_pageSize);
+        }
+    }
+
+    function goToDataResultsPage(target) {
+        const pages = pageCount();
+        let page;
+        if (target === 'prev') page = _currentPage - 1;
+        else if (target === 'next') page = _currentPage + 1;
+        else if (target === 'last') page = pages - 1;
+        else page = Number(target);
+
+        if (!Number.isFinite(page)) return;
+        if (page < 0 || page >= pages) return;
+        _currentPage = page;
+        renderCurrentPage();
+    }
+
+    function setDataResultsPageSize(size) {
+        if (!Number.isFinite(size) || size <= 0) return;
+        // Try to keep the user roughly anchored at the same row offset.
+        const firstVisibleGlobal = _currentPage * _pageSize;
+        _pageSize = size;
+        _currentPage = Math.floor(firstVisibleGlobal / _pageSize);
+        renderCurrentPage();
+    }
+
+    function appendRows(rows) {
+        if (!rows || rows.length === 0) return;
+
+        const prevVisibleCount = visibleRowCount();
+        const startIndex = _allRows.length;
+        for (let i = 0; i < rows.length; i++) _allRows.push(rows[i]);
+
+        // Extend the filtered set incrementally so we don't rescan everything
+        // on every streaming batch.
+        if (_filteredIndices) {
+            const term = getResultSearchTerm();
+            for (let i = 0; i < rows.length; i++) {
+                const idx = startIndex + i;
+                if (rowMatchesTerm(_allRows[idx], term)) _filteredIndices.push(idx);
+            }
+        }
+
+        // Only redraw the body when the new rows would actually land on the
+        // current page. Otherwise just refresh the pager/match counter — much
+        // cheaper during high-throughput streaming.
+        const currentPageEnd = (_currentPage + 1) * _pageSize;
+        if (prevVisibleCount < currentPageEnd) {
+            renderCurrentPage();
+        } else {
+            renderPager();
+            updateMatchCounter();
+        }
     }
 
     function hasKnownTotal(dbTotalRows) {
@@ -124,16 +288,30 @@
             && !Number.isNaN(Number(dbTotalRows));
     }
 
-    function formatStreamingMeta(limit, dbTotalRows) {
-        const showing = `Showing ${Number(limit).toLocaleString()}`;
-        if (!hasKnownTotal(dbTotalRows)) return showing;
-        return `Total: ${Number(dbTotalRows).toLocaleString()} · ${showing}`;
+    function formatBytes(n) {
+        if (n === null || n === undefined || Number.isNaN(Number(n))) return null;
+        const bytes = Number(n);
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+        if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+        return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
     }
 
-    function formatFinalMeta(streamedRows, dbTotalRows, columnCount, elapsedMs) {
+    function formatSizeSuffix(dbEstBytes) {
+        const label = formatBytes(dbEstBytes);
+        return label ? ` (~${label})` : '';
+    }
+
+    function formatStreamingMeta(streamedRows, dbTotalRows, dbEstBytes) {
+        const showing = `Showing ${Number(streamedRows).toLocaleString()}`;
+        if (!hasKnownTotal(dbTotalRows)) return showing;
+        return `Total: ${Number(dbTotalRows).toLocaleString()}${formatSizeSuffix(dbEstBytes)} · ${showing}`;
+    }
+
+    function formatFinalMeta(streamedRows, dbTotalRows, dbEstBytes, columnCount, elapsedMs) {
         const parts = [];
         if (hasKnownTotal(dbTotalRows)) {
-            parts.push(`Total: ${Number(dbTotalRows).toLocaleString()}`);
+            parts.push(`Total: ${Number(dbTotalRows).toLocaleString()}${formatSizeSuffix(dbEstBytes)}`);
         }
         parts.push(`Showing ${Number(streamedRows).toLocaleString()}`);
         parts.push(`${columnCount} cols`);
@@ -163,48 +341,32 @@
     }
 
     function applyResultFilter() {
-        const body = document.getElementById('data-result-tbody');
-        if (!body) return;
-
         const term = getResultSearchTerm();
-        const rows = body.querySelectorAll('tr');
-
         if (!term) {
-            rows.forEach((tr) => { tr.style.display = ''; });
-            updateMatchCounter(rows.length, rows.length);
-            return;
+            _filteredIndices = null;
+        } else {
+            _filteredIndices = [];
+            for (let i = 0; i < _allRows.length; i++) {
+                if (rowMatchesTerm(_allRows[i], term)) _filteredIndices.push(i);
+            }
         }
-
-        let matched = 0;
-        rows.forEach((tr) => {
-            const text = (tr.textContent || '').toLowerCase();
-            const hit = text.includes(term);
-            tr.style.display = hit ? '' : 'none';
-            if (hit) matched++;
-        });
-        updateMatchCounter(matched, rows.length);
+        _currentPage = 0;
+        renderCurrentPage();
     }
 
-    function updateMatchCounter(matched, total) {
+    function updateMatchCounter() {
         const el = document.getElementById('data-result-match');
         if (!el) return;
 
-        const body = document.getElementById('data-result-tbody');
-        if (matched === undefined || total === undefined) {
-            const all = body ? body.querySelectorAll('tr').length : 0;
-            const visible = body ? body.querySelectorAll('tr:not([style*="display: none"])').length : 0;
-            matched = visible;
-            total = all;
-        }
-
+        const total = _allRows.length;
         if (total === 0) {
             el.textContent = '— matches';
             return;
         }
-        if (matched === total) {
+        if (_filteredIndices === null) {
             el.textContent = `${total.toLocaleString()} rows`;
         } else {
-            el.textContent = `${matched.toLocaleString()} / ${total.toLocaleString()} match`;
+            el.textContent = `${_filteredIndices.length.toLocaleString()} / ${total.toLocaleString()} match`;
         }
     }
 
@@ -227,37 +389,70 @@
             .replace(/'/g, '&#39;');
     }
 
-    // ── Query history ───────────────────────────────────────────────────────
+    // ── Query history (workspace-scoped via API) ─────────────────────────────
 
-    const HISTORY_KEY = 'spore_data_history';
     const HISTORY_LIMIT = 50;
+    let _historyCache = [];
+
+    function historyApiBase() {
+        const wid = typeof window.getActiveWorkspaceId === 'function'
+            ? window.getActiveWorkspaceId()
+            : null;
+        if (!wid) return null;
+        return `/api/workspaces/${encodeURIComponent(wid)}/history`;
+    }
 
     function loadHistory() {
-        try {
-            const raw = localStorage.getItem(HISTORY_KEY);
-            const parsed = raw ? JSON.parse(raw) : [];
-            return Array.isArray(parsed) ? parsed : [];
-        } catch {
-            return [];
-        }
+        return _historyCache;
     }
 
-    function saveHistory(list) {
-        try {
-            localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, HISTORY_LIMIT)));
-        } catch {
-            // Storage quota or disabled — silently ignore; in-memory list still works.
+    async function fetchHistoryFromServer() {
+        const base = historyApiBase();
+        if (!base) {
+            _historyCache = [];
+            return _historyCache;
         }
+        try {
+            const res = await fetch(base);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            _historyCache = Array.isArray(data.history) ? data.history : [];
+        } catch (e) {
+            console.warn('history fetch failed', e);
+            _historyCache = _historyCache || [];
+        }
+        return _historyCache;
     }
 
-    function pushHistoryEntry(entry) {
-        const list = loadHistory();
-        list.unshift({
+    async function pushHistoryEntry(entry) {
+        const payload = {
             id: `q_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
             timestamp: Date.now(),
             ...entry,
-        });
-        saveHistory(list);
+        };
+        const base = historyApiBase();
+        if (base) {
+            try {
+                const res = await fetch(base, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.entry) {
+                        _historyCache.unshift(data.entry);
+                        _historyCache = _historyCache.slice(0, HISTORY_LIMIT);
+                        renderQueryHistory();
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.warn('history save failed, using cache', e);
+            }
+        }
+        _historyCache.unshift(payload);
+        _historyCache = _historyCache.slice(0, HISTORY_LIMIT);
         renderQueryHistory();
     }
 
@@ -308,8 +503,9 @@
                        <span class="w-1.5 h-1.5 rounded-pill bg-rose-500"></span>Error
                    </span>`;
             const shown = Number(h.rowCount ?? 0).toLocaleString();
+            const sizeLabel = h.estTotalBytes ? ` (~${formatBytes(h.estTotalBytes)})` : '';
             const rowsLabel = (h.totalRows !== null && h.totalRows !== undefined)
-                ? `${shown} / ${Number(h.totalRows).toLocaleString()} rows`
+                ? `${shown} / ${Number(h.totalRows).toLocaleString()}${sizeLabel} rows`
                 : `${shown} rows`;
             const stats = isOk
                 ? `${rowsLabel} · ${h.colCount ?? 0} cols · ${(h.elapsedMs ?? 0).toLocaleString()} ms`
@@ -355,9 +551,22 @@
         setStatus('Query restored', 'idle');
     }
 
-    function clearQueryHistory() {
-        if (!window.confirm('Clear all saved query history?')) return;
-        try { localStorage.removeItem(HISTORY_KEY); } catch { /* noop */ }
+    async function clearQueryHistory() {
+        if (!window.confirm('Clear all saved query history for this workspace?')) return;
+        const base = historyApiBase();
+        if (base) {
+            try {
+                await fetch(base, { method: 'DELETE' });
+            } catch (e) {
+                console.warn('history clear failed', e);
+            }
+        }
+        _historyCache = [];
+        renderQueryHistory();
+    }
+
+    async function hydrateDataHistoryFromWorkspace() {
+        await fetchHistoryFromServer();
         renderQueryHistory();
     }
 
@@ -368,6 +577,7 @@
         const historyPane = document.getElementById('data-history-pane');
         const resultsCtrl = document.getElementById('data-tab-controls-results');
         const historyCtrl = document.getElementById('data-tab-controls-history');
+        const pager = document.getElementById('data-result-pager');
 
         if (resultsPane) resultsPane.classList.toggle('hidden', !showResults);
         if (historyPane) historyPane.classList.toggle('hidden', showResults);
@@ -378,6 +588,18 @@
         if (historyCtrl) {
             historyCtrl.classList.toggle('hidden', showResults);
             historyCtrl.classList.toggle('flex', !showResults);
+        }
+        if (pager) {
+            // Only show the pager when results tab is active AND we have rows
+            // to paginate. renderPager() handles the row-count side; we handle
+            // the tab side here.
+            if (showResults && _allRows.length > 0) {
+                pager.classList.remove('hidden');
+                pager.classList.add('flex');
+            } else {
+                pager.classList.add('hidden');
+                pager.classList.remove('flex');
+            }
         }
 
         document.querySelectorAll('.data-preview-tab').forEach((btn) => {
@@ -395,58 +617,60 @@
 
     // ── Monaco setup ────────────────────────────────────────────────────────
 
-    function defineDataTheme(monaco) {
-        if (window.__sporeDataThemeReady) return;
-        window.__sporeDataThemeReady = true;
-        monaco.editor.defineTheme('spore-data', {
-            base: 'vs-dark',
-            inherit: true,
-            rules: [
-                { token: 'keyword', foreground: '34d399', fontStyle: 'bold' },
-                { token: 'keyword.sql', foreground: '34d399', fontStyle: 'bold' },
-                { token: 'string', foreground: 'a7f3d0' },
-                { token: 'string.sql', foreground: 'a7f3d0' },
-                { token: 'number', foreground: 'fde68a' },
-                { token: 'operator', foreground: '94a3b8' },
-                { token: 'comment', foreground: '64748b', fontStyle: 'italic' },
-                { token: 'identifier', foreground: 'e2e8f0' },
-                { token: 'predefined.sql', foreground: '7dd3fc' },
-            ],
-            colors: {
-                'editor.background': '#0f172a',
-                'editor.foreground': '#e2e8f0',
-                'editorCursor.foreground': '#00A36C',
-                'editor.lineHighlightBackground': '#1e293b',
-                'editorLineNumber.foreground': '#475569',
-                'editorLineNumber.activeForeground': '#94a3b8',
-                'editor.selectionBackground': '#065f46',
-                'editor.inactiveSelectionBackground': '#064e3b',
-                'editorIndentGuide.background': '#1e293b',
-                'editorIndentGuide.activeBackground': '#334155',
-                'editorWidget.background': '#0f172a',
-                'editorWidget.border': '#1e293b',
-                'editorSuggestWidget.background': '#0f172a',
-                'editorSuggestWidget.border': '#1e293b',
-                'editorSuggestWidget.foreground': '#e2e8f0',
-                'editorSuggestWidget.selectedBackground': '#065f46',
-            },
-        });
-    }
-
     function initEditor(monaco) {
         const mount = document.getElementById('data-editor-mount');
         if (!mount) return;
 
-        defineDataTheme(monaco);
-
+        window.monaco = monaco; 
+    
+        // Use the explicit monaco instance passed to ensure it hooks into the right registry
+        if (!window.__sporeDataThemeReady) {
+            window.__sporeDataThemeReady = true;
+            
+            // Define it directly on whatever monaco object is active here
+            monaco.editor.defineTheme('spore-data', {
+                base: 'vs-dark',
+                inherit: true,
+                rules: [
+                    { token: 'keyword', foreground: '34d399', fontStyle: 'bold' },
+                    { token: 'keyword.sql', foreground: '34d399', fontStyle: 'bold' },
+                    { token: 'string', foreground: 'a7f3d0' },
+                    { token: 'string.sql', foreground: 'a7f3d0' },
+                    { token: 'number', foreground: 'fde68a' },
+                    { token: 'operator', foreground: '94a3b8' },
+                    { token: 'comment', foreground: '64748b', fontStyle: 'italic' },
+                    { token: 'identifier', foreground: 'e2e8f0' },
+                    { token: 'predefined.sql', foreground: '7dd3fc' },
+                ],
+                colors: {
+                    'editor.background': '#0f172a',
+                    'editor.foreground': '#e2e8f0',
+                    'editorCursor.foreground': '#00A36C',
+                    'editor.lineHighlightBackground': '#1e293b',
+                    'editorLineNumber.foreground': '#475569',
+                    'editorLineNumber.activeForeground': '#94a3b8',
+                    'editor.selectionBackground': '#065f46',
+                    'editor.inactiveSelectionBackground': '#064e3b',
+                    'editorIndentGuide.background': '#1e293b',
+                    'editorIndentGuide.activeBackground': '#334155',
+                    'editorWidget.background': '#0f172a',
+                    'editorWidget.border': '#1e293b',
+                    'editorSuggestWidget.background': '#0f172a',
+                    'editorSuggestWidget.border': '#1e293b',
+                    'editorSuggestWidget.foreground': '#e2e8f0',
+                    'editorSuggestWidget.selectedBackground': '#065f46',
+                },
+            });
+        }
+    
         const lang = languageForConnection(getActiveConnection());
         currentLanguage = lang;
         setLanguageLabel(lang);
-
+    
         editor = monaco.editor.create(mount, {
             value: DEFAULT_QUERIES[lang],
             language: lang === 'json' ? 'json' : 'sql',
-            theme: 'spore-data',
+            theme: 'spore-data', // Now guaranteed to be found in the current context!
             minimap: { enabled: false },
             scrollBeyondLastLine: false,
             automaticLayout: true,
@@ -460,11 +684,20 @@
             smoothScrolling: true,
             scrollbar: { vertical: 'auto', horizontal: 'auto' },
         });
+    
+        editor.addCommand(monaco.KeyMod.Ctrl & monaco.KeyCode.Enter, () => runDataPreview());
 
-        editor.addCommand(monaco.KeyMod.Shift | monaco.KeyCode.Enter, () => runDataPreview());
-        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => runDataPreview());
+        editor.onDidFocusEditorText(() => monaco.editor.setTheme('spore-data'));
 
-        // Stash globally for any debugging / external integrations.
+        mount.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter') return;
+            if (!e.ctrlKey && !e.metaKey) return;
+            if (!window.dataEditor || !window.dataEditor.hasWidgetFocus()) return;
+            e.preventDefault();
+            e.stopPropagation();
+            runDataPreview();
+        });
+    
         window.dataEditor = editor;
     }
 
@@ -500,7 +733,14 @@
     // ── Run / materialize ───────────────────────────────────────────────────
 
     async function runDataPreview() {
-        if (!editor) return;
+
+        if (!window.dataEditor || !window.dataEditor.hasWidgetFocus()) {
+            return;
+        }
+
+        if (!window.dataEditor) return;
+        editor.layout();
+        editor.focus();
 
         const conn = getActiveConnection();
         if (!conn) {
@@ -540,6 +780,7 @@
 
         let streamedRows = 0;
         let dbTotalRows = null;
+        let dbEstBytes = null;
         let columnCount = 0;
         const t0 = performance.now();
 
@@ -587,8 +828,11 @@
                         columnCount = data.content.length;
                     } else if (data.type === 'metadata') {
                         dbTotalRows = data.total_rows;
+                        dbEstBytes = data.est_total_bytes ?? null;
                     } else if (data.type === 'rows') {
+                        streamedRows += (data.content || []).length;
                         appendRows(data.content);
+                        setResultMeta(formatStreamingMeta(streamedRows, dbTotalRows, dbEstBytes));
                     } else if (data.type === 'error') {
                         setStatus(`Error: ${data.content}`, 'error');
                         setResultMeta('Query failed');
@@ -604,7 +848,7 @@
             }
 
             const elapsed = Math.round(performance.now() - t0);
-            setResultMeta(formatFinalMeta(limit, dbTotalRows, columnCount, elapsed));
+            setResultMeta(formatFinalMeta(streamedRows, dbTotalRows, dbEstBytes, columnCount, elapsed));
             setStatus('Done', 'idle');
 
             pushHistoryEntry({
@@ -612,6 +856,7 @@
                 status: 'success',
                 rowCount: streamedRows,
                 totalRows: hasKnownTotal(dbTotalRows) ? Number(dbTotalRows) : null,
+                estTotalBytes: dbEstBytes != null ? Number(dbEstBytes) : null,
                 colCount: columnCount,
                 elapsedMs: elapsed,
             });
@@ -627,6 +872,87 @@
         }
     }
 
+    // ── Pull progress overlay ───────────────────────────────────────────────
+
+    function showPullProgress() {
+        const el = document.getElementById('data-pull-progress');
+        if (el) el.classList.remove('hidden');
+    }
+
+    function hidePullProgress(delayMs = 0) {
+        const hide = () => {
+            const el = document.getElementById('data-pull-progress');
+            if (el) el.classList.add('hidden');
+            const bar = document.getElementById('data-pull-bar');
+            if (bar) {
+                bar.style.width = '0%';
+                bar.classList.remove('animate-pulse', 'w-[40%]');
+            }
+        };
+        if (delayMs > 0) setTimeout(hide, delayMs);
+        else hide();
+    }
+
+    function setPullStage(text, tone = 'primary') {
+        const el = document.getElementById('data-pull-stage');
+        if (!el) return;
+        el.textContent = text;
+        el.classList.remove('text-primary', 'text-rose-500');
+        el.classList.add(tone === 'error' ? 'text-rose-500' : 'text-primary');
+    }
+
+    function setPullDetail(text) {
+        const el = document.getElementById('data-pull-detail');
+        if (el) el.textContent = text;
+    }
+
+    function updatePullProgress(rowsSoFar, bytesSoFar, estRows, estBytes) {
+        const bar = document.getElementById('data-pull-bar');
+        if (!bar) return;
+
+        const hasEstRows = estRows !== null && estRows !== undefined && !Number.isNaN(Number(estRows));
+        if (hasEstRows && Number(estRows) > 0) {
+            const pct = Math.min(100, Math.round((rowsSoFar / Number(estRows)) * 100));
+            bar.style.width = `${pct}%`;
+            bar.classList.remove('animate-pulse', 'w-[40%]');
+        } else {
+            bar.style.width = '';
+            bar.classList.add('animate-pulse', 'w-[40%]');
+        }
+
+        const rowsPart = hasEstRows
+            ? `${Number(rowsSoFar).toLocaleString()} / ~${Number(estRows).toLocaleString()} rows`
+            : `${Number(rowsSoFar).toLocaleString()} rows`;
+        const bytesLabel = formatBytes(bytesSoFar) || '0 B';
+        const estBytesLabel = estBytes != null ? formatBytes(estBytes) : null;
+        const bytesPart = estBytesLabel
+            ? `${bytesLabel} / ~${estBytesLabel}`
+            : bytesLabel;
+        setPullDetail(`${rowsPart} · ${bytesPart}`);
+    }
+
+    async function consumeSSE(response, onEvent) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+
+            for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                let data;
+                try { data = JSON.parse(line.slice(6)); } catch { continue; }
+                const stop = onEvent(data);
+                if (stop) return;
+            }
+        }
+    }
+
     async function materializeDataQuery() {
         if (!editor) return;
 
@@ -635,7 +961,7 @@
             setStatus('Pick a connection first', 'warn');
             return;
         }
-        
+
         const query = (editor.getValue() || '').trim();
         if (!query) {
             setStatus('Editor is empty', 'warn');
@@ -645,39 +971,109 @@
         const streamInput = document.getElementById('data-stream-name');
         const streamName = (streamInput?.value || `stream_${conn.id}`).trim() || `stream_${conn.id}`;
 
-        setStatus(`Pulling → ${streamName}…`, 'running');
+        const formatSelect = document.getElementById('data-output-format');
+        const outputFormat = (formatSelect?.value || 'parquet').toLowerCase();
+
+        setStatus(`Pulling → ${streamName} (${outputFormat})…`, 'running');
+        showPullProgress();
+        setPullStage('Starting…');
+        setPullDetail('— rows');
+        updatePullProgress(0, 0, null, null);
 
         const formData = new FormData();
         formData.append('query', query);
         formData.append('id', conn.id);
         formData.append('stream_name', streamName);
+        formData.append('format', outputFormat);
+
+        let estRows = null;
+        let estBytes = null;
+        let donePath = streamName;
 
         try {
             const response = await fetch('/ingest', { method: 'POST', body: formData });
-            const result = await response.json().catch(() => ({}));
+            if (!response.ok || !response.body) {
+                setStatus(`Pull failed: HTTP ${response.status}`, 'error');
+                setPullStage('Failed', 'error');
+                hidePullProgress(3000);
+                return;
+            }
 
-            if (response.ok && result.status === 'success') {
-                setStatus(`Pulled → ${result.path || streamName}`, 'idle');
-                if (typeof window.loadStreams === 'function') {
-                    try { window.loadStreams(); } catch { /* noop */ }
+            let failed = false;
+
+            await consumeSSE(response, (data) => {
+                if (data.type === 'start') {
+                    estRows = data.est_total_rows ?? null;
+                    estBytes = data.est_total_bytes ?? null;
+                    setPullStage('Pulling');
+                    updatePullProgress(0, 0, estRows, estBytes);
+                } else if (data.type === 'progress') {
+                    updatePullProgress(
+                        data.rows_so_far ?? 0,
+                        data.bytes_so_far ?? 0,
+                        estRows,
+                        estBytes,
+                    );
+                } else if (data.type === 'done') {
+                    donePath = data.path || streamName;
+                    const bar = document.getElementById('data-pull-bar');
+                    if (bar) {
+                        bar.classList.remove('animate-pulse', 'w-[40%]');
+                        bar.style.width = '100%';
+                    }
+                    setPullStage('Done');
+                    updatePullProgress(
+                        data.total_rows ?? 0,
+                        data.total_bytes ?? 0,
+                        data.total_rows ?? estRows,
+                        data.total_bytes ?? estBytes,
+                    );
+                    setStatus(`Pulled → ${donePath}`, 'idle');
+                    if (typeof window.registerRelationAfterIngest === 'function') {
+                        window.registerRelationAfterIngest(streamName, conn.id, query);
+                    }
+                    if (typeof window.loadStreams === 'function') {
+                        try { window.loadStreams(); } catch { /* noop */ }
+                    }
+                    hidePullProgress(1200);
+                } else if (data.type === 'error') {
+                    failed = true;
+                    setStatus(`Pull failed: ${data.content}`, 'error');
+                    setPullStage('Failed', 'error');
+                    hidePullProgress(3000);
+                    return true;
                 }
-            } else {
-                setStatus(`Pull failed: ${result.message || `HTTP ${response.status}`}`, 'error');
+                return false;
+            });
+
+            if (!failed) {
+                const bar = document.getElementById('data-pull-bar');
+                if (bar && bar.style.width !== '100%') {
+                    // Legacy connectors may emit only done without progress.
+                    setPullStage('Done');
+                    setStatus(`Pulled → ${donePath}`, 'idle');
+                    if (typeof window.registerRelationAfterIngest === 'function') {
+                        window.registerRelationAfterIngest(streamName, conn.id, query);
+                    }
+                    if (typeof window.loadStreams === 'function') {
+                        try { window.loadStreams(); } catch { /* noop */ }
+                    }
+                    hidePullProgress(1200);
+                }
             }
         } catch (e) {
             setStatus(`Pull failed: ${e.message || e}`, 'error');
+            setPullStage('Failed', 'error');
+            hidePullProgress(3000);
         }
     }
 
     // ── boot ────────────────────────────────────────────────────────────────
 
     function boot() {
-        // Render the history badge + list immediately so the count reflects
-        // anything persisted from a previous session even before Monaco loads.
-        renderQueryHistory();
+        hydrateDataHistoryFromWorkspace();
 
         if (!window.monacoReady) {
-            // Loader script not present; nothing to do.
             return;
         }
 
@@ -688,7 +1084,6 @@
             if (select) {
                 select.addEventListener('change', () => syncEditorWithConnection());
             }
-            // Hydrate language from whatever was preselected.
             syncEditorWithConnection();
         });
     }
@@ -701,6 +1096,10 @@
     window.setDataPreviewTab = setDataPreviewTab;
     window.restoreHistoryEntry = restoreHistoryEntry;
     window.clearQueryHistory = clearQueryHistory;
+    window.hydrateDataHistoryFromWorkspace = hydrateDataHistoryFromWorkspace;
+    window.initEditor = initEditor;
+    window.goToDataResultsPage = goToDataResultsPage;
+    window.setDataResultsPageSize = setDataResultsPageSize;
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', boot);

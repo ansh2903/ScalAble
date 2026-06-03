@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ workspace.name }} — Dashboard Export</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: #f8fafc; color: #0f172a; }
+    header { padding: 1rem 1.5rem; background: #fff; border-bottom: 1px solid #e2e8f0; }
+    h1 { margin: 0; font-size: 1.1rem; }
+    .sub { font-size: 0.75rem; color: #64748b; margin-top: 0.25rem; }
+    .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; padding: 1.5rem; max-width: 1400px; margin: 0 auto; }
+    .widget { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; min-height: 120px; }
+    .widget-h { padding: 0.5rem 0.75rem; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid #f1f5f9; }
+    .chart { width: 100%; height: 220px; }
+    .kpi { padding: 1.5rem; font-size: 2rem; font-weight: 800; text-align: center; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.7rem; }
+    th, td { padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: left; }
+    th { background: #f8fafc; }
+  </style>
+  <script>{{ echarts_inline | safe }}</script>
+</head>
+<body>
+  <header>
+    <h1>{{ dashboard.title or workspace.name }}</h1>
+    <p class="sub">ScalAble offline dashboard export · {{ widgets | length }} widget(s)</p>
+  </header>
+  <div class="grid" id="grid"></div>
+  <script>
+    const WIDGETS = {{ widgets | tojson }};
+    const PALETTES = ['#00A36C','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
+
+    function buildOption(w) {
+      const rows = w.data?.rows || [];
+      const enc = w.encoding || {};
+      const xKey = enc.x || (w.data?.columns?.[0]);
+      const yKey = enc.y || (w.data?.columns?.[1]);
+      const type = (w.type || 'bar').toLowerCase();
+
+      if (type === 'kpi') {
+        const val = rows[0] && yKey ? rows[0][yKey] : (rows[0] ? Object.values(rows[0])[0] : '—');
+        return null;
+      }
+      if (type === 'table') return null;
+
+      const categories = rows.map(r => r[xKey]);
+      const values = rows.map(r => Number(r[yKey]) || 0);
+
+      if (type === 'pie') {
+        return {
+          tooltip: { trigger: 'item' },
+          series: [{ type: 'pie', radius: '60%', data: categories.map((c, i) => ({ name: c, value: values[i] })), color: PALETTES }]
+        };
+      }
+      const seriesType = type === 'line' || type === 'area' ? 'line' : type === 'scatter' ? 'scatter' : 'bar';
+      return {
+        tooltip: { trigger: 'axis' },
+        xAxis: { type: 'category', data: categories },
+        yAxis: { type: 'value' },
+        series: [{ type: seriesType, data: values, areaStyle: type === 'area' ? {} : undefined, itemStyle: { color: PALETTES[0] } }]
+      };
+    }
+
+    function renderWidget(w) {
+      const layout = w.layout || { x: 0, y: 0, w: 6, h: 2 };
+      const el = document.createElement('div');
+      el.className = 'widget';
+      el.style.gridColumn = `span ${Math.min(12, layout.w || 6)}`;
+      const title = document.createElement('div');
+      title.className = 'widget-h';
+      title.textContent = w.title || w.type || 'Widget';
+      el.appendChild(title);
+
+      const type = (w.type || 'bar').toLowerCase();
+      if (type === 'kpi') {
+        const rows = w.data?.rows || [];
+        const yKey = w.encoding?.y || (w.data?.columns?.[0]);
+        const val = rows[0] && yKey ? rows[0][yKey] : (rows[0] ? Object.values(rows[0])[0] : '—');
+        const k = document.createElement('div');
+        k.className = 'kpi';
+        k.textContent = val;
+        el.appendChild(k);
+        return el;
+      }
+      if (type === 'table') {
+        const wrap = document.createElement('div');
+        wrap.style.overflow = 'auto';
+        wrap.style.maxHeight = '240px';
+        const table = document.createElement('table');
+        const cols = w.data?.columns || [];
+        const thead = document.createElement('thead');
+        const hr = document.createElement('tr');
+        cols.forEach(c => { const th = document.createElement('th'); th.textContent = c; hr.appendChild(th); });
+        thead.appendChild(hr);
+        table.appendChild(thead);
+        const tbody = document.createElement('tbody');
+        (w.data?.rows || []).slice(0, 200).forEach(row => {
+          const tr = document.createElement('tr');
+          cols.forEach(c => { const td = document.createElement('td'); td.textContent = row[c]; tr.appendChild(td); });
+          tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        wrap.appendChild(table);
+        el.appendChild(wrap);
+        return el;
+      }
+
+      const chart = document.createElement('div');
+      chart.className = 'chart';
+      el.appendChild(chart);
+      const opt = buildOption(w);
+      if (typeof echarts !== 'undefined' && opt) {
+        echarts.init(chart).setOption(opt);
+      }
+      return el;
+    }
+
+    const grid = document.getElementById('grid');
+    WIDGETS.forEach(w => grid.appendChild(renderWidget(w)));
+  </script>
+</body>
+</html>

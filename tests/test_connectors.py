@@ -91,7 +91,17 @@ def test_qs_escapes_single_quotes():
 
 
 def test_registry_keys():
-    assert set(REGISTRY.keys()) == {"postgresql", "bigquery", "snowflake"}
+    assert set(REGISTRY.keys()) == {
+        "postgresql",
+        "bigquery",
+        "snowflake",
+        "rest_api",
+        "graphql_api",
+        "csv_file",
+        "excel_file",
+        "json_file",
+        "parquet_file",
+    }
 
 
 # ── SourceConnector dispatch ─────────────────────────────────────────────────
@@ -136,8 +146,10 @@ def test_source_connector_capability_routing():
             use_ssh=False,
             use_ssl=False,
         )
-        with pytest.raises(RuntimeError, match="does not support ingestion"):
-            connector.ingest("stream", "SELECT 1")
+        chunks = list(connector.ingest("stream", "SELECT 1"))
+        assert len(chunks) == 1
+        assert chunks[0]["type"] == "error"
+        assert "does not support ingestion" in chunks[0]["content"]
 
 
 def test_source_connector_preview_yields_error_when_unsupported():

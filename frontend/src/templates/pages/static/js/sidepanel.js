@@ -30,7 +30,7 @@ function openSidePanel(name) {
     panel.style.width = '220px';
     activeSidePanel = name;
 
-    if (name === 'files') loadStreams();
+    if (name === 'files') loadFs();
 }
 
 function closeSidePanel() {
@@ -62,6 +62,15 @@ function onActiveConnectionChange(connId) {
     // Workspace-level updates (defined in workspace.js)
     if (typeof window.setDataKind === 'function') window.setDataKind(conn);
     if (typeof window.updateDataHeader === 'function') window.updateDataHeader(conn);
+
+    const kind = typeof window.resolveDataKind === 'function'
+        ? window.resolveDataKind(conn)
+        : (conn.kind || '');
+    if (kind === 'file' && typeof window.runFilePreview === 'function') {
+        window.runFilePreview(conn);
+    } else if (kind === 'api' && typeof window.initApiPanel === 'function') {
+        window.initApiPanel(conn);
+    }
 
     _setChatConnChip(conn);
     updateSchemaPanel(connId);
@@ -225,105 +234,35 @@ async function refreshSchema() {
     if (dbId) await updateSchemaPanel(dbId);
 }
 
-// ─── Stream File Manager ──────────────────────────────────────
-async function loadStreams() {
-    try {
-        const res = await fetch('/streams');
-        const streams = await res.json();
-        renderStreams(streams);
-    } catch (e) {
-        document.getElementById('stream-list').innerHTML =
-            '<div class="text-[9px] text-red-400 text-center py-6 font-bold">Failed to load</div>';
-    }
+// ─── File Manager (volumes/streams) ───────────────────────────
+const fsState = {
+    expanded: new Set(['']),
+    selected: null,
+    cache: new Map(),
+    totalPretty: '0 B',
+    inlineEdit: null,
+};
+
+window.loadStreams = () => loadFs();
+
+function fsSetStatus(msg) {
+    const el = document.getElementById('fs-status');
+    if (el) el.textContent = msg || '';
 }
 
-function renderStreams(streams) {
-    const list = document.getElementById('stream-list');
-    if (!streams.length) {
-        list.innerHTML = `
-            <div class="flex flex-col items-center justify-center py-12 opacity-40">
-                <span class="material-symbols-outlined text-[32px] mb-2">folder_off</span>
-                <span class="text-[10px] font-medium">No streams in volume</span>
-            </div>`;
-        return;
-    }
-
-    // Update Metadata
-    const totalBytes = streams.reduce((acc, s) =>
-        acc + Object.values(s.files).reduce((a, f) => a + f.size_bytes, 0), 0);
-    document.getElementById('storage-used').textContent = fmtSize(totalBytes);
-
-    list.innerHTML = streams.map(stream => `
-        <div class="mb-0.5">
-            <div class="flex items-center gap-2 px-2 py-1 hover:bg-slate-50 rounded-md cursor-pointer group"
-                 onclick="toggleStreamCard('${stream.name}')">
-                <span class="material-symbols-outlined text-[14px] text-slate-300 stream-chevron-${stream.name} transition-transform">arrow_right</span>
-                <span class="text-[11px] font-semibold text-slate-600 truncate flex-1">${stream.name}</span>
-                <button class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-all" 
-                        onclick="event.stopPropagation(); deleteStream('${stream.name}')">
-                    <span class="material-symbols-outlined text-[14px]">close</span>
-                </button>
-            </div>
-            
-            <div id="files-${stream.name}" class="hidden ml-3 pl-2 border-l border-slate-100 space-y-px mt-0.5">
-                ${renderFileRow(stream.name, 'source.parquet', stream.files['source.parquet'], false)}
-                ${stream.files['working.parquet'] ? renderFileRow(stream.name, 'working.parquet', stream.files['working.parquet'], true) : ''}
-            </div>
-        </div>
-    `).join('');
+function fsJoinPath(parent, name) {
+    const p = (parent || '').replace(/\/+$/, '');
+    return p ? `${p}/${name}` : name;
 }
 
-function renderFileRow(streamName, fileName, meta, isMutable) {
-    if (!meta) return '';
-    
-    // Warning: Only appears if data is actually huge relative to memory
-    const warning = !meta.memory_safe 
-        ? `<span class="material-symbols-outlined text-[13px] text-amber-500/70" title="Batching required">error</span>` 
-        : '';
-
-    return `
-        <div class="flex items-center gap-2 py-1 px-2 group/file hover:bg-slate-50/80 rounded transition-colors">
-            <span class="material-symbols-outlined text-[14px] ${isMutable ? 'text-indigo-400' : 'text-slate-300'}">
-                ${isMutable ? 'terminal' : 'database'}
-            </span>
-            <span class="text-[10px] text-slate-500 flex-1 truncate">${fileName}</span>
-            <div class="flex items-center gap-2">
-                ${warning}
-                <span class="text-[9px] font-mono text-slate-300 opacity-0 group-hover/file:opacity-100">${meta.size_pretty}</span>
-                <div class="flex gap-1 opacity-0 group-hover/file:opacity-100">
-                    <button class="text-slate-400 hover:text-primary p-0.5" onclick="copyPath('data/streams/${streamName}/${fileName}')" title="Copy Path">
-                        <span class="material-symbols-outlined text-[13px]">link</span>
-                    </button>
-                </div>
-            </div>
-        </div>`;
-}
-function toggleStreamCard(name) {
-    const files = document.getElementById(`files-${name}`);
-    const chevron = document.querySelector(`.stream-chevron-${name}`);
-    const isOpen = !files.classList.contains('hidden');
-    files.classList.toggle('hidden', isOpen);
-    if (chevron) chevron.style.transform = isOpen ? '' : 'rotate(90deg)';
+function fsParentPath(path) {
+    const i = path.lastIndexOf('/');
+    return i === -1 ? '' : path.slice(0, i);
 }
 
-async function deleteStream(name) {
-    if (!confirm(`Delete stream "${name}" and all its files?`)) return;
-    await fetch(`/streams/${name}`, { method: 'DELETE' });
-    loadStreams();
-}
-
-async function resetStream(name) {
-    if (!confirm(`Reset working.parquet to source checkpoint?`)) return;
-    await fetch(`/streams/${name}/reset`, { method: 'POST' });
-    loadStreams();
-}
-
-function downloadFile(streamName, fileName) {
-    window.location.href = `/streams/${streamName}/${fileName}`;
-}
-
-function copyPath(path) {
-    navigator.clipboard.writeText(path);
+function fsBasename(path) {
+    const i = path.lastIndexOf('/');
+    return i === -1 ? path : path.slice(i + 1);
 }
 
 function fmtSize(b) {
@@ -332,4 +271,538 @@ function fmtSize(b) {
     if (b < 1024 ** 3) return `${(b / 1024 ** 2).toFixed(1)} MB`;
     return `${(b / 1024 ** 3).toFixed(2)} GB`;
 }
+
+function fsFileIcon(name) {
+    if (name === 'working.parquet') return { icon: 'terminal', cls: 'text-indigo-400' };
+    const ext = (name.split('.').pop() || '').toLowerCase();
+    if (['parquet', 'csv', 'tsv', 'json', 'xlsx', 'xls'].includes(ext)) {
+        return { icon: 'database', cls: 'text-slate-300' };
+    }
+    return { icon: 'description', cls: 'text-slate-300' };
+}
+
+function fsEscapeHtml(s) {
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+async function fsFetchList(dirPath) {
+    const q = dirPath ? `?path=${encodeURIComponent(dirPath)}` : '';
+    const res = await fetch(`/api/fs/list${q}`);
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to list');
+    }
+    const data = await res.json();
+    fsState.cache.set(dirPath, data.entries);
+    if (dirPath === '') {
+        fsState.totalPretty = data.total_pretty || fmtSize(data.total_bytes || 0);
+        const storage = document.getElementById('storage-used');
+        if (storage) storage.textContent = fsState.totalPretty;
+    }
+    return data;
+}
+
+async function loadFs() {
+    const tree = document.getElementById('fs-tree');
+    if (!tree) return;
+    fsSetStatus('Loading…');
+    try {
+        await fsFetchList('');
+        for (const dir of [...fsState.expanded]) {
+            if (dir) await fsFetchList(dir).catch(() => fsState.expanded.delete(dir));
+        }
+        renderTree();
+        fsSetStatus('');
+    } catch (e) {
+        tree.innerHTML = `<div class="text-[9px] text-red-400 text-center py-6 font-bold">${fsEscapeHtml(e.message)}</div>`;
+        fsSetStatus('');
+    }
+}
+
+function renderTree() {
+    const tree = document.getElementById('fs-tree');
+    if (!tree) return;
+    const rootEntries = fsState.cache.get('') || [];
+    if (!rootEntries.length && !fsState.inlineEdit) {
+        tree.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-12 opacity-40">
+                <span class="material-symbols-outlined text-[32px] mb-2">folder_off</span>
+                <span class="text-[10px] font-medium">Empty workspace</span>
+            </div>`;
+        return;
+    }
+    tree.innerHTML = renderDirChildren('', 0);
+    bindFsTreeEvents();
+}
+
+function renderDirChildren(dirPath, depth) {
+    const entries = fsState.cache.get(dirPath) || [];
+    let html = '';
+    if (fsState.inlineEdit && fsState.inlineEdit.parent === dirPath) {
+        html += renderInlineInputRow(dirPath, depth, fsState.inlineEdit);
+    }
+    for (const entry of entries) {
+        html += renderEntryRow(entry, depth);
+        if (entry.type === 'dir' && fsState.expanded.has(entry.path)) {
+            html += `<div class="fs-children" data-parent="${fsEscapeHtml(entry.path)}">`;
+            html += renderDirChildren(entry.path, depth + 1);
+            html += '</div>';
+        }
+    }
+    return html;
+}
+
+function renderEntryRow(entry, depth) {
+    const isDir = entry.type === 'dir';
+    const expanded = isDir && fsState.expanded.has(entry.path);
+    const selected = fsState.selected === entry.path ? ' is-selected' : '';
+    const pad = 4 + depth * 4;
+    const { icon, cls } = isDir
+        ? { icon: expanded ? 'folder_open' : 'folder', cls: 'text-slate-400' }
+        : fsFileIcon(entry.name);
+    const chevron = isDir
+        ? `<span class="material-symbols-outlined fs-chevron text-[16px] text-slate-400 ${expanded ? 'expanded' : ''}">chevron_right</span>`
+        : `<span class="fs-chevron"></span>`;
+    const badge = entry.is_stream
+        ? '<span class="fs-badge-stream">STREAM</span>'
+        : '';
+    const warn = entry.memory_safe === false
+        ? '<span class="material-symbols-outlined text-[14px] text-slate-400" title="Large file">warning</span>'
+        : '';
+    const size = entry.size_pretty ? `<span class="fs-size">${fsEscapeHtml(entry.size_pretty)}</span>` : '';
+
+    return `
+        <div class="fs-row${selected}"
+             data-path="${fsEscapeHtml(entry.path)}"
+             data-type="${entry.type}"
+             data-name="${fsEscapeHtml(entry.name)}"
+             style="padding-left:${pad}px"
+             draggable="true">
+            ${chevron}
+            <span class="material-symbols-outlined text-[14px] ${cls}">${icon}</span>
+            <span class="fs-name" title="${fsEscapeHtml(entry.path)}">${fsEscapeHtml(entry.name)}</span>
+            ${badge}
+            ${warn}
+            ${size}
+            <button type="button" class="fs-more-btn" data-fs-more="1" title="More actions" aria-label="More actions" draggable="false">
+                <span class="material-symbols-outlined text-[14px]">more_vert</span>
+            </button>
+        </div>`;
+}
+
+function renderInlineInputRow(parentPath, depth, edit) {
+    const pad = 8 + depth * 12;
+    const value = edit.defaultName || '';
+    return `
+        <div class="fs-row is-selected fs-inline-row" style="padding-left:${pad}px" data-inline="1">
+            <span class="fs-chevron"></span>
+            <span class="material-symbols-outlined text-[14px] text-slate-300">${edit.kind === 'dir' ? 'folder' : 'description'}</span>
+            <input type="text" class="fs-inline-input flex-1 text-[10px] font-bold border border-primary/30 rounded px-1 py-0.5 min-w-0"
+                   value="${fsEscapeHtml(value)}" placeholder="${edit.kind === 'dir' ? 'folder name' : 'file name'}">
+        </div>`;
+}
+
+function bindFsTreeEvents() {
+    const tree = document.getElementById('fs-tree');
+    if (!tree || tree.dataset.fsBound === '1') return;
+    tree.dataset.fsBound = '1';
+
+    tree.addEventListener('click', onFsTreeClick);
+    tree.addEventListener('dblclick', onFsTreeDblClick);
+    tree.addEventListener('contextmenu', onFsTreeContextMenu);
+    tree.addEventListener('dragstart', onFsDragStart);
+    tree.addEventListener('dragend', onFsDragEnd);
+    tree.addEventListener('dragover', onFsDragOver);
+    tree.addEventListener('dragleave', onFsDragLeave);
+    tree.addEventListener('drop', onFsDrop);
+
+    const fileInput = document.getElementById('fs-file-input');
+    if (fileInput) {
+        fileInput.addEventListener('change', () => {
+            const target = fileInput.dataset.targetPath ?? '';
+            if (fileInput.files?.length) fsUploadFiles(target, fileInput.files);
+            fileInput.value = '';
+        });
+    }
+}
+
+async function onFsTreeClick(e) {
+    const row = e.target.closest('.fs-row');
+    if (!row || row.dataset.inline === '1') return;
+
+    const inlineInput = row.querySelector('.fs-inline-input');
+    if (inlineInput) return;
+
+    const moreBtn = e.target.closest('.fs-more-btn');
+    if (moreBtn) {
+        e.stopPropagation();
+        e.preventDefault();
+        const rect = moreBtn.getBoundingClientRect();
+        openFsContextMenu(
+            { clientX: rect.right, clientY: rect.bottom },
+            { path: row.dataset.path, type: row.dataset.type, name: row.dataset.name },
+        );
+        return;
+    }
+
+    const path = row.dataset.path;
+    const type = row.dataset.type;
+    fsState.selected = path;
+
+    if (type === 'dir') {
+        if (fsState.expanded.has(path)) {
+            fsState.expanded.delete(path);
+        } else {
+            fsState.expanded.add(path);
+            if (!fsState.cache.has(path)) {
+                fsSetStatus('…');
+                try {
+                    await fsFetchList(path);
+                } catch (err) {
+                    fsSetStatus(err.message);
+                    return;
+                }
+                fsSetStatus('');
+            }
+        }
+        renderTree();
+        return;
+    }
+
+    document.querySelectorAll('#fs-tree .fs-row').forEach(r => r.classList.remove('is-selected'));
+    row.classList.add('is-selected');
+}
+
+function onFsTreeDblClick(e) {
+    const nameEl = e.target.closest('.fs-name');
+    if (!nameEl) return;
+    const row = nameEl.closest('.fs-row');
+    if (!row || row.dataset.inline === '1') return;
+    fsStartRename(row.dataset.path, row.dataset.name);
+}
+
+function onFsTreeContextMenu(e) {
+    const row = e.target.closest('.fs-row');
+    if (!row || row.dataset.inline === '1') return;
+    e.preventDefault();
+    fsState.selected = row.dataset.path;
+    document.querySelectorAll('#fs-tree .fs-row').forEach(r => r.classList.remove('is-selected'));
+    row.classList.add('is-selected');
+    openFsContextMenu(e, {
+        path: row.dataset.path,
+        type: row.dataset.type,
+        name: row.dataset.name,
+    });
+}
+
+let fsDragPath = null;
+
+function onFsDragStart(e) {
+    if (e.target.closest('.fs-more-btn')) {
+        e.preventDefault();
+        return;
+    }
+    const row = e.target.closest('.fs-row[data-path]');
+    if (!row || row.dataset.inline === '1') return;
+    fsDragPath = row.dataset.path;
+    e.dataTransfer.setData('application/x-fs-path', fsDragPath);
+    e.dataTransfer.effectAllowed = 'move';
+}
+
+function onFsDragEnd() {
+    fsDragPath = null;
+    document.querySelectorAll('#fs-tree .fs-row.is-drop-target').forEach(r => r.classList.remove('is-drop-target'));
+}
+
+function onFsDragOver(e) {
+    const tree = document.getElementById('fs-tree');
+    if (!tree?.contains(e.target)) return;
+    const hasFiles = e.dataTransfer.types.includes('Files');
+    const hasInternal = e.dataTransfer.types.includes('application/x-fs-path');
+    if (!hasFiles && !hasInternal) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = hasFiles ? 'copy' : 'move';
+    document.querySelectorAll('#fs-tree .fs-row.is-drop-target').forEach(r => r.classList.remove('is-drop-target'));
+    const dirRow = e.target.closest('.fs-row[data-type="dir"]');
+    const fileRow = e.target.closest('.fs-row[data-type="file"]');
+    if (dirRow) dirRow.classList.add('is-drop-target');
+    else if (fileRow) fileRow.classList.add('is-drop-target');
+}
+
+function onFsDragLeave(e) {
+    const row = e.target.closest('.fs-row');
+    if (row) row.classList.remove('is-drop-target');
+}
+
+async function onFsDrop(e) {
+    e.preventDefault();
+    document.querySelectorAll('#fs-tree .fs-row.is-drop-target').forEach(r => r.classList.remove('is-drop-target'));
+
+    let targetDir = '';
+    const dirRow = e.target.closest('.fs-row[data-type="dir"]');
+    const fileRow = e.target.closest('.fs-row[data-type="file"]');
+    if (dirRow) targetDir = dirRow.dataset.path;
+    else if (fileRow) targetDir = fsParentPath(fileRow.dataset.path);
+
+    if (e.dataTransfer.files?.length) {
+        await fsUploadFiles(targetDir, e.dataTransfer.files);
+        return;
+    }
+
+    const src = e.dataTransfer.getData('application/x-fs-path') || fsDragPath;
+    if (!src) return;
+    const base = fsBasename(src);
+    const dst = fsJoinPath(targetDir, base);
+    if (src === dst || dst.startsWith(src + '/')) return;
+    await fsMove(src, dst);
+}
+
+function fsToolbarTargetDir() {
+    if (fsState.selected != null && fsState.selected !== '') {
+        const row = document.querySelector(`#fs-tree .fs-row[data-path="${CSS.escape(fsState.selected)}"]`);
+        if (row?.dataset.type === 'dir') return fsState.selected;
+        return fsParentPath(fsState.selected);
+    }
+    return '';
+}
+
+function fsToolbarMkdir() {
+    fsState.inlineEdit = { parent: fsToolbarTargetDir(), kind: 'dir', defaultName: 'New Folder' };
+    fsState.expanded.add(fsState.inlineEdit.parent);
+    renderTree();
+    const input = document.querySelector('#fs-tree .fs-inline-input');
+    if (input) {
+        input.focus();
+        input.select();
+        input.addEventListener('keydown', (ev) => fsInlineKeydown(ev, 'dir'));
+        input.addEventListener('blur', () => fsCommitInline('dir', input));
+    }
+}
+
+function fsToolbarNewFile() {
+    fsState.inlineEdit = { parent: fsToolbarTargetDir(), kind: 'file', defaultName: 'untitled.txt' };
+    fsState.expanded.add(fsState.inlineEdit.parent);
+    renderTree();
+    const input = document.querySelector('#fs-tree .fs-inline-input');
+    if (input) {
+        input.focus();
+        input.select();
+        input.addEventListener('keydown', (ev) => fsInlineKeydown(ev, 'file'));
+        input.addEventListener('blur', () => fsCommitInline('file', input));
+    }
+}
+
+function fsToolbarUpload() {
+    const input = document.getElementById('fs-file-input');
+    if (!input) return;
+    input.dataset.targetPath = fsToolbarTargetDir();
+    input.click();
+}
+
+function fsCollapseAll() {
+    fsState.expanded = new Set(['']);
+    renderTree();
+}
+
+function fsInlineKeydown(e, kind) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        fsCommitInline(kind, e.target);
+    } else if (e.key === 'Escape') {
+        fsState.inlineEdit = null;
+        renderTree();
+    }
+}
+
+async function fsCommitInline(kind, input) {
+    if (!fsState.inlineEdit) return;
+    const name = (input?.value || '').trim();
+    const parent = fsState.inlineEdit.parent;
+    fsState.inlineEdit = null;
+    if (!name) {
+        renderTree();
+        return;
+    }
+    const path = fsJoinPath(parent, name);
+    fsSetStatus('…');
+    try {
+        if (kind === 'dir') {
+            const res = await fetch('/api/fs/mkdir', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path }),
+            });
+            if (!res.ok) throw new Error((await res.json()).error || 'mkdir failed');
+            fsState.expanded.add(parent);
+            fsState.expanded.add(path);
+        } else {
+            const fd = new FormData();
+            fd.append('path', parent);
+            fd.append('files', new Blob([]), name);
+            const res = await fetch('/api/fs/upload', { method: 'POST', body: fd });
+            if (!res.ok) throw new Error((await res.json()).error || 'create failed');
+        }
+        await fsFetchList(parent);
+        if (parent !== '') await fsFetchList(fsParentPath(parent) || '');
+        await fsFetchList('');
+        fsState.selected = path;
+        renderTree();
+    } catch (err) {
+        alert(err.message);
+        await loadFs();
+    }
+    fsSetStatus('');
+}
+
+async function fsUploadFiles(parentPath, fileList) {
+    const fd = new FormData();
+    fd.append('path', parentPath || '');
+    for (const f of fileList) fd.append('files', f);
+    fsSetStatus('Uploading…');
+    try {
+        const res = await fetch('/api/fs/upload', { method: 'POST', body: fd });
+        if (!res.ok) throw new Error((await res.json()).error || 'Upload failed');
+        fsState.expanded.add(parentPath || '');
+        await loadFs();
+    } catch (err) {
+        alert(err.message);
+    }
+    fsSetStatus('');
+}
+
+async function fsMove(src, dst) {
+    fsSetStatus('Moving…');
+    try {
+        const res = await fetch('/api/fs/move', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ src, dst }),
+        });
+        if (!res.ok) throw new Error((await res.json()).error || 'Move failed');
+        await loadFs();
+    } catch (err) {
+        alert(err.message);
+    }
+    fsSetStatus('');
+}
+
+function fsStartRename(path, currentName) {
+    const row = document.querySelector(`#fs-tree .fs-row[data-path="${CSS.escape(path)}"]`);
+    if (!row) return;
+    const nameEl = row.querySelector('.fs-name');
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = currentName;
+    input.className = 'fs-inline-input flex-1 text-[10px] font-bold border border-primary/30 rounded px-1 py-0.5 min-w-0';
+    nameEl.replaceWith(input);
+    input.focus();
+    input.select();
+
+    const commit = async () => {
+        const newName = input.value.trim();
+        if (!newName || newName === currentName) {
+            renderTree();
+            return;
+        }
+        const parent = fsParentPath(path);
+        const dst = fsJoinPath(parent, newName);
+        await fsMove(path, dst);
+    };
+
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); commit(); }
+        if (e.key === 'Escape') renderTree();
+    });
+    input.addEventListener('blur', commit);
+}
+
+async function fsDelete(path) {
+    const label = path || 'this item';
+    if (!confirm(`Delete "${label}"?`)) return;
+    fsSetStatus('…');
+    try {
+        const res = await fetch(`/api/fs?path=${encodeURIComponent(path)}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error((await res.json()).error || 'Delete failed');
+        if (fsState.selected === path || fsState.selected?.startsWith(path + '/')) {
+            fsState.selected = fsParentPath(path);
+        }
+        await loadFs();
+    } catch (err) {
+        alert(err.message);
+    }
+    fsSetStatus('');
+}
+
+function fsDownload(path) {
+    window.location.href = `/api/fs/download?path=${encodeURIComponent(path)}`;
+}
+
+function fsCopyPath(path) {
+    const full = path ? `volumes/streams/${path}` : 'volumes/streams';
+    navigator.clipboard.writeText(full);
+    fsSetStatus('Copied');
+    setTimeout(() => fsSetStatus(''), 1500);
+}
+
+let fsContextMenuEl = null;
+
+function closeFsContextMenu() {
+    if (fsContextMenuEl) {
+        fsContextMenuEl.remove();
+        fsContextMenuEl = null;
+    }
+    document.removeEventListener('click', closeFsContextMenu);
+}
+
+function openFsContextMenu(e, entry) {
+    closeFsContextMenu();
+    const menu = document.createElement('div');
+    menu.id = 'fs-context-menu';
+    const isDir = entry.type === 'dir';
+    const items = [
+        { label: 'Rename', icon: 'edit', action: () => fsStartRename(entry.path, entry.name) },
+        { label: 'Copy Path', icon: 'link', action: () => fsCopyPath(entry.path) },
+    ];
+    if (!isDir) {
+        items.push({ label: 'Download', icon: 'download', action: () => fsDownload(entry.path) });
+    }
+    if (isDir) {
+        items.unshift(
+            { label: 'New Folder', icon: 'create_new_folder', action: () => { fsState.selected = entry.path; fsToolbarMkdir(); } },
+            { label: 'New File', icon: 'note_add', action: () => { fsState.selected = entry.path; fsToolbarNewFile(); } },
+            { label: 'Upload Here', icon: 'upload_file', action: () => { fsState.selected = entry.path; fsToolbarUpload(); } },
+        );
+    }
+    items.push({ label: 'Delete', icon: 'delete', danger: true, action: () => fsDelete(entry.path) });
+
+    menu.innerHTML = items.map(it => `
+        <button type="button" class="${it.danger ? 'danger' : ''}">
+            <span class="material-symbols-outlined text-[14px]">${it.icon}</span>${it.label}
+        </button>`).join('');
+
+    menu.querySelectorAll('button').forEach((btn, i) => {
+        btn.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            closeFsContextMenu();
+            items[i].action();
+        });
+    });
+
+    document.body.appendChild(menu);
+    fsContextMenuEl = menu;
+    const x = Math.min(e.clientX, window.innerWidth - menu.offsetWidth - 8);
+    const y = Math.min(e.clientY, window.innerHeight - menu.offsetHeight - 8);
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
+    setTimeout(() => document.addEventListener('click', closeFsContextMenu), 0);
+}
+
+// Init file tree listeners once DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    bindFsTreeEvents();
+});
 

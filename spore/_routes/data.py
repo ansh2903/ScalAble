@@ -65,8 +65,8 @@ def ingest():
         dbid = request.form.get('id')
         stream_name = request.form.get('stream_name')
         memory_ceiling = request.form.get('memory_ceiling') or '1GB'
-        batch_row_size = request.form.get('batch_row_size')
-        batch_row_size = int(batch_row_size) if batch_row_size else 10_000
+        batch_row_size = int(request.form.get('batch_row_size', 10_000))
+        output_format = request.form.get('format') or 'parquet'
 
         connection = session.get("connections", [])
         raw_data = next((c for c in connection if str(c['id']) == str(dbid)), None)
@@ -80,21 +80,30 @@ def ingest():
         use_ssh = raw_data.get('use_ssh')
         use_ssl = raw_data.get('use_ssl')
 
-        manager = SourceConnector(kind=kind, source_type=source_type, creds=creds, use_ssh=use_ssh, use_ssl=use_ssl)
-        status, path = manager.ingest(
-            query=query,
-            stream_name=stream_name,
-            memory_ceiling=memory_ceiling,
-            batch_row_size=batch_row_size,
+        manager = SourceConnector(
+            kind=kind,
+            source_type=source_type,
+            creds=creds,
+            use_ssh=use_ssh,
+            use_ssl=use_ssl,
         )
 
-        if status != 'success':
-            return jsonify({'status': status, 'message': 'failed to collect data from view'})
+        def generate_stream():
+            try:
+                for chunk in manager.ingest(
+                    query=query,
+                    stream_name=stream_name,
+                    memory_ceiling=memory_ceiling,
+                    batch_row_size=batch_row_size,
+                    output_format=output_format,
+                ):
+                    yield f"data: {json.dumps(chunk, default=str)}\n\n"
+            except Exception as e:
+                logging.error(f"ingest stream error: {str(e)}", exc_info=True)
+                err_chunk = {"type": "error", "content": str(e)}
+                yield f"data: {json.dumps(err_chunk)}\n\n"
 
-        return jsonify({
-            "status": status,
-            "path": path
-        })
+        return Response(stream_with_context(generate_stream()), mimetype='text/event-stream')
 
     except Exception as e:
         logging.error(f"data-stream error: {str(e)}", exc_info=True)

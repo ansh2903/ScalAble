@@ -6,8 +6,12 @@
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <title>ScalAble Studio | AI Chat &amp; Analysis</title>
     <script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charset="utf-8"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='js/vendor/gridstack.min.css') }}" />
+    <script src="{{ url_for('static', filename='js/vendor/echarts.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/vendor/gridstack-all.min.js') }}"></script>
     <script src="https://unpkg.com/@tanstack/table-core@8.11.2/build/umd/index.production.js"></script>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
     <script>
@@ -140,9 +144,118 @@
             letter-spacing: -0.05em;
         }
 
-        /* Tree Animation */
-        .stream-chevron-rotated {
-            transform: rotate(45deg); /* Slight tilt is more modern than 90deg */
+        /* File manager tree */
+        #fs-tree .fs-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 8px;
+            border-radius: 6px;
+            cursor: default;
+            user-select: none;
+        }
+        #fs-tree .fs-row:hover {
+            background:  rgb(240, 250, 245);
+        }
+        #fs-tree .fs-row.is-selected {
+            background: rgb(236 253 245);
+        }
+        #fs-tree .fs-row.is-drop-target {
+            background: rgb(236 253 245);
+            outline: 1px dashed rgb(16 185 129 / 0.5);
+        }
+        #fs-tree .fs-row[draggable="true"] {
+            cursor: pointer;
+        }
+        #fs-tree .fs-row[draggable="true"]:active {
+            cursor: default !important;
+        }
+        #fs-tree .fs-chevron {
+            width: 14px;
+            flex-shrink: 0;
+            transition: transform 0.15s ease;
+        }
+        #fs-tree .fs-chevron.expanded {
+            transform: rotate(90deg);
+        }
+        #fs-tree .fs-name {
+            font-size: 11px;
+            font-weight: 600;
+            color: rgb(71 85 105);
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        #fs-tree .fs-size {
+            font-size: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            color: rgb(100 116 139);
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+        #fs-tree .fs-row:hover .fs-size {
+            opacity: 1;
+        }
+        #fs-tree .fs-more-btn {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            color: rgb(148 163 184);
+            opacity: 0;
+            flex-shrink: 0;
+            margin-left: 2px;
+            transition: opacity 0.15s, background-color 0.15s, color 0.15s;
+        }
+        #fs-tree .fs-row:hover .fs-more-btn,
+        #fs-tree .fs-row.is-selected .fs-more-btn {
+            opacity: 1;
+        }
+        #fs-tree .fs-more-btn:hover {
+            background: rgb(241 245 249);
+            color: rgb(15 23 42);
+        }
+        #fs-tree .fs-badge-stream {
+            font-size: 7px;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            padding: 1px 4px;
+            border-radius: 4px;
+            background: rgb(241 245 249);
+            color: rgb(100 116 139);
+            flex-shrink: 0;
+        }
+        #fs-context-menu {
+            position: fixed;
+            z-index: 9999;
+            min-width: 140px;
+            background: white;
+            border: 1px solid rgb(226 232 240);
+            border-radius: 8px;
+            box-shadow: 0 8px 24px -4px rgba(0,0,0,0.12);
+            padding: 4px 0;
+        }
+        #fs-context-menu button {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 6px 12px;
+            font-size: 10px;
+            font-weight: 600;
+            color: rgb(71 85 105);
+            text-align: left;
+        }
+        #fs-context-menu button:hover {
+            background: rgb(248 250 252);
+            color: rgb(16 185 129);
+        }
+        #fs-context-menu button.danger:hover {
+            color: rgb(239 68 68);
         }
 
         /* Subtle Indent */
@@ -249,24 +362,32 @@
             <div class="flex items-center gap-3 group cursor-pointer">
                 <div class="w-9 h-9 flex items-center justify-center relative">
                     <svg class="w-full h-full" fill="none" viewbox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M16 30 C 16 20, 10 16, 13 6" fill="none" stroke="#059669" stroke-linecap="round"
-                            stroke-width="2.5"></path>
-                        <path d="M16 30 C 18 22, 24 18, 21 10" fill="none" stroke="#10b981" stroke-linecap="round"
-                            stroke-width="2"></path>
+                        <path d="M16 30 C 16 20, 10 16, 13 6" fill="none" stroke="#059669" stroke-linecap="round" stroke-width="2.5"></path>
+                        <path d="M16 30 C 18 22, 24 18, 21 10" fill="none" stroke="#10b981" stroke-linecap="round" stroke-width="2"></path>
                         <circle cx="13" cy="6" fill="#059669" r="3.5"></circle>
                         <circle cx="21" cy="10" fill="#10b981" r="2.5"></circle>
                         <circle cx="25" cy="18" fill="#34d399" r="1.5"></circle>
                         <circle cx="8" cy="20" fill="#059669" r="2"></circle>
                     </svg>
                 </div>
-                <a href="/">
-                    <span class="text-2xl font-playful font-bold tracking-tight text-slate-900"
-                        style="font-family: 'Pacifico', cursive;">
+                <a href="/" class="flex items-baseline gap-1.5">
+                    <span class="text-2xl font-playful font-bold tracking-tight text-slate-900" style="font-family: 'Pacifico', cursive;">
                         Spore
+                    </span>
+                    
+                    <span class="self-center transform translate-y-[1px] font-mono text-[8px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-1.5 py-0.5 rounded-md uppercase tracking-widest select-none">
+                        Beta
                     </span>
                 </a>
             </div>
-            <h1 class="text-2xl font-black text-slate-900 tracking-tighter">Workspace</h1>
+            <div class="flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[16px] text-slate-400">edit_note</span>
+                <input type="text" 
+                       value="{{ workspace.name }}" 
+                       onblur="updateWorkspaceName(this.value)"
+                       class="bg-transparent border-0 p-0 text-sm font-black text-slate-800 focus:ring-0 focus:border-b focus:border-slate-300 tracking-tight w-auto max-w-[200px]" 
+                       placeholder="Untitled Workspace..." />
+            </div>
         </div>
         <div class="flex items-center gap-4">
             <div class="flex items-center gap-3 bg-white border border-slate-200 px-3 py-1 rounded-lg mr-2">
@@ -287,16 +408,16 @@
 
     <main id="app-viewport" class="pt-16 h-screen flex overflow-hidden">
         <aside id="sidebar-rail"
-        class="w-14 h-full shrink-0 flex flex-col items-center gap-1 -mt-16
+        class="w-14 h-full shrink-0 flex-shrink-0 flex flex-col items-center gap-1
                border-r border-slate-100 bg-white">
 
             <!-- Icon Rail -->
             <div
-                class="w-14 h-full flex flex-col items-center py-3 gap-1 border-r border-slate-100 bg-white pt-20 relative z-10">
-                <button onclick="openSidePanel('database')" id="tab-files"
+                class="w-14 h-full flex flex-col items-center py-3 gap-1 border-r border-slate-100 bg-white  relative z-10">
+                <button onclick="openSidePanel('database')" id="tab-database"
                     class="sidebar-tab w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-primary hover:bg-primary-soft transition-all relative group/tip">
                     <span class="material-symbols-outlined text-[19px]">Database</span>
-                    <span class="sidebar-tip">Database</span>
+                    <span class="sidebar-tip">Source</span>
                 </button>
                 <button onclick="openSidePanel('files')" id="tab-files"
                     class="sidebar-tab w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-primary hover:bg-primary-soft transition-all relative group/tip">
@@ -333,14 +454,14 @@
 
         <aside id="side-panel"
             class="h-full shrink-0 bg-white border-r border-slate-200 overflow-hidden"
-            style="width:0; transition: width 0.2s cubic-bezier(0.4,0,0.2,1);
+            style="width:0;
                    box-shadow: 4px 0 24px -4px rgba(0,0,0,0.04);">
     
                 <div id="panel-database" class="side-panel-content hidden flex-col h-full">
-                    <div class="px-3 py-3 border-b border-slate-100 flex items-center justify-between shrink-0">
+                    <div class="px-3 py-3.5 border-b border-slate-100 flex items-center justify-between shrink-0">
                         <div class="flex items-center gap-2">
                             <span class="material-symbols-outlined text-[14px] text-primary">database</span>
-                            <span class="text-[9px] font-black uppercase tracking-widest text-slate-600">Schema
+                            <span class="text-[9px] font-black uppercase tracking-widest text-slate-600">Data
                                 Browser</span>
                         </div>
                         <button onclick="closeSidePanel()"
@@ -349,7 +470,7 @@
                         </button>
                     </div>
 
-                    <div id="db-summary" class="px-4 py-4 border-b border-slate-100 bg-slate-50/30">
+                    <div id="db-summary" class="px-4 py-1.5 border-b border-slate-100 bg-slate-50/30">
                         <div class="flex flex-col gap-0.5">
                             <span id="db-name-label" class="text-[9px] font-black text-primary uppercase tracking-widest">No
                                 Database Selected</span>
@@ -391,7 +512,7 @@
                 </div>
                 <!-- Files Panel -->
                 <div id="panel-files" class="side-panel-content hidden flex-col h-full">
-                    <div class="px-3 py-3 border-b border-slate-100 flex items-center justify-between shrink-0">
+                    <div class="px-3 py-3.5 border-b border-slate-100 flex items-center justify-between shrink-0">
                         <div class="flex items-center gap-2">
                             <span class="material-symbols-outlined text-[14px] text-primary">folder_open</span>
                             <span class="text-[9px] font-black uppercase tracking-widest text-slate-600">File Manager</span>
@@ -402,42 +523,47 @@
                         </button>
                     </div>
 
-                    <div class="px-4 py-5 border-b border-slate-100 bg-slate-50/30">
+                    <div class="px-4 py-1.5 border-b border-slate-100 bg-slate-50/30 shrink-0">
                         <div class="flex flex-col gap-0.5">
-                            <span class="text-[9px] font-medium text-slate-400 uppercase tracking-widest">Workspace
-                                Volume</span>
-                            <div class="flex items-center gap-2">
-                                <span id="storage-used"
-                                    class="text-lg font-mono font-medium text-slate-600 tracking-tighter">0.00 MB</span>
-                            </div>
+                            <span class="text-[9px] font-medium text-slate-400 uppercase tracking-widest">Workspace Volume</span>
+                            <span id="storage-used" class="text-lg font-mono font-medium text-slate-600 tracking-tighter">0 B</span>
                         </div>
                     </div>
 
-                    <div class="px-2 pt-3">
-                        <button onclick="document.getElementById('fi').click()"
-                            class="w-full py-2 border border-dashed border-slate-200 rounded-md flex items-center justify-center gap-2 hover:border-primary/30 hover:bg-primary-soft/30 transition-all group">
-                            <span
-                                class="material-symbols-outlined text-[16px] text-slate-400 group-hover:text-primary">upload_file</span>
-                            <span class="text-[10px] font-bold text-slate-400 group-hover:text-primary">Drop or
-                                Import</span>
+                    <div class="px-2 py-3.5 border-b border-slate-100 flex items-center gap-0.5 shrink-0" id="fs-toolbar">
+                        <button type="button" onclick="fsToolbarMkdir()" title="New Folder"
+                            class="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-primary hover:bg-primary-soft transition-all">
+                            <span class="material-symbols-outlined text-[18px]">create_new_folder</span>
                         </button>
+                        <button type="button" onclick="fsToolbarNewFile()" title="New File"
+                            class="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-primary hover:bg-primary-soft transition-all">
+                            <span class="material-symbols-outlined text-[18px]">note_add</span>
+                        </button>
+                        <button type="button" onclick="fsToolbarUpload()" title="Upload"
+                            class="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-primary hover:bg-primary-soft transition-all">
+                            <span class="material-symbols-outlined text-[18px]">upload_file</span>
+                        </button>
+                        <button type="button" onclick="fsCollapseAll()" title="Collapse All"
+                            class="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-primary hover:bg-primary-soft transition-all">
+                            <span class="material-symbols-outlined text-[18px]">unfold_less</span>
+                        </button>
+                        <button type="button" onclick="loadFs()" title="Refresh"
+                            class="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-primary hover:bg-primary-soft transition-all ml-auto">
+                            <span class="material-symbols-outlined text-[18px]">refresh</span>
+                        </button>
+                        <span id="fs-status" class="text-[8px] text-slate-400 font-bold truncate max-w-[60px]"></span>
                     </div>
 
-                    <div id="stream-list" class="flex-1 overflow-y-auto px-2 pb-3 mt-2 space-y-1.5 scrollbar-thin">
-                        <div class="text-[9px] text-slate-400 text-center py-8 font-bold">No streams yet</div>
-                    </div>
+                    <input type="file" id="fs-file-input" class="hidden" multiple>
 
-                    <div class="shrink-0 p-2 border-t border-slate-100">
-                        <button onclick="loadStreams()"
-                            class="w-full flex items-center justify-center gap-1.5 py-1.5 text-[9px] font-black uppercase tracking-wider text-slate-400 hover:text-primary hover:bg-primary-soft rounded-lg transition-all">
-                            <span class="material-symbols-outlined text-[13px]">refresh</span> Refresh
-                        </button>
+                    <div id="fs-tree" class="flex-1 overflow-y-auto px-1 pb-3 mt-1 scrollbar-thin min-h-0">
+                        <div class="text-[9px] text-slate-400 text-center py-8 font-bold">Loading…</div>
                     </div>
                 </div>
 
                 <!-- Notebook Panel -->
                 <div id="panel-notebook" class="side-panel-content hidden flex-col h-full">
-                    <div class="px-3 py-3 border-b border-slate-100 flex items-center justify-between shrink-0">
+                    <div class="px-3 py-3.5 border-b border-slate-100 flex items-center justify-between shrink-0">
                         <div class="flex items-center gap-2">
                             <span class="material-symbols-outlined text-[14px] text-primary">auto_awesome_motion</span>
                             <span class="text-[9px] font-black uppercase tracking-widest text-slate-600">Notebook</span>
@@ -454,7 +580,7 @@
 
                 <!-- History Panel -->
                 <div id="panel-history" class="side-panel-content hidden flex-col h-full">
-                    <div class="px-3 py-3 border-b border-slate-100 flex items-center justify-between shrink-0">
+                    <div class="px-3 py-3.5 border-b border-slate-100 flex items-center justify-between shrink-0">
                         <div class="flex items-center gap-2">
                             <span class="material-symbols-outlined text-[14px] text-primary">history</span>
                             <span class="text-[9px] font-black uppercase tracking-widest text-slate-600">History</span>
@@ -530,7 +656,7 @@
                     <div class="flex items-center gap-3">
                         <div>
                             <h1 class="text-base font-black text-slate-900 tracking-tight leading-tight">
-                                <span id="data-header-name">Workspace</span><span id="data-header-ext"
+                                <span id="data-header-name">{{ workspace.name }}</span><span id="data-header-ext"
                                     class="font-mono font-medium text-slate-400"></span>
                             </h1>
                             <div class="flex items-center gap-1.5 mt-1 flex-wrap">
@@ -587,7 +713,7 @@
                                         </div>
                                         <div class="flex items-center gap-2">
                                             <span class="hidden sm:inline-flex items-center gap-1 text-[9px] font-mono text-slate-500">
-                                                <kbd class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-[9px] text-slate-400">Shift</kbd>
+                                                <kbd class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-[9px] text-slate-400">Ctrl</kbd>
                                                 +
                                                 <kbd class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-[9px] text-slate-400">Enter</kbd>
                                                 <span class="ml-1 text-slate-500">to run / or</span>
@@ -628,6 +754,17 @@
                                                 <input id="data-stream-name" type="text" value="data_1"
                                                     class="w-32 bg-transparent border-0 font-mono text-[11px] text-slate-800 focus:ring-0 focus:outline-none p-0" />
                                             </label>
+                                            <label class="inline-flex items-center h-7 rounded-pill border border-slate-200 bg-slate-50 pl-2.5 pr-1.5 gap-1.5">
+                                                <span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Format</span>
+                                                <select id="data-output-format"
+                                                    class="bg-transparent border-0 font-mono text-[11px] text-slate-800 focus:ring-0 focus:outline-none p-0 pr-4 cursor-pointer">
+                                                    <option value="parquet">Parquet</option>
+                                                    <option value="csv">CSV</option>
+                                                    <option value="tsv">TSV</option>
+                                                    <option value="json">JSON</option>
+                                                    <option value="excel">Excel</option>
+                                                </select>
+                                            </label>
                                         </div>
                                         <div class="flex items-center gap-2">
                                             <button type="button" onclick="materializeDataQuery()"
@@ -637,6 +774,21 @@
                                             </button>
                                         </div>
                                     </div>
+                                    </div>
+
+                                    <!-- Pull progress overlay -->
+                                    <div id="data-pull-progress" class="hidden mx-3 mb-2 rounded-lg border border-slate-200 bg-white px-3 py-2 shrink-0">
+                                        <div class="flex items-center justify-between mb-1.5">
+                                            <span class="text-[9px] font-black uppercase tracking-widest text-primary font-mono">
+                                                <span id="data-pull-stage">Starting…</span>
+                                            </span>
+                                            <span id="data-pull-detail" class="text-[9px] font-mono text-slate-500">— rows</span>
+                                        </div>
+                                        <div class="h-1.5 rounded-pill bg-slate-100 overflow-hidden relative">
+                                            <div id="data-pull-bar"
+                                                class="h-full bg-primary transition-all duration-200"
+                                                style="width: 0%"></div>
+                                        </div>
                                     </div>
 
                                     <!-- Tab strip + tab-specific controls -->
@@ -705,6 +857,57 @@
                                         </table>
                                     </div>
 
+                                    <!-- Pager: page navigation for results -->
+                                    <div id="data-result-pager"
+                                        class="hidden items-center justify-between gap-3 mx-3 mb-3 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl shrink-0">
+                                        <span id="data-result-pager-info"
+                                            class="text-[9px] font-black uppercase tracking-widest text-slate-500 font-mono">
+                                            — rows
+                                        </span>
+                                        <div class="flex items-center gap-1.5">
+                                            <label class="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-slate-400 font-mono">
+                                                Rows / page
+                                                <select id="data-result-page-size"
+                                                    onchange="setDataResultsPageSize(parseInt(this.value, 10))"
+                                                    class="ml-1 h-6 rounded-pill border border-slate-200 bg-white text-[10px] font-mono text-slate-700 px-1.5 focus:ring-0 focus:outline-none focus:border-primary">
+                                                    <option value="10">10</option>
+                                                    <option value="20" selected>20</option>
+                                                    <option value="50">50</option>
+                                                    <option value="100">100</option>
+                                                    <option value="200">200</option>
+                                                </select>
+                                            </label>
+                                            <button type="button" id="data-result-pager-first"
+                                                onclick="goToDataResultsPage(0)"
+                                                title="First page"
+                                                class="w-7 h-7 inline-flex items-center justify-center rounded-pill border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white">
+                                                <span class="material-symbols-outlined text-[14px]">first_page</span>
+                                            </button>
+                                            <button type="button" id="data-result-pager-prev"
+                                                onclick="goToDataResultsPage('prev')"
+                                                title="Previous page"
+                                                class="w-7 h-7 inline-flex items-center justify-center rounded-pill border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white">
+                                                <span class="material-symbols-outlined text-[14px]">chevron_left</span>
+                                            </button>
+                                            <span id="data-result-pager-page"
+                                                class="text-[9px] font-black uppercase tracking-widest text-slate-500 font-mono px-2 whitespace-nowrap">
+                                                Page 1 / 1
+                                            </span>
+                                            <button type="button" id="data-result-pager-next"
+                                                onclick="goToDataResultsPage('next')"
+                                                title="Next page"
+                                                class="w-7 h-7 inline-flex items-center justify-center rounded-pill border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white">
+                                                <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+                                            </button>
+                                            <button type="button" id="data-result-pager-last"
+                                                onclick="goToDataResultsPage('last')"
+                                                title="Last page"
+                                                class="w-7 h-7 inline-flex items-center justify-center rounded-pill border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white">
+                                                <span class="material-symbols-outlined text-[14px]">last_page</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
                                     <!-- History pane -->
                                     <div id="data-history-pane"
                                         class="hidden flex-1 min-h-0 overflow-auto border-t border-slate-100 bg-white scrollbar-thin mx-3 mb-3 rounded-b-lg">
@@ -724,38 +927,6 @@
                             </div>
                         </div>
                     </div>
-
-                    <div class="bg-slate-50 border-t border-slate-200 px-6 py-2 flex items-center justify-between gap-4 shrink-0">
-                        <span class="text-[9px] font-black uppercase tracking-widest text-slate-400 font-mono">
-                            Relations · <span class="text-slate-700">3 pulled</span> · 12.4 MB
-                        </span>
-                        <div class="flex items-center gap-2 flex-wrap justify-end">
-                            <span class="inline-flex items-center gap-1 h-7 pl-2 pr-1 rounded-pill bg-white border border-slate-200 text-[10px] font-mono text-slate-700">
-                                <span class="material-symbols-outlined text-[14px] text-primary">database</span>
-                                events_30d
-                                <button type="button" class="w-6 h-6 flex items-center justify-center rounded-pill hover:bg-primary-soft text-slate-400 hover:text-primary" title="Open in notebook">
-                                    <span class="material-symbols-outlined text-[14px]">open_in_new</span>
-                                </button>
-                            </span>
-                            <span class="inline-flex items-center gap-1 h-7 pl-2 pr-1 rounded-pill bg-white border border-slate-200 text-[10px] font-mono text-slate-700">
-                                <span class="material-symbols-outlined text-[14px] text-primary">database</span>
-                                cohorts_q3
-                                <button type="button" class="w-6 h-6 flex items-center justify-center rounded-pill hover:bg-primary-soft text-slate-400 hover:text-primary" title="Open in notebook">
-                                    <span class="material-symbols-outlined text-[14px]">open_in_new</span>
-                                </button>
-                            </span>
-                            <span class="inline-flex items-center gap-1 h-7 pl-2 pr-1 rounded-pill bg-white border border-slate-200 text-[10px] font-mono text-slate-700">
-                                <span class="material-symbols-outlined text-[14px] text-primary">database</span>
-                                dau_breakdown
-                                <button type="button" class="w-6 h-6 flex items-center justify-center rounded-pill hover:bg-primary-soft text-slate-400 hover:text-primary" title="Open in notebook">
-                                    <span class="material-symbols-outlined text-[14px]">open_in_new</span>
-                                </button>
-                            </span>
-                            <button type="button" class="w-7 h-7 flex items-center justify-center rounded-pill border border-slate-200 bg-white text-slate-400 hover:text-primary" title="Expand relations">
-                                <span class="material-symbols-outlined text-[16px]">expand_more</span>
-                            </button>
-                        </div>
-                    </div>
                 </div>
 
                 <!-- API Panel -->
@@ -771,7 +942,7 @@
                         </select>
                         <input id="api-url" type="text" placeholder="https://api.example.com/v1/resource"
                             class="flex-1 h-9 rounded-pill border border-slate-200 bg-white px-4 text-[11px] font-mono text-slate-800 focus:ring-primary focus:border-primary" />
-                        <button type="button"
+                        <button type="button" id="api-send-btn"
                             class="inline-flex items-center gap-1.5 h-9 px-4 rounded-pill bg-primary text-white text-[10px] font-black uppercase tracking-widest shadow-tactile hover:translate-y-[-1px] transition-all">
                             <span class="material-symbols-outlined text-[14px]">send</span>
                             Send
@@ -815,7 +986,7 @@
                                                 <th class="px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-500">Value</th>
                                             </tr>
                                         </thead>
-                                        <tbody class="text-slate-700">
+                                        <tbody id="api-params-body" class="text-slate-700">
                                             <tr class="border-b border-slate-100">
                                                 <td class="px-3 py-2"><input class="w-full bg-transparent border-0 p-0 focus:ring-0" placeholder="limit" /></td>
                                                 <td class="px-3 py-2"><input class="w-full bg-transparent border-0 p-0 focus:ring-0" placeholder="100" /></td>
@@ -839,7 +1010,7 @@
                                                 <th class="px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-500">Value</th>
                                             </tr>
                                         </thead>
-                                        <tbody class="text-slate-700">
+                                        <tbody id="api-headers-body" class="text-slate-700">
                                             <tr>
                                                 <td class="px-3 py-2"><input class="w-full bg-transparent border-0 p-0 focus:ring-0" placeholder="Authorization" /></td>
                                                 <td class="px-3 py-2"><input class="w-full bg-transparent border-0 p-0 focus:ring-0" placeholder="Bearer …" /></td>
@@ -881,13 +1052,13 @@
                             <div class="px-4 py-2 border-b border-slate-200 bg-white flex items-center justify-between">
                                 <div class="flex items-center gap-2">
                                     <span class="inline-flex items-center h-6 px-2 rounded-pill bg-slate-50 border border-slate-200 text-[9px] font-black uppercase tracking-widest text-slate-500 font-mono">
-                                        Status · <span class="text-slate-900">—</span>
+                                        Status · <span id="api-res-status" class="text-slate-900">—</span>
                                     </span>
                                     <span class="inline-flex items-center h-6 px-2 rounded-pill bg-slate-50 border border-slate-200 text-[9px] font-black uppercase tracking-widest text-slate-500 font-mono">
-                                        Time · <span class="text-slate-900">—</span>
+                                        Time · <span id="api-res-time" class="text-slate-900">—</span>
                                     </span>
                                     <span class="inline-flex items-center h-6 px-2 rounded-pill bg-slate-50 border border-slate-200 text-[9px] font-black uppercase tracking-widest text-slate-500 font-mono">
-                                        Size · <span class="text-slate-900">—</span>
+                                        Size · <span id="api-res-size" class="text-slate-900">—</span>
                                     </span>
                                 </div>
                                 <div class="inline-flex items-center h-7 rounded-pill bg-slate-50 border border-slate-200 p-0.5 gap-0.5 shadow-inner">
@@ -909,6 +1080,8 @@
   "response": "Run a request to see output"
 }
                                 </pre>
+                                <pre id="api-response-headers"
+                                    class="hidden h-full w-full rounded-xl border border-slate-200 bg-white p-3 overflow-auto text-[11px] font-mono text-slate-800 whitespace-pre-wrap"></pre>
                             </div>
                         </div>
                     </div>
@@ -916,54 +1089,53 @@
 
                 <!-- Files -->
                 <div id="files-data" class="hidden flex flex-col flex-1 min-h-0 overflow-hidden">
-                    <div class="px-6 py-3 border-b border-slate-200 bg-white flex items-center justify-between shrink-0">
-                        <div class="flex items-center gap-2 min-w-0">
-                            <span class="material-symbols-outlined text-[16px] text-primary">folder_open</span>
-                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-600">Preview</span>
-                            <select id="file-entity"
-                                class="ml-2 h-8 rounded-pill border border-slate-200 bg-white text-[10px] font-black uppercase tracking-widest text-slate-700 px-3 focus:ring-primary focus:border-primary max-w-[420px]">
-                                <option value="" selected>Select file / sheet</option>
-                            </select>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span id="file-meta-chip"
-                                class="inline-flex items-center h-7 px-2 rounded-pill bg-slate-50 border border-slate-200 text-[9px] font-black uppercase tracking-widest text-slate-500 font-mono">
-                                — rows · — cols
-                            </span>
-                            <button type="button"
+                    <div class="px-6 py-3 border-b border-slate-200 bg-white flex items-center justify-between shrink-0 gap-3 flex-wrap">
+                        <span id="file-preview-meta"
+                            class="inline-flex items-center h-6 px-2 rounded-pill bg-slate-50 border border-slate-200 text-[9px] font-black uppercase tracking-widest text-slate-500 font-mono">
+                            — rows · — cols
+                        </span>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <label class="inline-flex items-center h-7 rounded-pill border border-slate-200 bg-slate-50 pl-2.5 pr-2 gap-1.5">
+                                <span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Local Name</span>
+                                <input id="file-stream-name" type="text" value="data_1"
+                                    class="w-32 bg-transparent border-0 font-mono text-[11px] text-slate-800 focus:ring-0 focus:outline-none p-0" />
+                            </label>
+                            <label class="inline-flex items-center h-7 rounded-pill border border-slate-200 bg-slate-50 pl-2.5 pr-1.5 gap-1.5">
+                                <span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Format</span>
+                                <select id="file-output-format"
+                                    class="bg-transparent border-0 font-mono text-[11px] text-slate-800 focus:ring-0 focus:outline-none p-0 pr-4 cursor-pointer">
+                                    <option value="parquet">Parquet</option>
+                                    <option value="csv">CSV</option>
+                                    <option value="tsv">TSV</option>
+                                    <option value="json">JSON</option>
+                                    <option value="excel">Excel</option>
+                                </select>
+                            </label>
+                            <button type="button" onclick="runFilePreview()"
                                 class="inline-flex items-center gap-1.5 h-8 px-3 rounded-pill bg-white border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:text-primary hover:border-primary/40 transition-all">
-                                Sample <span class="font-mono">100</span>
+                                <span class="material-symbols-outlined text-[14px]">refresh</span>
+                                Refresh
                             </button>
-                        </div>
-                    </div>
-
-                    <div class="px-6 py-3 border-b border-slate-100 bg-slate-50/60 shrink-0">
-                        <div class="flex items-center justify-between">
-                            <span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Schema</span>
-                            <span class="text-[9px] font-black uppercase tracking-widest text-slate-400 font-mono">
-                                Dtypes inferred
-                            </span>
-                        </div>
-                        <div id="file-schema-strip" class="mt-2 flex flex-wrap gap-1.5">
-                            <span class="inline-flex items-center gap-1.5 h-6 px-2 rounded-pill bg-white border border-slate-200 text-[9px] font-black uppercase tracking-widest text-slate-500">
-                                <span class="material-symbols-outlined text-[14px] text-slate-300">info</span>
-                                Select a file to see columns
-                            </span>
+                            <button type="button" onclick="materializeFilePull()"
+                                class="inline-flex items-center gap-1.5 h-8 px-3 rounded-pill bg-primary text-white text-[10px] font-black uppercase tracking-widest shadow-tactile hover:translate-y-[-1px] transition-all">
+                                <span class="material-symbols-outlined text-[14px]">download</span>
+                                Pull
+                            </button>
                         </div>
                     </div>
 
                     <div class="flex-1 min-h-0 overflow-hidden p-4 bg-white">
                         <div class="h-full rounded-xl border border-slate-200 overflow-hidden bg-white data-component">
                             <div class="h-full overflow-auto scrollbar-thin">
-                                <table class="w-full text-left">
-                                    <thead>
+                                <table class="w-full text-left text-[11px] font-mono">
+                                    <thead class="sticky top-0 bg-slate-50 border-b border-slate-200">
                                         <tr id="file-preview-head">
-                                            <th>—</th>
+                                            <th class="px-3 py-2 text-[9px] font-black tracking-wider text-slate-500">—</th>
                                         </tr>
                                     </thead>
                                     <tbody id="file-preview-body">
                                         <tr>
-                                            <td class="text-slate-400 italic">Preview will appear here</td>
+                                            <td class="px-3 py-2 text-slate-400 italic">Preview will appear here</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -971,17 +1143,19 @@
                         </div>
                     </div>
 
-                    <div class="px-6 py-3 border-t border-slate-200 bg-white flex items-center justify-between shrink-0">
-                        <span class="text-[9px] font-black uppercase tracking-widest text-slate-400 font-mono">
-                            Page · <span class="text-slate-700">1</span>
+                    <div id="file-preview-pager"
+                        class="px-6 py-3 border-t border-slate-200 bg-white flex items-center justify-between shrink-0">
+                        <span id="file-preview-pager-info"
+                            class="text-[9px] font-black uppercase tracking-widest text-slate-400 font-mono">
+                            Page · <span class="text-slate-700">1</span> / 1
                         </span>
                         <div class="flex items-center gap-2">
-                            <button type="button"
-                                class="inline-flex items-center gap-1.5 h-8 px-3 rounded-pill bg-white border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:text-primary hover:border-primary/40 transition-all">
+                            <button type="button" id="file-preview-prev" onclick="goToFilePreviewPage('prev')"
+                                class="inline-flex items-center gap-1.5 h-8 px-3 rounded-pill bg-white border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:text-primary hover:border-primary/40 transition-all disabled:opacity-40">
                                 Prev
                             </button>
-                            <button type="button"
-                                class="inline-flex items-center gap-1.5 h-8 px-3 rounded-pill bg-primary text-white text-[10px] font-black uppercase tracking-widest shadow-tactile hover:translate-y-[-1px] transition-all">
+                            <button type="button" id="file-preview-next" onclick="goToFilePreviewPage('next')"
+                                class="inline-flex items-center gap-1.5 h-8 px-3 rounded-pill bg-primary text-white text-[10px] font-black uppercase tracking-widest shadow-tactile hover:translate-y-[-1px] transition-all disabled:opacity-40">
                                 Next
                             </button>
                         </div>
@@ -994,24 +1168,27 @@
                bg-[radial-gradient(circle_at_1px_1px,_rgba(0,163,108,0.06)_1px,_transparent_0)]
                [background-size:14px_14px]">
 
-                    <div class="flex items-center gap-3">
-                        <div>
-                            <h1 class="text-base font-black text-slate-900 tracking-tight leading-tight">
-                                Retention_Cohort_Analysis_v4<span
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft border border-primary/20 shrink-0">
+                            <span class="material-symbols-outlined text-[20px] text-primary-dark">menu_book</span>
+                        </div>
+                        <div class="min-w-0">
+                            <h1 class="text-base font-black text-slate-900 tracking-tight leading-tight truncate">
+                                <span id="notebook-header-name">{{ workspace.name }}</span><span
                                     class="font-mono font-medium text-slate-400">.ipynb</span>
                             </h1>
                             <div class="flex items-center gap-1.5 mt-1">
                                 <span class="inline-flex items-center gap-1.5 h-5 px-2 rounded-pill
                      bg-white border border-slate-200 text-[9px] font-black uppercase tracking-widest text-slate-500">
-                                    <span class="w-1.5 h-1.5 rounded-pill bg-primary animate-pulse"></span>
-                                    Kernel <span class="font-mono text-slate-900 ml-0.5">PY 3.10</span>
+                                    <span class="material-symbols-outlined text-[12px] text-slate-400">memory</span>
+                                    Kernel <span class="font-mono text-slate-900 ml-0.5">Python 3.10</span>
                                 </span>
 
-                                <span
+                                <span id="kernel-status-pill" title="Kernel status"
                                     class="inline-flex items-center gap-1.5 h-5 px-2 rounded-pill
-                     bg-primary-soft border border-primary/20 text-[9px] font-black uppercase tracking-widest text-primary-dark">
-                                    <span class="w-1.5 h-1.5 rounded-pill bg-primary"></span>
-                                    Status <span class="font-mono ml-0.5">Nominal</span>
+                     bg-white border border-slate-200 text-[9px] font-black uppercase tracking-widest text-slate-500 transition-colors">
+                                    <span id="kernel-status-dot" class="w-1.5 h-1.5 rounded-pill bg-slate-300 animate-pulse"></span>
+                                    <span id="kernel-status-text" class="font-mono text-slate-400">Connecting</span>
                                 </span>
                             </div>
                         </div>
@@ -1019,10 +1196,29 @@
 
                     <div class="flex items-center gap-2">
                         <div
-                            class="inline-flex items-center h-8 rounded-pill border border-slate-200 bg-white overflow-hidden shadow-sm">
+                            class="inline-flex items-center h-8 rounded-pill border border-slate-200 bg-white overflow-hidden shadow-sm divide-x divide-slate-200">
+                            <button onclick="addCell('sql', '', { userInitiated: true })" title="Add SQL cell"
+                                class="px-2.5 h-full flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary-soft transition-colors">
+                                <span class="material-symbols-outlined text-[13px]">add</span> SQL
+                            </button>
+                            <button onclick="addCell('python', '', { userInitiated: true })" title="Add Python cell"
+                                class="px-2.5 h-full flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-primary hover:bg-slate-50 transition-colors">
+                                <span class="material-symbols-outlined text-[13px]">add</span> PY
+                            </button>
+                            <button onclick="addCell('markdown', '', { userInitiated: true })" title="Add Markdown cell"
+                                class="px-2.5 h-full flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-violet-500 hover:text-violet-700 hover:bg-violet-50 transition-colors">
+                                <span class="material-symbols-outlined text-[13px]">add</span> MD
+                            </button>
+                            <button onclick="addCell('ai', '', { userInitiated: true })" title="Add AI cell"
+                                class="px-2.5 h-full flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-violet-500 hover:text-violet-700 hover:bg-violet-50 transition-colors">
+                                <span class="material-symbols-outlined text-[13px]">add</span> AI
+                            </button>
+                        </div>
+                        <div
+                            class="inline-flex items-center h-8 rounded-pill border border-slate-200 bg-white overflow-hidden shadow-sm">        
                             <button onclick="restartKernel()" title="Restart kernel"
                                 class="px-2.5 h-full flex items-center text-slate-500 hover:text-primary hover:bg-primary-soft transition-colors">
-                                <span class="material-symbols-outlined text-[16px]">restart_alt</span>
+                                <span id="restart-kernel-icon" class="material-symbols-outlined text-[16px]">restart_alt</span>
                             </button>
                             <span class="w-px h-4 bg-slate-200"></span>
                             <button onclick="interruptKernel()" title="Interrupt"
@@ -1030,16 +1226,6 @@
                                 <span class="material-symbols-outlined text-[16px]">stop</span>
                             </button>
                         </div>
-
-                        <label class="inline-flex items-center h-8 rounded-pill border border-slate-200 bg-white pl-2.5 pr-1
-                  text-[10px] font-black uppercase tracking-widest text-slate-500">
-                            <span class="material-symbols-outlined text-[14px] text-slate-400 mr-1">memory</span>
-                            Kernel
-                            <select class="ml-1.5 bg-transparent border-0 text-slate-900 font-mono text-[11px]
-                     focus:ring-0 focus:outline-none pr-5">
-                                <option>Python 3.10</option>
-                            </select>
-                        </label>
 
                         <button
                             class="inline-flex items-center gap-1.5 h-8 px-3 rounded-pill bg-white border border-slate-200
@@ -1063,18 +1249,6 @@
                         <!-- Cells injected here dynamically -->
                     </div>
 
-                    <!-- Add Cell Buttons -->
-                    <div class="px-6 py-2 shrink-0 flex gap-2">
-                        <button onclick="addCell('sql')"
-                            class="flex-1 border-2 border-dashed border-primary/30 hover:border-primary text-primary text-[10px] font-black uppercase tracking-widest py-2 rounded-xl transition-all">
-                            + SQL CELL
-                        </button>
-                        <button onclick="addCell('python')"
-                            class="flex-1 border-2 border-dashed border-slate-200 hover:border-primary/40 text-slate-400 hover:text-primary text-[10px] font-black uppercase tracking-widest py-2 rounded-xl transition-all">
-                            + PYTHON CELL
-                        </button>
-                    </div>
-
                 </div>
             </div>
 
@@ -1084,29 +1258,29 @@
                [background-size:14px_14px]">
                     <div>
                         <h1 class="text-base font-black text-slate-900 tracking-tight leading-tight">
-                            Dashboard_Untitled_01<span class="font-mono font-medium text-slate-400">.dash</span>
+                            <span id="dashboard-header-name">{{ workspace.name }}</span><span class="font-mono font-medium text-slate-400">.dash</span>
                         </h1>
-                        <div class="flex items-center gap-1.5 mt-1">
+                        <div class="flex items-center gap-1.5 mt-1 flex-wrap">
                             <span class="inline-flex items-center gap-1.5 h-5 px-2 rounded-pill bg-white border border-slate-200 text-[9px] font-black uppercase tracking-widest text-slate-500">
-                                Widgets <span class="font-mono text-slate-900 ml-0.5">0</span>
+                                Widgets <span id="dashboard-widget-count" class="font-mono text-slate-900 ml-0.5">0</span>
                             </span>
                             <span class="inline-flex items-center gap-1.5 h-5 px-2 rounded-pill bg-primary-soft border border-primary/20 text-[9px] font-black uppercase tracking-widest text-primary-dark">
                                 Layout <span class="font-mono ml-0.5">12 col</span>
                             </span>
                         </div>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 flex-wrap justify-end">
                         <div class="inline-flex items-center h-8 rounded-pill bg-slate-50 border border-slate-200 p-0.5 gap-0.5 shadow-inner">
-                            <button type="button"
+                            <button type="button" id="dashboard-btn-edit"
                                 class="inline-flex items-center h-full px-3 rounded-pill bg-primary text-white text-[10px] font-black uppercase tracking-widest shadow-tactile">
                                 Edit
                             </button>
-                            <button type="button"
+                            <button type="button" id="dashboard-btn-view"
                                 class="inline-flex items-center h-full px-3 rounded-pill text-slate-500 hover:text-slate-900 hover:bg-white transition-colors text-[10px] font-black uppercase tracking-widest">
                                 View
                             </button>
                         </div>
-                        <button type="button"
+                        <button type="button" id="dashboard-btn-add"
                             class="inline-flex items-center gap-1.5 h-8 px-4 rounded-pill bg-primary text-white text-[10px] font-black uppercase tracking-widest shadow-tactile hover:translate-y-[-1px] transition-all">
                             <span class="material-symbols-outlined text-[14px]">add</span>
                             Widget
@@ -1115,61 +1289,28 @@
                 </header>
 
                 <div class="flex flex-1 min-h-0 overflow-hidden">
-                    <div class="flex-1 overflow-y-auto p-6 scrollbar-thin
+                    <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative
                         bg-[radial-gradient(circle_at_1px_1px,_rgba(0,163,108,0.06)_1px,_transparent_0)]
                         [background-size:14px_14px]">
-                        <div class="grid grid-cols-12 gap-4 min-h-[320px]">
-                            <div class="col-span-4 border-2 border-dashed border-primary/20 rounded-xl h-32 flex items-center justify-center">
-                                <span class="text-[9px] font-black uppercase tracking-widest text-slate-300">Drop widget</span>
-                            </div>
-                            <div class="col-span-8 border-2 border-dashed border-primary/20 rounded-xl h-32 flex items-center justify-center">
-                                <span class="text-[9px] font-black uppercase tracking-widest text-slate-300">Drop widget</span>
-                            </div>
-                            <div class="col-span-12 flex items-center justify-center py-8">
-                                <div class="rounded-organic border-2 border-dashed border-slate-200 bg-white/90 p-8 max-w-md text-center shadow-data-card">
-                                    <span class="material-symbols-outlined text-4xl text-slate-300 mb-3">dashboard_customize</span>
-                                    <h2 class="text-sm font-black text-slate-900 uppercase tracking-tight mb-2">No widgets yet</h2>
-                                    <p class="text-[11px] text-slate-500 font-medium mb-4">
-                                        Materialize a relation in the Data panel, then drop a widget here.
-                                    </p>
-                                    <button type="button" onclick="openDataPanel()"
-                                        class="inline-flex items-center gap-1.5 h-8 px-4 rounded-pill bg-primary text-white text-[10px] font-black uppercase tracking-widest shadow-tactile hover:translate-y-[-1px] transition-all">
-                                        Go to Data
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="col-span-6 border-2 border-dashed border-primary/20 rounded-xl h-32 flex items-center justify-center">
-                                <span class="text-[9px] font-black uppercase tracking-widest text-slate-300">Drop widget</span>
+                        <div id="dashboard-grid" class="grid-stack flex-1 overflow-y-auto p-4 scrollbar-thin"></div>
+                        <div id="dashboard-empty" class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div class="rounded-organic border-2 border-dashed border-slate-200 bg-white/90 p-8 max-w-md text-center shadow-data-card pointer-events-auto">
+                                <span class="material-symbols-outlined text-4xl text-slate-300 mb-3">dashboard_customize</span>
+                                <h2 class="text-sm font-black text-slate-900 uppercase tracking-tight mb-2">No widgets yet</h2>
+                                <p class="text-[11px] text-slate-500 font-medium mb-4">
+                                    Materialize a relation in the Data panel, then add a widget from the palette.
+                                </p>
+                                <button type="button" onclick="openDataPanel()"
+                                    class="inline-flex items-center gap-1.5 h-8 px-4 rounded-pill bg-primary text-white text-[10px] font-black uppercase tracking-widest shadow-tactile hover:translate-y-[-1px] transition-all">
+                                    Go to Data
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    <aside class="w-56 border-l border-slate-200 bg-white p-3 space-y-2 shrink-0 overflow-y-auto scrollbar-thin">
-                        <p class="text-[9px] font-black uppercase tracking-widest text-slate-400 px-1">Widgets</p>
-                        <div class="rounded-xl border border-slate-200 p-3 hover:border-primary/40 cursor-grab transition-colors flex items-center gap-2">
-                            <span class="material-symbols-outlined text-primary text-[18px]">bar_chart</span>
-                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-700">Bar</span>
-                        </div>
-                        <div class="rounded-xl border border-slate-200 p-3 hover:border-primary/40 cursor-grab transition-colors flex items-center gap-2">
-                            <span class="material-symbols-outlined text-primary text-[18px]">show_chart</span>
-                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-700">Line</span>
-                        </div>
-                        <div class="rounded-xl border border-slate-200 p-3 hover:border-primary/40 cursor-grab transition-colors flex items-center gap-2">
-                            <span class="material-symbols-outlined text-primary text-[18px]">pin</span>
-                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-700">KPI</span>
-                        </div>
-                        <div class="rounded-xl border border-slate-200 p-3 hover:border-primary/40 cursor-grab transition-colors flex items-center gap-2">
-                            <span class="material-symbols-outlined text-primary text-[18px]">table</span>
-                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-700">Table</span>
-                        </div>
-                        <div class="rounded-xl border border-slate-200 p-3 hover:border-primary/40 cursor-grab transition-colors flex items-center gap-2">
-                            <span class="material-symbols-outlined text-primary text-[18px]">map</span>
-                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-700">Map</span>
-                        </div>
-                        <div class="rounded-xl border border-slate-200 p-3 hover:border-primary/40 cursor-grab transition-colors flex items-center gap-2">
-                            <span class="material-symbols-outlined text-primary text-[18px]">pie_chart</span>
-                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-700">Pie</span>
-                        </div>
+                    <aside class="w-56 border-l border-slate-200 bg-white flex flex-col shrink-0 min-h-0">
+                        <div id="dashboard-widget-palette" class="p-3 space-y-2 overflow-y-auto scrollbar-thin flex-1"></div>
+                        <div id="dashboard-config-drawer" class="hidden border-t border-slate-200 p-3 overflow-y-auto scrollbar-thin max-h-[50%]"></div>
                     </aside>
                 </div>
             </div>
@@ -1267,7 +1408,7 @@
                     <div class="flex-1 overflow-y-auto p-6 bg-slate-50/50 scrollbar-thin min-w-0">
                         <h2 class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Destination</h2>
                         <div class="inline-flex items-center h-8 rounded-pill bg-slate-50 border border-slate-200 p-0.5 gap-0.5 shadow-inner mb-6">
-                            <button type="button" class="inline-flex items-center h-full px-3 rounded-pill bg-primary text-white text-[10px] font-black uppercase tracking-widest shadow-tactile">Download</button>
+                            <button type="button" id="export-dashboard-download" class="inline-flex items-center h-full px-3 rounded-pill bg-primary text-white text-[10px] font-black uppercase tracking-widest shadow-tactile">Download HTML</button>
                             <button type="button" class="inline-flex items-center h-full px-3 rounded-pill text-slate-500 hover:bg-white text-[10px] font-black uppercase tracking-widest">Cloud</button>
                             <button type="button" class="inline-flex items-center h-full px-3 rounded-pill text-slate-500 hover:bg-white text-[10px] font-black uppercase tracking-widest">Share Link</button>
                         </div>
@@ -1306,7 +1447,7 @@
         </div>
 
         <section id="chat-panel"
-            class="ease-in-out overflow-hidden w-[400px] xl:w-[400px] flex-shrink-0 flex flex-col bg-white/40 border-r border-slate-200/60 p-3">
+            class="overflow-hidden w-[400px] xl:w-[400px] flex-shrink-0 flex flex-col bg-white/40 border-r border-slate-200/60 p-3">
             <div class="flex items-center justify-between mb-3">
                 <div>
                     <h2 class="text-lg font-black tracking-tight text-slate-900">{{ model }}</h2>
@@ -1408,14 +1549,26 @@
 
     <script>
         window.SPORE_CONNECTIONS = {{ connections | tojson }};
+        window.SPORE_WORKSPACE = {{ workspace | tojson }};
+        window.SPORE_WORKSPACE_STATE = {{ workspace_state | tojson }};
     </script>
     <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
     <script src="{{ url_for('static', filename='js/sidepanel.js') }}"></script>
     <script src="{{ url_for('static', filename='js/MIME.js') }}"></script>
     <script src="{{ url_for('static', filename='js/notebook.js') }}"></script>
     <script src="{{ url_for('static', filename='js/data.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/files-data.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/api-data.js') }}"></script>
     <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
     <script src="{{ url_for('static', filename='js/workspace.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script>
+        document.getElementById('export-dashboard-download')?.addEventListener('click', () => {
+            const id = window.getActiveWorkspaceId?.();
+            if (!id) return;
+            window.location.href = `/api/workspaces/${encodeURIComponent(id)}/dashboard/export`;
+        });
+    </script>
     <script>
         window.MathJax = {
             tex: {

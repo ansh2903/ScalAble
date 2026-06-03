@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Generator
 
 from ..base import BaseSource, SourceCapabilities, SourceKind
+from ._preview import ingest_json, preview_json
 from ._utils import _column_types_from_arrow, _stat
 from spore._logger import logging
 
@@ -19,7 +20,7 @@ class JSONFileSource(BaseSource):
     kind = SourceKind.FILE
     capabilities = SourceCapabilities(
         can_preview=True,
-        can_ingest=False,
+        can_ingest=True,
         can_stream=False,
         needs_ssh=False,
         needs_credentials=False,
@@ -67,3 +68,16 @@ class JSONFileSource(BaseSource):
             logging.error(f"[json_file] metadata failed: {e}")
             return False, {}
 
+    def preview(self, query: str, limit: int = 100) -> Generator[dict, None, None]:
+        yield from preview_json(self.config, query, limit)
+
+    def ingest(
+        self,
+        stream_name: str,
+        query: str,
+        destination_path: str | None = None,
+        memory_ceiling: str = "1GB",
+        batch_row_size: int = 10000,
+        output_format: str = "parquet",
+    ) -> Generator[dict, None, None]:
+        yield from ingest_json(self.config, stream_name, output_format, batch_row_size)
