@@ -5,119 +5,1403 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{{ workspace.name }} — Dashboard Export</title>
   <style>
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --border-light: #f1f5f9;
+      --header-bg: #ffffff;
+      --accent: #00A36C;
+      --accent-soft: rgba(0, 163, 108, 0.12);
+      --table-head: #f8fafc;
+    }
+    [data-theme="dark"] {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --border: #334155;
+      --border-light: #1e293b;
+      --header-bg: #1e293b;
+      --accent: #34d399;
+      --accent-soft: rgba(52, 211, 153, 0.15);
+      --table-head: #0f172a;
+    }
     * { box-sizing: border-box; }
-    body { margin: 0; font-family: system-ui, sans-serif; background: #f8fafc; color: #0f172a; }
-    header { padding: 1rem 1.5rem; background: #fff; border-bottom: 1px solid #e2e8f0; }
-    h1 { margin: 0; font-size: 1.1rem; }
-    .sub { font-size: 0.75rem; color: #64748b; margin-top: 0.25rem; }
-    .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; padding: 1.5rem; max-width: 1400px; margin: 0 auto; }
-    .widget { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; min-height: 120px; }
-    .widget-h { padding: 0.5rem 0.75rem; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid #f1f5f9; }
-    .chart { width: 100%; height: 220px; }
-    .kpi { padding: 1.5rem; font-size: 2rem; font-weight: 800; text-align: center; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.7rem; }
-    th, td { padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: left; }
-    th { background: #f8fafc; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      transition: background 0.2s, color 0.2s;
+    }
+    .export-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 1rem 1.5rem;
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--border);
+    }
+    .banner-left { display: flex; align-items: center; gap: 0.875rem; min-width: 0; }
+    .brand-mark {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), #0284c7);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; box-shadow: 0 2px 8px var(--accent-soft);
+    }
+    .brand-mark svg { width: 20px; height: 20px; fill: #fff; }
+    .banner-text { min-width: 0; }
+    h1 { margin: 0; font-size: 1.05rem; font-weight: 800; letter-spacing: -0.01em; }
+    .sub { font-size: 0.72rem; color: var(--text-muted); margin: 0.2rem 0 0; }
+    .offline-tag {
+      display: inline-block; margin-top: 0.35rem;
+      font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--accent); background: var(--accent-soft);
+      padding: 0.2rem 0.5rem; border-radius: 999px;
+    }
+    .theme-btn {
+      flex-shrink: 0; width: 36px; height: 36px; border-radius: 10px;
+      border: 1px solid var(--border); background: var(--card); color: var(--text-muted);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .theme-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .theme-btn svg { width: 18px; height: 18px; fill: currentColor; }
+    /* Mirror the live GridStack canvas: 12 columns, fixed 60px rows, 6px gaps.
+       Widgets are placed by their stored x/y/w/h so the exported report keeps
+       the same structure as the authored dashboard. */
+    .grid { display: grid; grid-template-columns: repeat(12, 1fr); grid-auto-rows: 60px; gap: 6px; padding: 1rem; max-width: 1500px; margin: 0 auto; align-content: start; }
+    .widget { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; min-height: 0; display: flex; flex-direction: column; position: relative; }
+    .widget-h { display: flex; align-items: center; gap: 6px; padding: 0.25rem 0.6rem; font-size: 0.56rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-muted); flex: 0 0 auto; }
+    .widget-h .w-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .widget-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+    .chart { width: 100%; flex: 1 1 auto; min-height: 0; }
+    .xfilter-badge { display: inline-flex; align-items: center; gap: 3px; margin-left: auto; padding: 1px 6px; border-radius: 999px; font-size: 0.5rem; font-weight: 900; letter-spacing: 0.08em; white-space: nowrap; }
+    .xfilter-badge.source { background: var(--accent); color: #fff; }
+    .xfilter-badge.incoming { background: rgba(0,163,108,0.14); color: var(--accent); }
+    .xfilter-badge button { background: none; border: none; color: inherit; cursor: pointer; font-size: 0.7rem; line-height: 1; padding: 0; }
+    .widget.controller .chart { cursor: pointer; }
+    .kpi { padding: 1.5rem; font-size: 2rem; font-weight: 800; text-align: center; color: var(--text); }
+    .page { display: none; }
+    .page.active { display: block; }
+    .nav-btn { width: 100%; height: 100%; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 6px; border: none; border-radius: 10px; background: var(--accent); color: #fff; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; cursor: pointer; }
+    .widget.nav { background: transparent; border: none; min-height: 0; }
+    .text-body { padding: 0.9rem 1.1rem; font-size: 0.85rem; line-height: 1.5; overflow: auto; height: 100%; color: var(--text); }
+    .text-body h1, .text-body h2, .text-body h3 { margin-top: 0.5em; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.7rem; color: var(--text); }
+    th, td { padding: 4px 8px; border-bottom: 1px solid var(--border-light); text-align: left; }
+    .kpi-wrap { padding: 0.75rem 1rem; text-align: center; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .kpi-val { font-size: 2rem; font-weight: 800; color: var(--text); }
+    .kpi-target { font-size: 0.65rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 0.35rem; }
+    .kpi-pill { display: inline-flex; align-items: center; gap: 4px; margin-top: 0.5rem; padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.65rem; font-weight: 800; }
+    .kpi-pill.good { background: rgba(0,163,108,0.12); color: #059669; }
+    .kpi-pill.bad { background: rgba(239,68,68,0.12); color: #dc2626; }
+    .param-wrap { padding: 0.75rem 1rem; }
+    .param-label { font-size: 0.62rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 0.35rem; }
+    .param-row { display: flex; align-items: center; gap: 0.5rem; }
+    .param-row input[type=range] { flex: 1; accent-color: var(--accent); }
+    .param-val { font-size: 0.7rem; font-weight: 800; color: var(--accent); min-width: 2.5rem; text-align: right; }
+    .tbl-group { background: var(--border-light); font-weight: 800; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+
+    /* Mid screens: keep the 12-col structure but let it breathe a little. */
+    @media (max-width: 1100px) {
+      .grid { max-width: 100%; padding: 0.75rem; }
+    }
+
+    /* Small screens / phones: the fixed x/y/w/h placement is unreadable, so we
+       stack every widget into a single column with sensible per-type heights.
+       The inline grid-column/grid-row placement is overridden with !important. */
+    @media (max-width: 820px) {
+      .export-banner { padding: 0.75rem 1rem; gap: 0.75rem; }
+      .brand-mark { width: 32px; height: 32px; }
+      h1 { font-size: 0.95rem; }
+      .sub { font-size: 0.68rem; }
+      .grid {
+        grid-template-columns: 1fr;
+        grid-auto-rows: auto;
+        gap: 10px;
+        padding: 0.75rem;
+      }
+      .grid > .widget {
+        grid-column: 1 / -1 !important;
+        grid-row: auto !important;
+      }
+      /* Charts need a definite height once rows are content-sized. */
+      .grid > .w-bar, .grid > .w-line, .grid > .w-area, .grid > .w-pie,
+      .grid > .w-scatter, .grid > .w-funnel, .grid > .w-map, .grid > .w-heatmap,
+      .grid > .w-treemap, .grid > .w-radar, .grid > .w-gauge { min-height: 260px; }
+      .grid > .w-kpi { min-height: 120px; }
+      .grid > .w-table { min-height: 200px; max-height: 60vh; }
+      .grid > .w-text { min-height: 56px; }
+      .grid > .w-parameter { min-height: 64px; }
+      .grid > .w-button { min-height: 48px; }
+    }
+
+    @media (max-width: 480px) {
+      .offline-tag { display: none; }
+      .grid > .w-bar, .grid > .w-line, .grid > .w-area, .grid > .w-pie,
+      .grid > .w-scatter, .grid > .w-funnel, .grid > .w-map, .grid > .w-heatmap,
+      .grid > .w-treemap, .grid > .w-radar, .grid > .w-gauge { min-height: 220px; }
+      .kpi-val { font-size: 1.6rem; }
+    }
   </style>
   <script>{{ echarts_inline | safe }}</script>
+  {% for m in maps_inline %}
+  <script>
+    // Inlined GeoJSON so `map` widgets render on air-gapped systems without
+    // reaching out to a CDN. Registered before any chart is built.
+    (function () {
+      try {
+        if (typeof echarts !== 'undefined') {
+          echarts.registerMap('{{ m.name }}', {{ m.json | safe }});
+        }
+      } catch (e) { /* fall back to CDN fetch */ }
+    })();
+  </script>
+  {% endfor %}
 </head>
 <body>
-  <header>
-    <h1>{{ dashboard.title or workspace.name }}</h1>
-    <p class="sub">ScalAble offline dashboard export · {{ widgets | length }} widget(s)</p>
+  <header class="export-banner">
+    <div class="banner-left">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L2 7l10 5 10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5 1.25L12 11zm0 2.5l-5-2.5-5 2.5L12 22l10-8.5-5-2.5-5 2.5z"/></svg>
+      </div>
+      <div class="banner-text">
+        <h1>{{ dashboard.title or workspace.name }}</h1>
+        <p class="sub">{{ pages | length }} page(s) · {{ widgets | length }} widget(s)</p>
+        <span class="offline-tag">Generated securely offline via Spore Engine</span>
+      </div>
+    </div>
+    <button type="button" id="theme-toggle" class="theme-btn" aria-label="Toggle dark mode" title="Toggle theme">
+      <svg id="theme-icon-sun" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 7a5 5 0 100 10 5 5 0 000-10zm0-5v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      <svg id="theme-icon-moon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="display:none"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/></svg>
+    </button>
   </header>
-  <div class="grid" id="grid"></div>
+  <div id="pages"></div>
   <script>
-    const WIDGETS = {{ widgets | tojson }};
-    const PALETTES = ['#00A36C','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
+    const PAGES = {{ pages | tojson }};
+    // Raw, un-aggregated rows per source ref. Used to re-aggregate widgets
+    // client-side when a cross-filter (slicer) selection is active.
+    const DATASETS = {{ datasets | tojson }};
+    const CLICK_FILTER_TYPES = ['bar', 'line', 'area', 'pie', 'map', 'funnel', 'treemap'];
+
+    // Map every widget id to the page it lives on so cross-filtering stays
+    // scoped to a single page (same as the live dashboard).
+    const WIDGET_PAGE = {};
+    PAGES.forEach((p) => (p.widgets || []).forEach((w) => { WIDGET_PAGE[w.id] = p; }));
+
+    // Active controller selections, keyed by the controlling widget's id.
+    const dashboardFilters = {};
+
+    function isDataWidget(type) {
+      const t = (type || '').toLowerCase();
+      return t !== 'text' && t !== 'button' && t !== 'parameter';
+    }
+
+    function pageControllerIds(page) {
+      return new Set(
+        (page?.widgets || [])
+          .filter((w) => CLICK_FILTER_TYPES.includes((w.type || '').toLowerCase()))
+          .map((w) => w.id)
+      );
+    }
+
+    function activeFiltersFor(w) {
+      const controllers = pageControllerIds(WIDGET_PAGE[w.id]);
+      const out = [];
+      Object.entries(dashboardFilters).forEach(([cid, sel]) => {
+        if (cid === w.id) return;
+        if (!controllers.has(cid)) return;
+        if (!sel || !sel.field || sel.value === undefined || sel.value === null || sel.value === '') return;
+        out.push({ field: sel.field, op: sel.op || 'eq', value: sel.value });
+      });
+      return out;
+    }
+
+    function matchFilter(row, f) {
+      if (!f || !f.field) return true;
+      const op = (f.op || 'eq').toLowerCase();
+      const a = row[f.field];
+      const b = f.value;
+      switch (op) {
+        case 'eq': return String(a) === String(b);
+        case 'neq': return String(a) !== String(b);
+        case 'gt': return Number(a) > Number(b);
+        case 'gte': return Number(a) >= Number(b);
+        case 'lt': return Number(a) < Number(b);
+        case 'lte': return Number(a) <= Number(b);
+        case 'contains': return String(a ?? '').toLowerCase().includes(String(b ?? '').toLowerCase());
+        default: return true;
+      }
+    }
+
+    function measureSpec(m) {
+      let field;
+      let agg;
+      if (typeof m === 'string') { field = m; agg = 'count'; }
+      else { field = m.field || '*'; agg = (m.agg || 'sum').toLowerCase(); }
+      if (field === '*' || !field) return { agg: 'count_star', alias: 'count' };
+      const keepName = ['sum', 'avg', 'mean', 'min', 'max'].includes(agg);
+      return { field, agg, alias: keepName ? field : `${field}_${agg}` };
+    }
+
+    function reduceMeasure(vals, agg) {
+      const nums = vals.filter((v) => v !== null && v !== undefined && v !== '').map(Number).filter((v) => Number.isFinite(v));
+      switch (agg) {
+        case 'sum': return nums.reduce((a, b) => a + b, 0);
+        case 'avg':
+        case 'mean': return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : 0;
+        case 'min': return nums.length ? Math.min(...nums) : 0;
+        case 'max': return nums.length ? Math.max(...nums) : 0;
+        case 'count': return vals.filter((v) => v !== null && v !== undefined).length;
+        case 'count_distinct': return new Set(vals.filter((v) => v !== null && v !== undefined).map(String)).size;
+        default: return nums.reduce((a, b) => a + b, 0);
+      }
+    }
+
+    // Client-side equivalent of build_transform_sql: filter -> group-by ->
+    // aggregate -> order -> limit. Column order matches the server (dimensions
+    // first, then measures) so resolveQueryColumns() keeps working.
+    function aggregate(ds, transform, extraFilters) {
+      transform = transform || {};
+      const dims = (transform.dimensions || [])
+        .map((d) => (typeof d === 'string' ? d : d && d.field))
+        .filter(Boolean);
+      const mspecs = (transform.measures || []).map(measureSpec);
+      const filters = [...(transform.filters || []), ...(extraFilters || [])];
+      const rowLimit = Math.min(Number(transform.limit) || 1000, 10000);
+
+      let rows = (ds.rows || []).filter((r) => filters.every((f) => matchFilter(r, f)));
+
+      const dimCols = dims.slice();
+      const measCols = mspecs.map((m) => m.alias);
+      const columns = [...dimCols, ...measCols];
+
+      if (!dims.length && !mspecs.length) {
+        return { columns: ds.columns || [], rows: rows.slice(0, rowLimit) };
+      }
+
+      const groups = new Map();
+      const order = [];
+      rows.forEach((r) => {
+        const key = dims.map((d) => String(r[d] ?? '')).join('\u0001');
+        let g = groups.get(key);
+        if (!g) { g = { dimVals: dims.map((d) => r[d]), rows: [] }; groups.set(key, g); order.push(key); }
+        g.rows.push(r);
+      });
+
+      let out;
+      if (!dims.length) {
+        // No grouping: a single aggregate row over all filtered rows.
+        const o = {};
+        mspecs.forEach((m) => {
+          o[m.alias] = m.agg === 'count_star' ? rows.length : reduceMeasure(rows.map((r) => r[m.field]), m.agg);
+        });
+        out = [o];
+      } else {
+        out = order.map((key) => {
+          const g = groups.get(key);
+          const o = {};
+          dims.forEach((d, i) => { o[d] = g.dimVals[i]; });
+          mspecs.forEach((m) => {
+            o[m.alias] = m.agg === 'count_star' ? g.rows.length : reduceMeasure(g.rows.map((r) => r[m.field]), m.agg);
+          });
+          return o;
+        });
+      }
+
+      const orderBy = transform.orderBy || transform.order_by || [];
+      orderBy.forEach((ob) => {
+        const field = typeof ob === 'string' ? ob : ob && ob.field;
+        if (!field) return;
+        const dir = (typeof ob === 'object' && ob.dir ? ob.dir : 'asc').toLowerCase() === 'desc' ? -1 : 1;
+        out.sort((a, b) => {
+          const av = a[field];
+          const bv = b[field];
+          const an = Number(av);
+          const bn = Number(bv);
+          if (Number.isFinite(an) && Number.isFinite(bn)) return (an - bn) * dir;
+          return String(av ?? '').localeCompare(String(bv ?? '')) * dir;
+        });
+      });
+
+      return { columns, rows: out.slice(0, rowLimit) };
+    }
+
+    function scaleRows(w, rows, columns) {
+      const name = w.style?.scaleByParam;
+      if (!name) return rows;
+      const mult = getExportParamMultiplier(name);
+      if (mult === 1) return rows;
+      const { measureCols } = resolveQueryColumns(w, columns);
+      const cols = measureCols.length ? measureCols : columns;
+      return rows.map((row) => {
+        const copy = { ...row };
+        cols.forEach((col) => { const v = Number(copy[col]); if (Number.isFinite(v)) copy[col] = v * mult; });
+        return copy;
+      });
+    }
+
+    // The current rows/columns for a widget, honouring active cross-filters and
+    // parameter scaling. Falls back to the pre-aggregated snapshot embedded by
+    // the server when no raw dataset is available.
+    function currentDataFor(w) {
+      const extra = activeFiltersFor(w);
+      let columns = w.data?.columns || [];
+      let rows = w.data?.rows || [];
+      // When no slice is active, render the exact server snapshot (parity with
+      // the live dashboard). Only re-aggregate from raw rows when filtering.
+      if (extra.length) {
+        const ref = w.source?.ref;
+        const ds = ref ? DATASETS[ref] : null;
+        if (ds && Array.isArray(ds.rows)) {
+          try {
+            const agg = aggregate(ds, w.transform, extra);
+            columns = agg.columns;
+            rows = agg.rows;
+          } catch (_) { /* fall back to snapshot */ }
+        }
+      }
+      return { rows: scaleRows(w, rows, columns), columns };
+    }
+
+    const PALETTE_MAP = {
+      default: ['#00A36C', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'],
+      emerald: ['#00A36C', '#065f46', '#34d399', '#6ee7b7'],
+      ocean: ['#0ea5e9', '#0284c7', '#0369a1', '#075985'],
+    };
+
+    const MAP_SCOPES = {
+      world: { mapName: 'world', file: 'world.json', region: 'country',
+        urls: ['https://fastly.jsdelivr.net/npm/echarts@4.9.0/map/json/world.json',
+               'https://cdn.jsdelivr.net/npm/echarts@4.9.0/map/json/world.json'] },
+      usa: { mapName: 'USA', file: 'usa.json', region: 'state',
+        urls: ['https://fastly.jsdelivr.net/npm/echarts@4.9.0/map/json/usa.json',
+               'https://cdn.jsdelivr.net/npm/echarts@4.9.0/map/json/usa.json'] },
+      india: { mapName: 'india', file: 'india.json', region: 'plain' },
+      china: { mapName: 'china', region: 'plain', ne: 'China' },
+      brazil: { mapName: 'brazil', region: 'plain', ne: 'Brazil' },
+      canada: { mapName: 'canada', region: 'plain', ne: 'Canada' },
+      australia: { mapName: 'australia', region: 'plain', ne: 'Australia' },
+      russia: { mapName: 'russia', region: 'plain', ne: 'Russia' },
+      indonesia: { mapName: 'indonesia', region: 'plain', ne: 'Indonesia' },
+      'south-africa': { mapName: 'south-africa', region: 'plain', ne: 'South Africa' },
+      germany: { mapName: 'germany', region: 'plain', ch: 'germany' },
+      uk: { mapName: 'uk', region: 'plain', ch: 'united-kingdom' },
+      japan: { mapName: 'japan', region: 'plain', ch: 'japan', nameKey: 'name_english' },
+    };
+    function mapScopeDef(scope) { return MAP_SCOPES[scope] || MAP_SCOPES.world; }
+    const NE_ADMIN1_URL = 'https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@master/geojson/ne_50m_admin_1_states_provinces.geojson';
+    const CLICK_THAT_HOOD_BASE = 'https://cdn.jsdelivr.net/gh/codeforgermany/click_that_hood@main/public/data/';
+    let _neAdmin1Promise = null;
+    function loadNaturalEarthAdmin1() {
+      if (_neAdmin1Promise) return _neAdmin1Promise;
+      _neAdmin1Promise = (async () => {
+        const res = await fetch(NE_ADMIN1_URL);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })().catch((e) => { _neAdmin1Promise = null; throw e; });
+      return _neAdmin1Promise;
+    }
+    async function registerScopeMap(def) {
+      if (def.ne) {
+        const ne = await loadNaturalEarthAdmin1();
+        const features = (ne.features || [])
+          .filter((f) => f.properties && f.properties.admin === def.ne)
+          .map((f) => ({ type: 'Feature', properties: { name: f.properties.name }, geometry: f.geometry }));
+        if (!features.length) throw new Error('No regions for ' + def.mapName);
+        echarts.registerMap(def.mapName, { type: 'FeatureCollection', features });
+        return;
+      }
+      if (def.ch) {
+        const res = await fetch(CLICK_THAT_HOOD_BASE + def.ch + '.geojson');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const geo = await res.json();
+        if (def.nameKey) {
+          (geo.features || []).forEach((f) => {
+            if (f.properties && f.properties[def.nameKey]) f.properties.name = f.properties[def.nameKey];
+          });
+        }
+        echarts.registerMap(def.mapName, geo);
+        return;
+      }
+      const urls = ['js/vendor/' + def.file, '/static/js/vendor/' + def.file, ...(def.urls || [])];
+      let lastErr = null;
+      for (const url of urls) {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          echarts.registerMap(def.mapName, await res.json());
+          return;
+        } catch (e) { lastErr = e; }
+      }
+      throw lastErr || new Error('Could not load ' + def.mapName + ' map data');
+    }
+    const COUNTRY_ALIASES = {
+      'usa': 'United States', 'us': 'United States', 'u.s.': 'United States',
+      'u.s.a.': 'United States', 'united states of america': 'United States',
+      'uk': 'United Kingdom', 'u.k.': 'United Kingdom', 'great britain': 'United Kingdom',
+      'russian federation': 'Russia', 'south korea': 'Korea', 'republic of korea': 'Korea',
+      'korea, south': 'Korea', 'north korea': 'Dem. Rep. Korea', 'czech republic': 'Czech Rep.',
+      'czechia': 'Czech Rep.', 'uae': 'United Arab Emirates', 'drc': 'Dem. Rep. Congo',
+      'democratic republic of the congo': 'Dem. Rep. Congo', 'ivory coast': "Côte d'Ivoire",
+      'laos': 'Lao PDR', 'bosnia and herzegovina': 'Bosnia and Herz.',
+      'dominican republic': 'Dominican Rep.', 'central african republic': 'Central African Rep.',
+      'south sudan': 'S. Sudan', 'equatorial guinea': 'Eq. Guinea', 'solomon islands': 'Solomon Is.',
+    };
+
+    function paletteFor(w) {
+      const key = w.style?.palette || 'default';
+      return PALETTE_MAP[key] || PALETTE_MAP.default;
+    }
+
+    function niceMax(value) {
+      const v = Number(value);
+      if (!Number.isFinite(v) || v <= 0) return 1;
+      const mag = Math.pow(10, Math.floor(Math.log10(v)));
+      const norm = v / mag;
+      const step = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10;
+      return step * mag;
+    }
+
+    function formatNum(value) {
+      const v = Number(value);
+      if (!Number.isFinite(v)) return String(value ?? '—');
+      if (Math.abs(v) >= 1000) return Math.round(v).toLocaleString();
+      return Number.isInteger(v) ? String(v) : v.toFixed(Math.abs(v) >= 100 ? 0 : 2);
+    }
+
+    function normalizeCountry(name) {
+      const key = String(name ?? '').trim().toLowerCase();
+      return COUNTRY_ALIASES[key] || String(name ?? '').trim();
+    }
+
+    const STATE_ALIASES = {
+      al: 'Alabama', ak: 'Alaska', az: 'Arizona', ar: 'Arkansas', ca: 'California',
+      co: 'Colorado', ct: 'Connecticut', de: 'Delaware', fl: 'Florida', ga: 'Georgia',
+      hi: 'Hawaii', id: 'Idaho', il: 'Illinois', in: 'Indiana', ia: 'Iowa',
+      ks: 'Kansas', ky: 'Kentucky', la: 'Louisiana', me: 'Maine', md: 'Maryland',
+      ma: 'Massachusetts', mi: 'Michigan', mn: 'Minnesota', ms: 'Mississippi', mo: 'Missouri',
+      mt: 'Montana', ne: 'Nebraska', nv: 'Nevada', nh: 'New Hampshire', nj: 'New Jersey',
+      nm: 'New Mexico', ny: 'New York', nc: 'North Carolina', nd: 'North Dakota', oh: 'Ohio',
+      ok: 'Oklahoma', or: 'Oregon', pa: 'Pennsylvania', ri: 'Rhode Island', sc: 'South Carolina',
+      sd: 'South Dakota', tn: 'Tennessee', tx: 'Texas', ut: 'Utah', vt: 'Vermont',
+      va: 'Virginia', wa: 'Washington', wv: 'West Virginia', wi: 'Wisconsin', wy: 'Wyoming',
+      dc: 'District of Columbia',
+    };
+
+    function normalizeState(name) {
+      const raw = String(name ?? '').trim();
+      const key = raw.toLowerCase();
+      if (STATE_ALIASES[key]) return STATE_ALIASES[key];
+      const title = raw.replace(/\b\w/g, (c) => c.toUpperCase());
+      return Object.values(STATE_ALIASES).find((s) => s.toLowerCase() === key) || title;
+    }
+
+    function normalizeForScope(scope) {
+      const region = mapScopeDef(scope).region;
+      if (region === 'country') return normalizeCountry;
+      if (region === 'state') return normalizeState;
+      return (name) => String(name ?? '').trim();
+    }
+
+    function formatKpiValue(value, format) {
+      const v = Number(value);
+      if (!Number.isFinite(v)) return String(value ?? '—');
+      if (format === 'currency') return '$' + v.toLocaleString(undefined, { maximumFractionDigits: 0 });
+      if (format === 'percent') return `${(v * 100).toFixed(1)}%`;
+      if (Math.abs(v) >= 100) return Math.round(v).toLocaleString();
+      return formatNum(v);
+    }
+
+    function defaultKpiFormat(w) {
+      const fields = w.wells?.fields || [];
+      const chip = fields[0];
+      const agg = chip ? (typeof chip === 'string' ? 'sum' : (chip.agg || 'sum')) : 'sum';
+      return agg === 'count' ? 'number' : 'currency';
+    }
+
+    function buildKpiSpec(w, rows, columns, measureCols) {
+      const kpiStyle = w.style?.kpi || {};
+      const yKey = measureCols[0] || columns[0];
+      const row = rows[0] || {};
+      const rawVal = yKey && row[yKey] !== undefined ? row[yKey] : Object.values(row)[0];
+      const value = Number(rawVal);
+      let target = kpiStyle.target;
+      if (target !== '' && target != null) target = Number(target); else target = null;
+      const pct = target && Number.isFinite(target) && target !== 0 && Number.isFinite(value)
+        ? ((value - target) / target) * 100 : null;
+      const goodDir = kpiStyle.goodDirection || 'up';
+      const deltaUp = pct != null && pct >= 0;
+      return {
+        value: Number.isFinite(value) ? value : rawVal,
+        target: Number.isFinite(target) ? target : null,
+        pct, good: goodDir === 'up' ? deltaUp : !deltaUp,
+        format: kpiStyle.format || defaultKpiFormat(w),
+        showDelta: kpiStyle.showDelta !== false,
+      };
+    }
+
+    function evalTableRule(rule, numVal) {
+      if (numVal == null || !Number.isFinite(numVal)) return null;
+      const op = rule.op || 'gt';
+      const v = Number(rule.value);
+      const v2 = Number(rule.value2);
+      let match = false;
+      if (op === 'gt') match = numVal > v;
+      else if (op === 'lt') match = numVal < v;
+      else if (op === 'between') match = numVal >= v && numVal <= v2;
+      return match ? (rule.color || '#00A36C') : null;
+    }
+
+    function buildTableSpec(w, rows, columns, enc, measureCols) {
+      const want = enc.columns?.length ? enc.columns : columns;
+      const filtered = rows.map((r) => {
+        const o = {};
+        want.forEach((c) => { o[c] = r[c]; });
+        return o;
+      });
+      const tableStyle = w.style?.table || {};
+      const dataBars = tableStyle.dataBars || [];
+      const colMax = {};
+      dataBars.forEach((col) => {
+        let max = 0;
+        filtered.forEach((r) => { const v = Number(r[col]); if (Number.isFinite(v) && v > max) max = v; });
+        colMax[col] = max || 1;
+      });
+      return { columns: want, rows: filtered, tableStyle, colMax };
+    }
+
+    const exportParams = {};
+    const chartRecords = [];
+
+    function initExportParams() {
+      PAGES.forEach((page) => (page.widgets || []).forEach((w) => {
+        if (w.type === 'parameter' && w.param?.name) {
+          exportParams[w.param.name] = Number(w.param.value) || 0;
+        }
+      }));
+    }
+
+    function getExportParamMultiplier(name) {
+      if (!name) return 1;
+      const pw = PAGES.flatMap((p) => p.widgets || []).find((w) => w.type === 'parameter' && w.param?.name === name);
+      if (!pw) return 1;
+      const base = Number(pw.param?.value) || 0;
+      const cur = exportParams[name] != null ? Number(exportParams[name]) : base;
+      return 1 + cur / 100;
+    }
+
+    // Re-render a single widget record in place using its current (possibly
+    // cross-filtered, possibly param-scaled) data.
+    function refreshRecord(rec) {
+      if (!rec.widget) return;
+      if (rec.kind === 'kpi' || rec.kind === 'table') {
+        if (typeof rec.rerender === 'function') rec.rerender();
+        return;
+      }
+      const opt = buildOption(rec.widget);
+      if (opt?._worldmap) {
+        rec.worldmap = opt._worldmap;
+        initChartRecord(rec);
+      } else if (opt) {
+        applyControllerEmphasis(rec.widget, opt);
+        rec.option = opt;
+        if (rec.inst) rec.inst.setOption(opt, true);
+      }
+    }
+
+    function refreshExportCharts() {
+      chartRecords.forEach(refreshRecord);
+    }
+
+    // Recompute every data widget on a page so cross-highlighting and badges
+    // stay in sync after a selection changes.
+    function refreshPage(page) {
+      chartRecords.forEach((rec) => {
+        if (WIDGET_PAGE[rec.widget?.id] === page) refreshRecord(rec);
+      });
+      updateCrossFilterCues(page);
+    }
+
+    function publishSelection(controllerId, selection) {
+      dashboardFilters[controllerId] = selection;
+      refreshPage(WIDGET_PAGE[controllerId]);
+    }
+
+    function clearSelection(controllerId) {
+      delete dashboardFilters[controllerId];
+      refreshPage(WIDGET_PAGE[controllerId]);
+    }
+
+    // Clicking a category in a controller chart toggles a page-wide selection.
+    function attachCrossFilter(rec) {
+      const w = rec.widget;
+      if (!w || !rec.inst) return;
+      if (!CLICK_FILTER_TYPES.includes((w.type || '').toLowerCase())) return;
+      const field = w.encoding?.x;
+      if (!field) return;
+      rec.inst.off('click');
+      rec.inst.on('click', (params) => {
+        const value = params.name;
+        if (value === undefined || value === null || value === '') return;
+        const current = dashboardFilters[w.id];
+        if (current && String(current.value) === String(value)) clearSelection(w.id);
+        else publishSelection(w.id, { field, op: 'eq', value });
+      });
+    }
+
+    // Dim non-selected marks on the controlling chart (Power BI style).
+    function applyControllerEmphasis(w, option) {
+      const sel = dashboardFilters[w.id];
+      if (!option || !Array.isArray(option.series)) return option;
+      if (!sel || !sel.field || sel.value === undefined || sel.value === null || sel.value === '') return option;
+      if (sel.field !== w.encoding?.x) return option;
+      const target = String(sel.value);
+      const cats = Array.isArray(option.xAxis?.data) ? option.xAxis.data.map((c) => String(c)) : null;
+      option.series.forEach((s) => {
+        if (!s || !Array.isArray(s.data)) return;
+        if (s.type === 'pie' || s.type === 'funnel') {
+          s.data = s.data.map((d) => {
+            const item = (d && typeof d === 'object') ? { ...d } : { value: d };
+            const on = String(item.name) === target;
+            item.itemStyle = { ...(item.itemStyle || {}), opacity: on ? 1 : 0.25, borderColor: on ? '#0f172a' : 'transparent', borderWidth: on ? 2 : 0 };
+            return item;
+          });
+        } else if (s.type === 'bar' && cats) {
+          s.data = s.data.map((v, i) => {
+            const val = (v && typeof v === 'object') ? v.value : v;
+            const on = cats[i] === target;
+            return { value: val, itemStyle: { opacity: on ? 1 : 0.25, borderColor: on ? '#0f172a' : 'transparent', borderWidth: on ? 1.5 : 0 } };
+          });
+        }
+      });
+      return option;
+    }
+
+    const esc = (s) => String(s ?? '').replace(/"/g, '&quot;');
+
+    // Per-widget filter cues: the controlling chart shows a "slicing" badge and
+    // an outline; every affected widget shows a "filtered by" badge.
+    function updateCrossFilterCues(page) {
+      const controllers = pageControllerIds(page);
+      const activeIds = new Set(
+        Object.keys(dashboardFilters).filter((cid) => controllers.has(cid)
+          && dashboardFilters[cid]?.field
+          && dashboardFilters[cid].value !== undefined
+          && dashboardFilters[cid].value !== null
+          && dashboardFilters[cid].value !== '')
+      );
+      (page?.widgets || []).forEach((w) => {
+        const rec = chartRecords.find((r) => r.widget?.id === w.id);
+        const badge = rec?.badgeEl || document.querySelector(`[data-filter-badge="${w.id}"]`);
+        const card = rec?.el || document.querySelector(`[data-widget-id="${w.id}"]`);
+        if (!badge) return;
+        if (!isDataWidget(w.type)) { badge.innerHTML = ''; if (card) card.style.outline = ''; return; }
+
+        const isSource = activeIds.has(w.id);
+        const incoming = activeFiltersFor(w);
+        if (isSource) {
+          const sel = dashboardFilters[w.id];
+          badge.className = 'xfilter-badge source';
+          badge.innerHTML = `${esc(sel.value)}<button type="button" data-clear="${esc(w.id)}" title="Clear filter">&times;</button>`;
+          badge.querySelector('[data-clear]')?.addEventListener('click', (e) => { e.stopPropagation(); clearSelection(w.id); });
+        } else if (incoming.length) {
+          badge.className = 'xfilter-badge incoming';
+          badge.textContent = incoming.map((f) => f.value).join(' · ');
+        } else {
+          badge.className = 'xfilter-badge';
+          badge.innerHTML = '';
+        }
+        if (card) {
+          if (isSource) card.style.outline = '2px solid var(--accent)';
+          else if (incoming.length) card.style.outline = '1px solid rgba(0,163,108,0.4)';
+          else card.style.outline = '';
+          card.style.outlineOffset = '-2px';
+        }
+      });
+    }
+
+    const _mapPromises = {};
+    function ensureMapForScope(scope) {
+      if (typeof echarts === 'undefined') return Promise.reject(new Error('ECharts not loaded'));
+      const def = mapScopeDef(scope);
+      if (typeof echarts.getMap === 'function' && echarts.getMap(def.mapName)) return Promise.resolve();
+      if (_mapPromises[def.mapName]) return _mapPromises[def.mapName];
+      _mapPromises[def.mapName] = registerScopeMap(def).catch((e) => {
+        _mapPromises[def.mapName] = null;
+        throw e;
+      });
+      return _mapPromises[def.mapName];
+    }
+
+    function buildMapOption(spec) {
+      const palette = spec.palette || PALETTE_MAP.default;
+      const def = mapScopeDef(spec.scope);
+      return {
+        tooltip: {
+          trigger: 'item',
+          formatter: (p) => `${p.name}: ${p.value !== undefined && p.value !== null && !Number.isNaN(p.value) ? formatNum(p.value) : 'N/A'}`,
+        },
+        visualMap: {
+          min: 0, max: spec.maxVal, calculable: true, orient: 'horizontal',
+          left: 'center', bottom: 4, itemWidth: 12, itemHeight: 60,
+          textStyle: { fontSize: 9 }, inRange: { color: ['#e2e8f0', palette[0]] },
+        },
+        series: [{
+          type: 'map', map: def.mapName, roam: true, scaleLimit: { min: 1, max: 12 },
+          itemStyle: { borderColor: '#cbd5e1', borderWidth: 0.5, areaColor: '#f1f5f9' },
+          emphasis: { label: { show: false }, itemStyle: { areaColor: palette[1] || palette[0] } },
+          data: spec.data,
+        }],
+      };
+    }
+
+    function resolveQueryColumns(w, columns) {
+      const dimCount = (w.transform?.dimensions || []).length;
+      return {
+        dimCols: columns.slice(0, dimCount),
+        measureCols: columns.slice(dimCount),
+      };
+    }
+
+    function pivotCartesian(rows, axisKey, legendKey, measureKeys) {
+      const categories = [];
+      const catSet = new Set();
+      rows.forEach((row) => {
+        const cat = String(row[axisKey] ?? '');
+        if (!catSet.has(cat)) {
+          catSet.add(cat);
+          categories.push(cat);
+        }
+      });
+      const measures = measureKeys.length ? measureKeys : ['value'];
+      const series = [];
+      if (legendKey) {
+        const legends = [...new Set(rows.map((r) => String(r[legendKey] ?? '')))];
+        measures.forEach((mKey) => {
+          legends.forEach((leg) => {
+            const data = categories.map((cat) => {
+              const row = rows.find(
+                (r) => String(r[axisKey] ?? '') === cat && String(r[legendKey] ?? '') === leg
+              );
+              return row ? Number(row[mKey]) || 0 : 0;
+            });
+            series.push({
+              name: measures.length > 1 ? `${leg} · ${mKey}` : leg,
+              data,
+            });
+          });
+        });
+      } else {
+        measures.forEach((mKey) => {
+          const data = categories.map((cat) => {
+            const row = rows.find((r) => String(r[axisKey] ?? '') === cat);
+            return row ? Number(row[mKey]) || 0 : 0;
+          });
+          series.push({ name: mKey, data });
+        });
+      }
+      if (!series.length) {
+        series.push({ name: 'Series', data: categories.map(() => 0) });
+      }
+      return { categories, series };
+    }
+
+    function inferMapScope(axisField, rows) {
+      const name = String(axisField || '').toLowerCase();
+      if (/state|province|territory|^region$/i.test(name)) return 'usa';
+      const sample = (rows || []).slice(0, 24).map((r) => String(r[axisField] ?? '').trim().toLowerCase()).filter(Boolean);
+      if (!sample.length) return null;
+      const usHits = sample.filter((v) => STATE_ALIASES[v] || Object.values(STATE_ALIASES).some((s) => s.toLowerCase() === v));
+      if (usHits.length >= Math.max(1, Math.ceil(sample.length * 0.5))) return 'usa';
+      return null;
+    }
 
     function buildOption(w) {
-      const rows = w.data?.rows || [];
+      const { rows, columns } = currentDataFor(w);
       const enc = w.encoding || {};
-      const xKey = enc.x || (w.data?.columns?.[0]);
-      const yKey = enc.y || (w.data?.columns?.[1]);
       const type = (w.type || 'bar').toLowerCase();
+      const palette = paletteFor(w);
+      const showLegend = w.style?.showLegend !== false;
 
-      if (type === 'kpi') {
-        const val = rows[0] && yKey ? rows[0][yKey] : (rows[0] ? Object.values(rows[0])[0] : '—');
-        return null;
-      }
-      if (type === 'table') return null;
+      if (type === 'kpi' || type === 'table' || type === 'text' || type === 'parameter') return null;
 
-      const categories = rows.map(r => r[xKey]);
-      const values = rows.map(r => Number(r[yKey]) || 0);
+      const { dimCols, measureCols } = resolveQueryColumns(w, columns);
 
-      if (type === 'pie') {
+      if (type === 'scatter') {
+        const xKey = enc.x || columns[0];
+        const yKey = enc.y || columns[1];
+        const sizeKey = enc.size;
+        const seriesKey = enc.series;
+        if (!xKey || !yKey) return null;
+        const pointValue = (r) => [
+          Number(r[xKey]) || 0,
+          Number(r[yKey]) || 0,
+          sizeKey ? Number(r[sizeKey]) || 10 : 10,
+        ];
+        const scatterSeries = (name, data) => ({
+          name,
+          type: 'scatter',
+          symbolSize: (d) => (Array.isArray(d) ? d[2] : 10),
+          data,
+        });
+        if (seriesKey) {
+          const groups = {};
+          rows.forEach((r) => {
+            const k = String(r[seriesKey] ?? '');
+            if (!groups[k]) groups[k] = [];
+            groups[k].push(pointValue(r));
+          });
+          const seriesList = Object.entries(groups).map(([name, data]) => scatterSeries(name, data));
+          return {
+            color: palette,
+            tooltip: { trigger: 'item' },
+            legend: showLegend ? { top: 0, type: 'scroll' } : undefined,
+            grid: { left: 48, right: 16, top: seriesList.length > 1 ? 40 : 32, bottom: 32 },
+            xAxis: { type: 'value', scale: true },
+            yAxis: { type: 'value', scale: true },
+            series: seriesList,
+          };
+        }
         return {
+          color: palette,
           tooltip: { trigger: 'item' },
-          series: [{ type: 'pie', radius: '60%', data: categories.map((c, i) => ({ name: c, value: values[i] })), color: PALETTES }]
+          grid: { left: 48, right: 16, top: 32, bottom: 32 },
+          xAxis: { type: 'value', scale: true },
+          yAxis: { type: 'value', scale: true },
+          series: [scatterSeries('Series', rows.map(pointValue))],
         };
       }
-      const seriesType = type === 'line' || type === 'area' ? 'line' : type === 'scatter' ? 'scatter' : 'bar';
+
+      if (type === 'heatmap') {
+        const xKey = dimCols[1] || enc.x;
+        const yKey = dimCols[0] || enc.y;
+        const zKey = measureCols[0] || enc.z;
+        if (!xKey || !yKey || !zKey) return null;
+        const xCats = [...new Set(rows.map((r) => String(r[xKey] ?? '')))];
+        const yCats = [...new Set(rows.map((r) => String(r[yKey] ?? '')))];
+        const data = rows.map((r) => [
+          xCats.indexOf(String(r[xKey] ?? '')),
+          yCats.indexOf(String(r[yKey] ?? '')),
+          Number(r[zKey]) || 0,
+        ]);
+        const zMax = data.length ? Math.max(...data.map((d) => d[2]), 1) : 1;
+        return {
+          tooltip: { position: 'top' },
+          grid: { left: 56, right: 24, top: 24, bottom: 48 },
+          xAxis: { type: 'category', data: xCats, splitArea: { show: true } },
+          yAxis: { type: 'category', data: yCats, splitArea: { show: true } },
+          visualMap: { min: 0, max: zMax, calculable: true, orient: 'horizontal', left: 'center', bottom: 0 },
+          series: [{ type: 'heatmap', data, label: { show: false } }],
+        };
+      }
+
+      if (type === 'pie') {
+        const xKey = dimCols[0] || enc.x;
+        const yKey = measureCols[0] || enc.y;
+        if (!xKey || !yKey) return null;
+        return {
+          color: palette,
+          tooltip: { trigger: 'item' },
+          legend: showLegend ? { bottom: 0, type: 'scroll' } : undefined,
+          series: [{
+            type: 'pie',
+            radius: ['35%', '65%'],
+            data: rows.map((r) => ({ name: String(r[xKey] ?? ''), value: Number(r[yKey]) || 0 })),
+          }],
+        };
+      }
+
+      if (type === 'map') {
+        const xKey = dimCols[0] || enc.x;
+        const yKey = measureCols[0] || enc.y;
+        if (!xKey || !yKey) return null;
+        const inferred = inferMapScope(xKey, rows);
+        let scope = w.style?.mapScope || 'world';
+        if (inferred && scope === 'world') scope = 'usa';
+        const normalize = normalizeForScope(scope);
+        const data = rows.map((r) => ({ name: normalize(r[xKey]), value: Number(r[yKey]) || 0 }));
+        const maxVal = data.length ? Math.max(...data.map((d) => d.value), 1) : 1;
+        return { _worldmap: { data, maxVal, palette, scope } };
+      }
+
+      if (type === 'funnel') {
+        const xKey = dimCols[0] || enc.x;
+        const yKey = measureCols[0] || enc.y;
+        if (!xKey || !yKey) return null;
+        return {
+          color: palette,
+          tooltip: { trigger: 'item', formatter: '{b}: {c}' },
+          legend: showLegend ? { bottom: 0, type: 'scroll' } : undefined,
+          series: [{
+            type: 'funnel', left: '8%', right: '8%', top: 16, bottom: showLegend ? 32 : 16,
+            sort: 'descending', gap: 2, label: { show: true, position: 'inside', fontSize: 10 },
+            data: rows.map((r) => ({ name: String(r[xKey] ?? ''), value: Number(r[yKey]) || 0 })),
+          }],
+        };
+      }
+
+      if (type === 'gauge') {
+        const yKey = measureCols[0] || enc.y || columns[0];
+        const row = rows[0] || {};
+        const raw = yKey && row[yKey] !== undefined ? Number(row[yKey]) : Number(Object.values(row)[0]);
+        const val = Number.isFinite(raw) ? raw : 0;
+        return {
+          color: palette,
+          series: [{
+            type: 'gauge', min: 0, max: niceMax(val),
+            progress: { show: true, width: 14, itemStyle: { color: palette[0] } },
+            axisLine: { lineStyle: { width: 14 } }, axisLabel: { fontSize: 9, distance: 14 },
+            pointer: { itemStyle: { color: palette[0] } },
+            detail: { valueAnimation: true, fontSize: 22, offsetCenter: [0, '74%'], formatter: (v) => formatNum(v) },
+            title: { show: !!yKey, offsetCenter: [0, '96%'], fontSize: 10 },
+            data: [{ value: val, name: yKey || '' }],
+          }],
+        };
+      }
+
+      if (type === 'treemap') {
+        const catKey = dimCols[0] || enc.x;
+        const groupKey = dimCols.length > 1 ? dimCols[1] : '';
+        const valKey = measureCols[0] || enc.y;
+        if (!catKey || !valKey) return null;
+        const hasGroup = groupKey && groupKey !== catKey;
+        let data;
+        if (hasGroup) {
+          const groups = {};
+          rows.forEach((r) => {
+            const g = String(r[groupKey] ?? '');
+            (groups[g] = groups[g] || []).push({ name: String(r[catKey] ?? ''), value: Number(r[valKey]) || 0 });
+          });
+          data = Object.entries(groups).map(([name, children]) => ({ name, children }));
+        } else {
+          data = rows.map((r) => ({ name: String(r[catKey] ?? ''), value: Number(r[valKey]) || 0 }));
+        }
+        return {
+          color: palette,
+          tooltip: { trigger: 'item', formatter: '{b}: {c}' },
+          series: [{
+            type: 'treemap', roam: false, breadcrumb: { show: hasGroup, height: 18, bottom: 0 },
+            label: { show: true, fontSize: 10 },
+            upperLabel: hasGroup ? { show: true, height: 16, fontSize: 9 } : undefined,
+            data,
+          }],
+        };
+      }
+
+      if (type === 'radar') {
+        const axisK = dimCols[0] || enc.x;
+        let legendK = dimCols.length > 1 ? dimCols[1] : (enc.series || '');
+        if (legendK === axisK) legendK = '';
+        const mKeys = measureCols.length ? measureCols : [enc.y].filter(Boolean);
+        if (!axisK || !mKeys.length) return null;
+        const { categories, series } = pivotCartesian(rows, axisK, legendK, mKeys);
+        let maxVal = 0;
+        series.forEach((s) => s.data.forEach((v) => { if (v > maxVal) maxVal = v; }));
+        maxVal = maxVal > 0 ? maxVal : 1;
+        return {
+          color: palette,
+          tooltip: { trigger: 'item' },
+          legend: showLegend && series.length > 1 ? { top: 0, type: 'scroll' } : undefined,
+          radar: {
+            indicator: categories.map((c) => ({ name: c, max: maxVal })),
+            radius: '62%', center: ['50%', series.length > 1 ? '56%' : '50%'], axisName: { fontSize: 9 },
+          },
+          series: [{ type: 'radar', data: series.map((s) => ({ name: s.name, value: s.data, areaStyle: { opacity: 0.1 } })) }],
+        };
+      }
+
+      const axisKey = dimCols[0] || enc.x;
+      let legendKey = dimCols.length > 1 ? dimCols[1] : (enc.series || '');
+      if (legendKey === axisKey) legendKey = '';
+      const measureKeys = measureCols.length ? measureCols : [enc.y].filter(Boolean);
+      if (!axisKey || !measureKeys.length) return null;
+
+      const { categories, series } = pivotCartesian(rows, axisKey, legendKey, measureKeys);
+      const seriesType = type === 'line' ? 'line' : type === 'area' ? 'line' : 'bar';
+
       return {
+        color: palette,
         tooltip: { trigger: 'axis' },
-        xAxis: { type: 'category', data: categories },
-        yAxis: { type: 'value' },
-        series: [{ type: seriesType, data: values, areaStyle: type === 'area' ? {} : undefined, itemStyle: { color: PALETTES[0] } }]
+        legend: showLegend && series.length > 1 ? { top: 0, type: 'scroll' } : undefined,
+        grid: { left: 48, right: 16, top: series.length > 1 ? 40 : 28, bottom: 32 },
+        xAxis: { type: 'category', data: categories, axisLabel: { fontSize: 10, rotate: categories.length > 8 ? 25 : 0 } },
+        yAxis: { type: 'value', axisLabel: { fontSize: 10 } },
+        series: series.map((s) => ({
+          name: s.name,
+          type: seriesType,
+          data: s.data,
+          stack: type === 'area' ? 'total' : undefined,
+          areaStyle: type === 'area' ? {} : undefined,
+          smooth: type === 'line' || type === 'area',
+        })),
       };
+    }
+
+    // Place a widget on the grid using its stored x/y/w/h so the export keeps
+    // the same structure as the authored dashboard.
+    function placeWidget(el, layout) {
+      const x = Math.max(0, Math.min(11, Number(layout.x) || 0));
+      const w = Math.max(1, Math.min(12 - x, Number(layout.w) || 6));
+      const y = Math.max(0, Number(layout.y) || 0);
+      const h = Math.max(1, Number(layout.h) || 2);
+      el.style.gridColumn = `${x + 1} / span ${w}`;
+      el.style.gridRow = `${y + 1} / span ${h}`;
+    }
+
+    function makeWidgetHeader(w) {
+      const head = document.createElement('div');
+      head.className = 'widget-h';
+      const title = document.createElement('span');
+      title.className = 'w-title';
+      title.textContent = w.title || w.type || 'Widget';
+      title.title = title.textContent;
+      const badge = document.createElement('span');
+      badge.className = 'xfilter-badge';
+      badge.setAttribute('data-filter-badge', w.id);
+      head.append(title, badge);
+      return { head, badge };
+    }
+
+    function renderKpiBody(w, host) {
+      host.innerHTML = '';
+      const { rows, columns } = currentDataFor(w);
+      const { measureCols } = resolveQueryColumns(w, columns);
+      const kpi = buildKpiSpec(w, rows, columns, measureCols);
+      const wrap = document.createElement('div');
+      wrap.className = 'kpi-wrap';
+      const valEl = document.createElement('div');
+      valEl.className = 'kpi-val';
+      valEl.textContent = formatKpiValue(kpi.value, kpi.format);
+      wrap.appendChild(valEl);
+      if (kpi.target != null) {
+        const t = document.createElement('div');
+        t.className = 'kpi-target';
+        t.textContent = `Target ${formatKpiValue(kpi.target, kpi.format)}`;
+        wrap.appendChild(t);
+      }
+      if (kpi.showDelta && kpi.pct != null) {
+        const pill = document.createElement('div');
+        pill.className = 'kpi-pill ' + (kpi.good ? 'good' : 'bad');
+        pill.textContent = `${kpi.pct >= 0 ? '▲' : '▼'} ${Math.abs(kpi.pct).toFixed(1)}% vs target`;
+        wrap.appendChild(pill);
+      }
+      host.appendChild(wrap);
+    }
+
+    function renderTableBody(w, host) {
+      host.innerHTML = '';
+      const { rows, columns } = currentDataFor(w);
+      const enc = w.encoding || {};
+      const { measureCols } = resolveQueryColumns(w, columns);
+      const spec = buildTableSpec(w, rows, columns, enc, measureCols);
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      const hr = document.createElement('tr');
+      spec.columns.forEach((c) => { const th = document.createElement('th'); th.textContent = c; hr.appendChild(th); });
+      thead.appendChild(hr);
+      table.appendChild(thead);
+      const tbody = document.createElement('tbody');
+      let lastGroup = null;
+      spec.rows.slice(0, 200).forEach((row) => {
+        const groupBy = spec.tableStyle.groupBy || '';
+        if (groupBy) {
+          const g = String(row[groupBy] ?? '');
+          if (g !== lastGroup) {
+            lastGroup = g;
+            const gtr = document.createElement('tr');
+            const gtd = document.createElement('td');
+            gtd.colSpan = spec.columns.length;
+            gtd.className = 'tbl-group';
+            gtd.textContent = g;
+            gtr.appendChild(gtd);
+            tbody.appendChild(gtr);
+          }
+        }
+        const tr = document.createElement('tr');
+        spec.columns.forEach((c) => {
+          const td = document.createElement('td');
+          const raw = row[c];
+          const numVal = Number(raw);
+          const isNum = Number.isFinite(numVal);
+          (spec.tableStyle.rules || []).forEach((rule) => {
+            if (rule.col !== c) return;
+            const color = evalTableRule(rule, isNum ? numVal : null);
+            if (!color) return;
+            if (rule.kind === 'text') td.style.color = color;
+            else if (rule.kind === 'cell') td.style.backgroundColor = color + '22';
+          });
+          if ((spec.tableStyle.dataBars || []).includes(c) && isNum) {
+            const pct = Math.min(100, Math.max(0, (numVal / (spec.colMax[c] || 1)) * 100));
+            td.style.backgroundImage = `linear-gradient(90deg, rgba(0,163,108,0.18) ${pct}%, transparent ${pct}%)`;
+          }
+          const dotRule = (spec.tableStyle.rules || []).find((r) => r.col === c && r.kind === 'dot');
+          if (dotRule) {
+            const color = evalTableRule(dotRule, isNum ? numVal : null);
+            if (color) {
+              const dot = document.createElement('span');
+              dot.style.cssText = 'display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;background:' + color;
+              td.appendChild(dot);
+            }
+          }
+          const span = document.createElement('span');
+          span.textContent = isNum ? formatNum(numVal) : String(raw ?? '');
+          td.appendChild(span);
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      host.appendChild(table);
     }
 
     function renderWidget(w) {
       const layout = w.layout || { x: 0, y: 0, w: 6, h: 2 };
-      const el = document.createElement('div');
-      el.className = 'widget';
-      el.style.gridColumn = `span ${Math.min(12, layout.w || 6)}`;
-      const title = document.createElement('div');
-      title.className = 'widget-h';
-      title.textContent = w.title || w.type || 'Widget';
-      el.appendChild(title);
-
       const type = (w.type || 'bar').toLowerCase();
-      if (type === 'kpi') {
-        const rows = w.data?.rows || [];
-        const yKey = w.encoding?.y || (w.data?.columns?.[0]);
-        const val = rows[0] && yKey ? rows[0][yKey] : (rows[0] ? Object.values(rows[0])[0] : '—');
-        const k = document.createElement('div');
-        k.className = 'kpi';
-        k.textContent = val;
-        el.appendChild(k);
-        return el;
-      }
-      if (type === 'table') {
-        const wrap = document.createElement('div');
-        wrap.style.overflow = 'auto';
-        wrap.style.maxHeight = '240px';
-        const table = document.createElement('table');
-        const cols = w.data?.columns || [];
-        const thead = document.createElement('thead');
-        const hr = document.createElement('tr');
-        cols.forEach(c => { const th = document.createElement('th'); th.textContent = c; hr.appendChild(th); });
-        thead.appendChild(hr);
-        table.appendChild(thead);
-        const tbody = document.createElement('tbody');
-        (w.data?.rows || []).slice(0, 200).forEach(row => {
-          const tr = document.createElement('tr');
-          cols.forEach(c => { const td = document.createElement('td'); td.textContent = row[c]; tr.appendChild(td); });
-          tbody.appendChild(tr);
-        });
-        table.appendChild(tbody);
-        wrap.appendChild(table);
-        el.appendChild(wrap);
-        return el;
+      const el = document.createElement('div');
+      el.className = type === 'button' ? 'widget nav' : 'widget';
+      el.classList.add('w-' + type);
+      el.setAttribute('data-widget-id', w.id);
+      placeWidget(el, layout);
+
+      if (type === 'button') {
+        const btn = document.createElement('button');
+        btn.className = 'nav-btn';
+        btn.textContent = w.title || 'Go to page';
+        const target = w.nav?.target || '';
+        btn.addEventListener('click', () => { if (target) showPage(target); });
+        el.appendChild(btn);
+        return { el, kind: 'button', widget: w };
       }
 
-      const chart = document.createElement('div');
-      chart.className = 'chart';
-      el.appendChild(chart);
-      const opt = buildOption(w);
-      if (typeof echarts !== 'undefined' && opt) {
-        echarts.init(chart).setOption(opt);
+      // Text widgets fill the whole card without a header bar (matches live).
+      if (type === 'text') {
+        const body = document.createElement('div');
+        body.className = 'text-body';
+        body.textContent = w.text || '';
+        el.appendChild(body);
+        return { el, kind: 'text', widget: w };
       }
-      return el;
+
+      // Parameter sliders are controls, not data widgets — no header/badge.
+      if (type === 'parameter') {
+        const p = w.param || {};
+        const name = p.name || 'param';
+        const val = exportParams[name] != null ? Number(exportParams[name]) : Number(p.value) || 0;
+        exportParams[name] = val;
+        const wrap = document.createElement('div');
+        wrap.className = 'param-wrap';
+        const label = document.createElement('div');
+        label.className = 'param-label';
+        label.textContent = w.title || name;
+        const row = document.createElement('div');
+        row.className = 'param-row';
+        const slider = document.createElement('input');
+        slider.type = 'range';
+        slider.min = String(p.min ?? 0);
+        slider.max = String(p.max ?? 100);
+        slider.step = String(p.step ?? 1);
+        slider.value = String(val);
+        const valEl = document.createElement('span');
+        valEl.className = 'param-val';
+        valEl.textContent = `${val}%`;
+        slider.addEventListener('input', () => {
+          exportParams[name] = Number(slider.value);
+          valEl.textContent = `${slider.value}%`;
+          refreshExportCharts();
+        });
+        row.append(slider, valEl);
+        wrap.append(label, row);
+        el.appendChild(wrap);
+        return { el, kind: 'parameter', widget: w };
+      }
+
+      const { head, badge } = makeWidgetHeader(w);
+      el.appendChild(head);
+      if (CLICK_FILTER_TYPES.includes(type)) el.classList.add('controller');
+
+      if (type === 'kpi') {
+        const host = document.createElement('div');
+        host.className = 'widget-body';
+        el.appendChild(host);
+        const rerender = () => renderKpiBody(w, host);
+        rerender();
+        return { el, kind: 'kpi', badgeEl: badge, rerender, widget: w };
+      }
+
+      if (type === 'table') {
+        const host = document.createElement('div');
+        host.className = 'widget-body';
+        host.style.overflow = 'auto';
+        el.appendChild(host);
+        const rerender = () => renderTableBody(w, host);
+        rerender();
+        return { el, kind: 'table', badgeEl: badge, rerender, widget: w };
+      }
+
+      const chartEl = document.createElement('div');
+      chartEl.className = 'chart';
+      el.appendChild(chartEl);
+      const option = buildOption(w);
+      return { el, kind: 'chart', chartEl, option, badgeEl: badge, widget: w };
     }
 
-    const grid = document.getElementById('grid');
-    WIDGETS.forEach(w => grid.appendChild(renderWidget(w)));
+    const pagesHost = document.getElementById('pages');
+    const pageEls = {};
+
+    const savedTheme = (() => {
+      try { return localStorage.getItem('spore-export-theme'); } catch (_) { return null; }
+    })();
+    document.documentElement.setAttribute('data-theme', savedTheme === 'dark' ? 'dark' : 'light');
+
+    function isDarkTheme() {
+      return document.documentElement.getAttribute('data-theme') === 'dark';
+    }
+
+    function updateThemeIcons() {
+      const dark = isDarkTheme();
+      const sun = document.getElementById('theme-icon-sun');
+      const moon = document.getElementById('theme-icon-moon');
+      if (sun) sun.style.display = dark ? 'none' : 'block';
+      if (moon) moon.style.display = dark ? 'block' : 'none';
+    }
+
+    function attachExportMapZoom(record) {
+      if (!record.chartEl || record._zoomEl) return;
+      const inst = record.inst;
+      const mk = (label, title) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = label;
+        b.title = title;
+        b.style.cssText = 'width:22px;height:22px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border,#e2e8f0);background:rgba(255,255,255,0.95);color:#475569;border-radius:6px;cursor:pointer;font-size:14px;line-height:1;box-shadow:0 1px 2px rgba(0,0,0,0.08);';
+        return b;
+      };
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'position:absolute;top:6px;right:6px;z-index:5;display:flex;flex-direction:column;gap:4px;';
+      const seriesZoom = () => {
+        const s = (inst.getOption().series || [])[0] || {};
+        return { zoom: s.zoom || 1, center: s.center };
+      };
+      const applyZoom = (factor) => {
+        const { zoom, center } = seriesZoom();
+        inst.setOption({ series: [{ zoom: Math.max(1, Math.min(12, zoom * factor)), center }] });
+      };
+      const bIn = mk('+', 'Zoom in');
+      const bOut = mk('\u2212', 'Zoom out');
+      const bReset = mk('\u25C9', 'Reset view');
+      bIn.addEventListener('click', () => applyZoom(1.6));
+      bOut.addEventListener('click', () => applyZoom(1 / 1.6));
+      bReset.addEventListener('click', () => { if (record.worldmap) inst.setOption(buildMapOption(record.worldmap), true); });
+      wrap.append(bIn, bOut, bReset);
+      record.chartEl.style.position = 'relative';
+      record.chartEl.appendChild(wrap);
+      record._zoomEl = wrap;
+    }
+
+    function initChartRecord(record) {
+      if (!record.chartEl || typeof echarts === 'undefined') return;
+      if (record.inst) {
+        try { record.inst.dispose(); } catch (_) { /* noop */ }
+      }
+      record._zoomEl = null;
+      record.inst = echarts.init(record.chartEl, isDarkTheme() ? 'dark' : null);
+      if (record.worldmap) {
+        const mapKey = mapScopeDef(record.worldmap.scope).mapName;
+        if (typeof echarts.getMap === 'function' && echarts.getMap(mapKey)) {
+          record.inst.setOption(buildMapOption(record.worldmap));
+          attachExportMapZoom(record);
+        } else {
+          record.inst.showLoading({ text: 'Loading map…', fontSize: 11, color: '#00A36C' });
+          ensureMapForScope(record.worldmap.scope)
+            .then(() => {
+              record.inst.hideLoading();
+              record.inst.setOption(buildMapOption(record.worldmap));
+              attachExportMapZoom(record);
+            })
+            .catch((e) => {
+              record.inst.hideLoading();
+              record.chartEl.innerHTML = '<p style="font-size:11px;color:#b45309;padding:1rem;text-align:center;">Map data could not be loaded (' + e.message + '). Open online once or re-export with map data inlined.</p>';
+            });
+        }
+      } else if (record.option) {
+        record.inst.setOption(record.option);
+      }
+      attachCrossFilter(record);
+    }
+
+    function applyTheme(dark) {
+      document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+      try { localStorage.setItem('spore-export-theme', dark ? 'dark' : 'light'); } catch (_) { /* noop */ }
+      updateThemeIcons();
+      chartRecords.forEach((r) => initChartRecord(r));
+    }
+
+    function showPage(id) {
+      Object.entries(pageEls).forEach(([pid, el]) => {
+        el.classList.toggle('active', pid === id);
+      });
+      requestAnimationFrame(() => {
+        chartRecords.forEach((r) => { try { r.inst?.resize(); } catch (_) { /* noop */ } });
+      });
+    }
+
+    initExportParams();
+
+    PAGES.forEach((page, idx) => {
+      const pageEl = document.createElement('div');
+      pageEl.className = 'page' + (idx === 0 ? ' active' : '');
+      const grid = document.createElement('div');
+      grid.className = 'grid';
+      pageEl.appendChild(grid);
+      pagesHost.appendChild(pageEl);
+      pageEls[page.id] = pageEl;
+
+      (page.widgets || []).forEach((w) => {
+        const result = renderWidget(w);
+        grid.appendChild(result.el);
+        if (result.kind === 'chart' && result.option && typeof echarts !== 'undefined') {
+          const record = {
+            widget: w,
+            kind: 'chart',
+            el: result.el,
+            badgeEl: result.badgeEl,
+            chartEl: result.chartEl,
+            option: result.option._worldmap ? null : result.option,
+            worldmap: result.option._worldmap || null,
+            inst: null,
+          };
+          chartRecords.push(record);
+          initChartRecord(record);
+        } else if (result.kind === 'kpi' || result.kind === 'table') {
+          chartRecords.push({
+            widget: w,
+            kind: result.kind,
+            el: result.el,
+            badgeEl: result.badgeEl,
+            rerender: result.rerender,
+          });
+        }
+      });
+      updateCrossFilterCues(page);
+    });
+
+    updateThemeIcons();
+
+    document.getElementById('theme-toggle')?.addEventListener('click', () => {
+      applyTheme(!isDarkTheme());
+    });
+
+    window.addEventListener('resize', () => {
+      chartRecords.forEach((r) => {
+        try { r.inst?.resize(); } catch (_) { /* noop */ }
+      });
+    });
   </script>
 </body>
 </html>

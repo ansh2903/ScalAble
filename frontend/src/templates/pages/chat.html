@@ -138,6 +138,20 @@
         .scrollbar-thin::-webkit-scrollbar-thumb {
             @apply bg-slate-200 rounded-full;
         }
+        /* Dashboard panel selects: custom chevron + ellipsis (native arrow clips pill text) */
+        #deck-viz select,
+        #deck-data select {
+            -webkit-appearance: none;
+            appearance: none;
+            padding-right: 1.75rem;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            overflow: hidden;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.5rem center;
+            background-size: 12px;
+        }
         /* Sidebar Typography */
         #storage-used {
             font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
@@ -1253,7 +1267,9 @@
             </div>
 
             <div id="dashboardPanel" class="hidden flex flex-col flex-1 min-h-0 overflow-hidden">
-                <header class="px-6 py-3 flex items-center justify-between shrink-0 border-b border-slate-200/70
+                <div class="flex flex-1 min-h-0 w-full overflow-hidden">
+                    <div class="flex flex-col flex-1 min-w-0 overflow-hidden">
+                <header class="px-6 py-2 flex items-center justify-between shrink-0 border-b border-slate-200/70
                bg-[radial-gradient(circle_at_1px_1px,_rgba(0,163,108,0.06)_1px,_transparent_0)]
                [background-size:14px_14px]">
                     <div>
@@ -1285,36 +1301,158 @@
                             <span class="material-symbols-outlined text-[14px]">add</span>
                             Widget
                         </button>
-                    </div>
-                </header>
-
-                <div class="flex flex-1 min-h-0 overflow-hidden">
-                    <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative
-                        bg-[radial-gradient(circle_at_1px_1px,_rgba(0,163,108,0.06)_1px,_transparent_0)]
-                        [background-size:14px_14px]">
-                        <div id="dashboard-grid" class="grid-stack flex-1 overflow-y-auto p-4 scrollbar-thin"></div>
-                        <div id="dashboard-empty" class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div class="rounded-organic border-2 border-dashed border-slate-200 bg-white/90 p-8 max-w-md text-center shadow-data-card pointer-events-auto">
-                                <span class="material-symbols-outlined text-4xl text-slate-300 mb-3">dashboard_customize</span>
-                                <h2 class="text-sm font-black text-slate-900 uppercase tracking-tight mb-2">No widgets yet</h2>
-                                <p class="text-[11px] text-slate-500 font-medium mb-4">
-                                    Materialize a relation in the Data panel, then add a widget from the palette.
-                                </p>
-                                <button type="button" onclick="openDataPanel()"
-                                    class="inline-flex items-center gap-1.5 h-8 px-4 rounded-pill bg-primary text-white text-[10px] font-black uppercase tracking-widest shadow-tactile hover:translate-y-[-1px] transition-all">
-                                    Go to Data
+                        <div class="relative" id="dashboard-export-menu">
+                            <button type="button" id="dashboard-export-toggle"
+                                class="inline-flex items-center gap-1 h-8 px-3 rounded-pill bg-primary text-white text-[10px] font-black uppercase tracking-widest shadow-tactile">
+                                <span class="material-symbols-outlined text-[14px]">download</span>
+                                Export
+                                <span class="material-symbols-outlined text-[14px]">expand_more</span>
+                            </button>
+                            <div id="dashboard-export-dropdown"
+                                class="hidden absolute right-0 top-full mt-1 min-w-[168px] rounded-xl border border-slate-200 bg-white shadow-lg py-1 z-50">
+                                <button type="button" id="export-dashboard-html"
+                                    class="w-full text-left px-3 py-2 text-[11px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-[14px]">language</span>
+                                    Download HTML
+                                </button>
+                                <button type="button" id="export-dashboard-pdf"
+                                    class="w-full text-left px-3 py-2 text-[11px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-[14px]">picture_as_pdf</span>
+                                    Download PDF
                                 </button>
                             </div>
                         </div>
-                    </div>
 
-                    <aside class="w-56 border-l border-slate-200 bg-white flex flex-col shrink-0 min-h-0">
-                        <div id="dashboard-widget-palette" class="p-3 space-y-2 overflow-y-auto scrollbar-thin flex-1"></div>
-                        <div id="dashboard-config-drawer" class="hidden border-t border-slate-200 p-3 overflow-y-auto scrollbar-thin max-h-[50%]"></div>
+                    </div>
+                </header>
+
+                        <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative
+                            bg-[radial-gradient(circle_at_1px_1px,_rgba(0,163,108,0.06)_1px,_transparent_0)]
+                            [background-size:14px_14px]">
+                            <div id="dashboard-grid" class="grid-stack flex-1 overflow-y-auto p-4 scrollbar-thin"></div>
+            
+                            <div id="dashboard-empty" class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div class="rounded-organic border-2 border-dashed border-slate-200 bg-white/90 p-8 max-w-md text-center shadow-data-card pointer-events-auto">
+                                    <span class="material-symbols-outlined text-4xl text-slate-300 mb-3">dashboard_customize</span>
+                                    <h2 class="text-sm font-black text-slate-900 uppercase tracking-tight mb-2">No widgets yet</h2>
+                                    <p class="text-[11px] text-slate-500 font-medium mb-4">
+                                        Pull a relation in the Data panel, then add a visualization from the right rail.
+                                    </p>
+                                    <button type="button" onclick="openDataPanel()"
+                                        class="inline-flex items-center gap-1.5 h-8 px-4 rounded-pill bg-primary text-white text-[10px] font-black uppercase tracking-widest shadow-tactile hover:translate-y-[-1px] transition-all">
+                                        Go to Data
+                                    </button>
+                                </div>
+                            </div>
+                            </div>
+
+                            <div id="dashboard-page-tabs"
+                                class="shrink-0 flex items-center gap-1.5 px-3 h-10 border-t border-slate-200 bg-white/80 backdrop-blur-sm overflow-x-auto scrollbar-thin"></div>
+                        </div>
+
+                    <aside class="flex shrink-0 min-h-0 text-slate-800 bg-slate-50/70 border-l border-slate-200/60">
+
+                        <div id="deck-viz" data-deck class="dashboard-deck deck-collapsed group/deck flex flex-col w-12 shrink-0 overflow-hidden border-r border-slate-200/60 bg-white transition-[width] duration-300 ease-out">
+                            <div class="deck-header flex items-center justify-center gap-2 px-2.5 h-12 shrink-0 border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors select-none"
+                                 onclick="toggleDashboardDeck('deck-viz')" title="Visualizations" role="button" tabindex="0">
+                                <span class="flex items-center justify-center w-7 h-7 rounded-lg bg-primary-soft text-primary shrink-0 group-hover/deck:bg-primary group-hover/deck:text-white transition-colors">
+                                    <span class="material-symbols-outlined text-[16px]">bar_chart</span>
+                                </span>
+                                <span class="deck-title flex-1 hidden text-[10px] font-black uppercase tracking-widest text-slate-700">Visualizations</span>
+                                <span class="toggle-icon material-symbols-outlined hidden text-[16px] text-slate-400 transition-transform">chevron_right</span>
+                            </div>
+
+                            <div class="deck-body flex-1 flex flex-col w-56 overflow-hidden hidden">
+                                <div id="dashboard-viz-pane" class="flex flex-col shrink-0 max-h-[55%] min-h-0">
+                                    <div class="flex items-center gap-1.5 px-2.5 pt-2.5 pb-1">
+                                        <span class="material-symbols-outlined text-[13px] text-slate-400">grid_view</span>
+                                        <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">Chart Type</p>
+                                    </div>
+                                    <div id="dashboard-viz-grid" class="grid grid-cols-4 gap-1.5 px-2.5 pb-2.5 overflow-y-auto max-h-32 scrollbar-thin"></div>
+                                    <div class="flex items-center gap-1.5 px-2.5 pt-2 pb-1 border-t border-slate-100">
+                                        <span class="material-symbols-outlined text-[13px] text-slate-400">view_column</span>
+                                        <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">Field Wells</p>
+                                    </div>
+                                    <div id="dashboard-wells" class="px-2.5 pb-2.5 overflow-y-auto scrollbar-thin min-h-[80px] max-h-[28vh]">
+                                        <p class="text-[10px] text-slate-400 font-medium px-1">Select a widget on the canvas to configure field wells.</p>
+                                    </div>
+                                </div>
+
+                                <div id="dashboard-settings-pane" class="shrink-0 p-2.5 space-y-2 border-t border-slate-100 bg-slate-50/40 hidden">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="material-symbols-outlined text-[13px] text-slate-400">tune</span>
+                                        <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">Formatting</p>
+                                    </div>
+                                    <label class="block">
+                                        <span class="text-[8px] font-black uppercase tracking-widest text-slate-400">Title</span>
+                                        <input id="dashboard-cfg-title" type="text" class="mt-1 w-full rounded-lg border-slate-200 bg-white text-[11px] font-mono h-8 px-2.5 focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors" />
+                                    </label>
+                                    <label class="block" id="dashboard-cfg-source-wrap">
+                                        <span class="text-[8px] font-black uppercase tracking-widest text-slate-400">Data source</span>
+                                        <select id="dashboard-cfg-stream" class="mt-1 w-full rounded-lg border-slate-200 bg-white text-[11px] font-mono h-8 px-2.5 focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors"></select>
+                                    </label>
+                                    <label class="block hidden" id="dashboard-cfg-text-wrap">
+                                        <span class="text-[8px] font-black uppercase tracking-widest text-slate-400">Markdown</span>
+                                        <textarea id="dashboard-cfg-text" rows="6"
+                                            class="mt-1 w-full rounded-xl border-slate-200 bg-white text-[11px] font-mono p-2.5 resize-y min-h-[100px] focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors"
+                                            placeholder="### Heading&#10;Write markdown here…"></textarea>
+                                    </label>
+                                    <label class="block">
+                                        <span class="text-[8px] font-black uppercase tracking-widest text-slate-400">Palette</span>
+                                        <select id="dashboard-cfg-palette" class="mt-1 w-full rounded-lg border-slate-200 bg-white text-[11px] font-mono h-8 px-2.5 focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors">
+                                            <option value="default">Default</option>
+                                            <option value="emerald">Emerald</option>
+                                            <option value="ocean">Ocean</option>
+                                        </select>
+                                    </label>
+                                    <div id="dashboard-cfg-nav" class="pt-1"></div>
+                                    <div id="dashboard-cfg-table" class="pt-1"></div>
+                                    <div id="dashboard-cfg-kpi" class="pt-1"></div>
+                                    <div id="dashboard-cfg-map" class="pt-1"></div>
+                                    <div id="dashboard-cfg-parameter" class="pt-1"></div>
+                                    <div id="dashboard-cfg-scale" class="pt-1"></div>
+                                    <div id="dashboard-cfg-filters" class="pt-1"></div>
+                                    <div id="dashboard-cfg-advanced" class="pt-1"></div>
+                                    <div id="dashboard-cfg-controlledby" class="pt-1"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="deck-data" data-deck class="dashboard-deck group/deck flex flex-col w-56 shrink-0 overflow-hidden bg-white transition-[width] duration-300 ease-out">
+                            <div class="deck-header flex items-center justify-between gap-2 px-2.5 h-12 shrink-0 border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors select-none"
+                                 onclick="toggleDashboardDeck('deck-data')" title="Data Fields" role="button" tabindex="0">
+                                <span class="flex items-center justify-center w-7 h-7 rounded-lg bg-primary-soft text-primary shrink-0 group-hover/deck:bg-primary group-hover/deck:text-white transition-colors">
+                                    <span class="material-symbols-outlined text-[16px]">table_chart</span>
+                                </span>
+                                <span class="deck-title flex-1 text-[10px] font-black uppercase tracking-widest text-slate-700">Data Fields</span>
+                                <span class="toggle-icon material-symbols-outlined text-[16px] text-slate-400 transition-transform">chevron_right</span>
+                            </div>
+
+                            <div id="dashboard-fields-pane" class="deck-body flex-1 flex flex-col w-56 overflow-hidden">
+                                <div class="px-2.5 py-2 border-b border-slate-100 shrink-0 space-y-2">
+                                    <label class="block">
+                                        <span class="text-[8px] font-black uppercase tracking-widest text-slate-400">Page data source</span>
+                                        <select id="dashboard-page-source"
+                                            class="mt-1 w-full rounded-lg border-slate-200 bg-white text-[10px] font-mono h-8 px-2.5 focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors">
+                                            <option value="">— select dataset —</option>
+                                        </select>
+                                    </label>
+                                    <label class="flex items-center h-8 rounded-pill border border-slate-200 bg-slate-50 px-3 gap-2 focus-within:border-primary focus-within:bg-white focus-within:ring-1 focus-within:ring-primary/30 transition-colors">
+                                        <span class="material-symbols-outlined text-[15px] text-slate-400">search</span>
+                                        <input id="dashboard-fields-search" type="text" placeholder="Search fields…"
+                                            class="flex-1 bg-transparent border-0 text-[10px] font-mono text-slate-700 placeholder:text-slate-400 focus:ring-0 focus:outline-none p-0" />
+                                    </label>
+                                </div>
+                                <div id="dashboard-fields-list" class="flex-1 overflow-y-auto p-2 space-y-0.5 scrollbar-thin">
+                                    <p class="text-[10px] text-slate-400 font-medium px-1">Select a widget to see fields.</p>
+                                </div>
+                            </div>
+                        </div>
                     </aside>
+            
                 </div>
             </div>
-
+            
             <div id="exportPanel" class="hidden flex flex-col flex-1 min-h-0 overflow-hidden">
                 <header class="px-6 py-3 flex items-center justify-between shrink-0 border-b border-slate-200/70
                bg-[radial-gradient(circle_at_1px_1px,_rgba(0,163,108,0.06)_1px,_transparent_0)]
@@ -1408,7 +1546,6 @@
                     <div class="flex-1 overflow-y-auto p-6 bg-slate-50/50 scrollbar-thin min-w-0">
                         <h2 class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Destination</h2>
                         <div class="inline-flex items-center h-8 rounded-pill bg-slate-50 border border-slate-200 p-0.5 gap-0.5 shadow-inner mb-6">
-                            <button type="button" id="export-dashboard-download" class="inline-flex items-center h-full px-3 rounded-pill bg-primary text-white text-[10px] font-black uppercase tracking-widest shadow-tactile">Download HTML</button>
                             <button type="button" class="inline-flex items-center h-full px-3 rounded-pill text-slate-500 hover:bg-white text-[10px] font-black uppercase tracking-widest">Cloud</button>
                             <button type="button" class="inline-flex items-center h-full px-3 rounded-pill text-slate-500 hover:bg-white text-[10px] font-black uppercase tracking-widest">Share Link</button>
                         </div>
@@ -1562,13 +1699,6 @@
     <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
     <script src="{{ url_for('static', filename='js/workspace.js') }}"></script>
     <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
-    <script>
-        document.getElementById('export-dashboard-download')?.addEventListener('click', () => {
-            const id = window.getActiveWorkspaceId?.();
-            if (!id) return;
-            window.location.href = `/api/workspaces/${encodeURIComponent(id)}/dashboard/export`;
-        });
-    </script>
     <script>
         window.MathJax = {
             tex: {

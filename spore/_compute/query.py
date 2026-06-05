@@ -2,22 +2,21 @@
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
 import duckdb
 
-from spore._compute.streams import duckdb_read_expr, resolve_stream_source
+from spore._compute.streams import duckdb_read_source, resolve_source
 
-_IDENT = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 _MAX_LIMIT = 10_000
 
 
 def _quote_ident(name: str) -> str:
+    """Return a DuckDB-quoted identifier, allowing spaces and special chars."""
     n = str(name).strip()
-    if not _IDENT.match(n):
-        raise ValueError(f"Invalid identifier: {name}")
-    return f'"{n}"'
+    if not n:
+        raise ValueError("Invalid identifier: empty")
+    return '"' + n.replace('"', '""') + '"'
 
 
 def _sql_literal(value: Any) -> str:
@@ -133,35 +132,38 @@ def query_stream(
     limit: int | None = None,
 ) -> dict[str, Any]:
     """
-    Query a materialized stream. Returns columns, rows, row_count, version.
+    Query a stream name or relative dataset path. Returns columns, rows, row_count, version.
     """
-    abs_path, _ext, version = resolve_stream_source(stream_name)
-    read_expr = duckdb_read_expr(abs_path)
-
-    if sql and str(sql).strip():
-        raw = str(sql).strip()
-        if ";" in raw:
-            raise ValueError("Multiple statements not allowed")
-        lowered = raw.lower()
-        if not lowered.startswith("select"):
-            raise ValueError("Only SELECT queries allowed")
-        if "_src" in lowered:
-            final_sql = raw.replace("_src", f"({read_expr}) AS _src")
-        else:
-            final_sql = f"SELECT * FROM ({read_expr}) AS _src WHERE ({raw})"
-        if limit and "limit" not in lowered:
-            final_sql += f" LIMIT {min(int(limit), _MAX_LIMIT)}"
-    else:
-        final_sql = build_transform_sql(read_expr, transform, limit=limit)
+    ref = (stream_name or "").strip()
+    abs_path, ext, version, sheet = resolve_source(ref)
 
     con = duckdb.connect()
     try:
+        read_expr = duckdb_read_source(con, abs_path, ext, sheet)
+
+        if sql and str(sql).strip():
+            raw = str(sql).strip()
+            if ";" in raw:
+                raise ValueError("Multiple statements not allowed")
+            lowered = raw.lower()
+            if not lowered.startswith("select"):
+                raise ValueError("Only SELECT queries allowed")
+            if "_src" in lowered:
+                final_sql = raw.replace("_src", f"({read_expr}) AS _src")
+            else:
+                final_sql = f"SELECT * FROM ({read_expr}) AS _src WHERE ({raw})"
+            if limit and "limit" not in lowered:
+                final_sql += f" LIMIT {min(int(limit), _MAX_LIMIT)}"
+        else:
+            final_sql = build_transform_sql(read_expr, transform, limit=limit)
+
         rel = con.execute(final_sql)
         table = rel.to_arrow_table() if hasattr(rel, "to_arrow_table") else rel.fetch_arrow_table()
         columns = table.schema.names
         rows = table.to_pylist()
         return {
-            "stream": stream_name,
+            "stream": ref,
+            "ref": ref,
             "columns": columns,
             "rows": rows,
             "row_count": len(rows),

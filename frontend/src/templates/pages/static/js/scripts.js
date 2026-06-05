@@ -164,9 +164,17 @@ async function executeAnalysisStream(base64Code, dbId, totalRows, streamName) {
         
         if (result.status === 'success') {
             if (typeof addPythonFromMaterialized === 'function') {
-                addPythonFromMaterialized(result.kernel_path, result.stream_name, result.relation_id);
+                addPythonFromMaterialized(
+                    result.kernel_path,
+                    result.stream_name,
+                    result.relation_id,
+                    result.format,
+                );
             } else {
-                addCell('python', `import pandas as pd\ndf = pd.read_parquet("${result.kernel_path}")\ndf.head()`);
+                const readExpr = typeof window.sporePandasReadExpr === 'function'
+                    ? window.sporePandasReadExpr(result.kernel_path, result.format)
+                    : `pd.read_parquet("${result.kernel_path}")`;
+                addCell('python', `import pandas as pd\ndf = ${readExpr}\ndf.head()`);
             }
         } else {
             console.error("Backend failed to initialize stream:", result.message);

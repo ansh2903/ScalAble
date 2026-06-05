@@ -984,6 +984,40 @@ async function askSqlCell(cellId) {
   }
 }
 
+function sporeExtensionFromPath(path) {
+  const m = String(path || '').match(/\.([a-z0-9]+)$/i);
+  return m ? m[1].toLowerCase() : 'parquet';
+}
+
+function sporePandasReadExpr(path, format) {
+  const ext = String(format || sporeExtensionFromPath(path) || 'parquet').toLowerCase();
+  const escaped = String(path).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  const readers = {
+    parquet: `pd.read_parquet("${escaped}")`,
+    csv: `pd.read_csv("${escaped}")`,
+    tsv: `pd.read_csv("${escaped}", sep="\\t")`,
+    json: `pd.read_json("${escaped}")`,
+    xlsx: `pd.read_excel("${escaped}")`,
+    xls: `pd.read_excel("${escaped}")`,
+  };
+  return readers[ext] || readers.parquet;
+}
+
+function addPythonFromMaterialized(kernelPath, streamName, relationId, format) {
+  const readExpr = sporePandasReadExpr(kernelPath, format);
+  const code = `import pandas as pd\ndf = ${readExpr}\ndf.head()`;
+  if (typeof addCell === 'function') {
+    addCell('python', code, {
+      materialized: kernelPath,
+      streamName: streamName || undefined,
+      relationId: relationId || undefined,
+    });
+  }
+}
+
+window.sporePandasReadExpr = sporePandasReadExpr;
+window.addPythonFromMaterialized = addPythonFromMaterialized;
+
 async function materializeSqlCell(cellId) {
   const cell = cells[cellId];
   if (!cell) return;
@@ -1009,8 +1043,10 @@ async function materializeSqlCell(cellId) {
       cell.materialized = result.kernel_path;
       cell.relationId = result.relation_id;
       cell.streamName = result.stream_name;
+      cell.materializedFormat = result.format || sporeExtensionFromPath(result.kernel_path);
+      const fmtArg = cell.materializedFormat ? `, '${cell.materializedFormat}'` : '';
       cell.statusEl.innerHTML = `<span class="text-emerald-600">Materialized</span> → <code class="text-[9px]">${result.kernel_path}</code>
-        <button onclick="addPythonFromMaterialized('${result.kernel_path}', '${result.stream_name}', '${result.relation_id}')"
+        <button onclick="addPythonFromMaterialized('${result.kernel_path}', '${result.stream_name}', '${result.relation_id}'${fmtArg})"
           class="ml-2 px-2 py-0.5 bg-primary text-white text-[8px] font-black rounded">+ PYTHON CELL</button>`;
       scheduleNotebookSave();
     } else {

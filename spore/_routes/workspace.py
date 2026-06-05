@@ -17,6 +17,8 @@ import pandas as pd
 import traceback
 import json
 import os
+import datetime as _dt
+import decimal as _decimal
 
 from spore._exception import CustomException
 from spore._logger import logging
@@ -451,48 +453,176 @@ def api_dashboard_export(workspace_id):
         return jsonify({"error": "Not found"}), 404
     state = store.get_state(workspace_id) or {}
     dashboard = state.get("dashboard") or {}
-    widgets = dashboard.get("widgets") or []
-    export_widgets = []
     max_rows = 500
 
-    for w in widgets:
+    # Support both the legacy single-page model (top-level `widgets`) and the
+    # multi-page model (`pages: [{ id, name, widgets }]`).
+    pages = dashboard.get("pages")
+    if not pages:
+        pages = [{
+            "id": dashboard.get("activePageId") or "page-1",
+            "name": "Page 1",
+            "widgets": dashboard.get("widgets") or [],
+        }]
+
+    def _jsonable(v):
+        if v is None or isinstance(v, (str, int, float, bool)):
+            return v
+        if isinstance(v, dict):
+            return {str(_jsonable(k)): _jsonable(val) for k, val in v.items()}
+        if isinstance(v, (list, tuple, set)):
+            return [_jsonable(item) for item in v]
+        if isinstance(v, (bytes, bytearray, memoryview)):
+            try:
+                return bytes(v).decode("utf-8", "replace")
+            except Exception:
+                return str(v)
+        if isinstance(v, _dt.datetime) or isinstance(v, _dt.date) or isinstance(v, _dt.time):
+            return v.isoformat()
+        if isinstance(v, _decimal.Decimal):
+            return float(v)
+        return str(v)
+
+    def export_widget(w):
+        wtype = (w.get("type") or "bar").lower()
+        if wtype == "slicer":
+            return None
+        if wtype == "button":
+            return {
+                "id": w.get("id"),
+                "type": "button",
+                "title": w.get("title"),
+                "layout": w.get("layout") or {},
+                "nav": w.get("nav") or {},
+            }
+        if wtype == "parameter":
+            return {
+                "id": w.get("id"),
+                "type": "parameter",
+                "title": w.get("title"),
+                "layout": w.get("layout") or {},
+                "param": w.get("param") or {},
+                "style": w.get("style") or {},
+            }
+        if wtype == "text":
+            return {
+                "id": w.get("id"),
+                "type": "text",
+                "title": w.get("title"),
+                "layout": w.get("layout") or {},
+                "text": w.get("text") or "",
+            }
         src = w.get("source") or {}
         ref = src.get("ref") or src.get("stream")
         if not ref:
-            continue
+            return None
         try:
-            data = query_stream(
-                ref,
-                transform=w.get("transform"),
-                limit=max_rows,
-            )
-            export_widgets.append({
+            data = query_stream(ref, transform=w.get("transform"), limit=max_rows)
+            return {
                 "id": w.get("id"),
                 "type": w.get("type"),
                 "title": w.get("title"),
                 "encoding": w.get("encoding") or {},
                 "style": w.get("style") or {},
                 "layout": w.get("layout") or {},
+                "transform": w.get("transform") or {},
+                "wells": w.get("wells") or {},
+                "source": {"ref": ref},
                 "data": {
                     "columns": data.get("columns"),
-                    "rows": (data.get("rows") or [])[:max_rows],
+                    "rows": [
+                        _jsonable(row)
+                        for row in (data.get("rows") or [])[:max_rows]
+                    ],
                 },
-            })
+            }
         except Exception as e:
             logging.warning(f"export widget {w.get('id')} skipped: {e}")
+            return None
+
+    export_pages = []
+    for i, page in enumerate(pages):
+        page_widgets = []
+        for w in (page.get("widgets") or []):
+            ew = export_widget(w)
+            if ew is not None:
+                page_widgets.append(ew)
+        export_pages.append({
+            "id": page.get("id") or f"page-{i + 1}",
+            "name": page.get("name") or f"Page {i + 1}",
+            "widgets": page_widgets,
+        })
+
+    # Flat list kept for backward-compatible template fallbacks.
+    export_widgets = [w for p in export_pages for w in p["widgets"]]
+
+    # Embed the raw (un-aggregated) rows for every source referenced on the
+    # dashboard so the exported file can re-aggregate client-side. This is what
+    # powers offline cross-filtering / slicing: clicking a category recomputes
+    # the affected widgets from these rows without contacting a backend.
+    # Deduplicated per source ref and capped to keep the file size sane.
+    raw_max_rows = 20000
+    used_refs = {
+        (w.get("source") or {}).get("ref")
+        for w in export_widgets
+        if (w.get("source") or {}).get("ref")
+    }
+    datasets = {}
+    for ref in used_refs:
+        try:
+            raw = query_stream(ref, transform=None, limit=raw_max_rows)
+            datasets[ref] = {
+                "columns": _jsonable(raw.get("columns")),
+                "rows": [
+                    _jsonable(row)
+                    for row in (raw.get("rows") or [])[:raw_max_rows]
+                ],
+            }
+        except Exception as e:
+            logging.warning(f"export dataset {ref} skipped: {e}")
 
     static_root = Path(__file__).resolve().parents[2] / "frontend" / "src" / "templates" / "pages" / "static"
-    echarts_path = static_root / "js" / "vendor" / "echarts.min.js"
+    vendor_dir = static_root / "js" / "vendor"
+    echarts_path = vendor_dir / "echarts.min.js"
     echarts_inline = ""
     if echarts_path.is_file():
         echarts_inline = echarts_path.read_text(encoding="utf-8", errors="replace")
+
+    # Inline the GeoJSON for each bundled map scope actually used, so those map
+    # charts render on air-gapped machines without a CDN fetch. Non-bundled
+    # scopes (other countries) load from the internet in the exported file.
+    map_scope_files = {
+        "world": ("world", "world.json"),
+        "usa": ("USA", "usa.json"),
+        "india": ("india", "india.json"),
+    }
+    used_scopes = {
+        (w.get("style") or {}).get("mapScope") or "world"
+        for w in export_widgets
+        if (w.get("type") or "").lower() == "map"
+    }
+    maps_inline = []
+    for scope in used_scopes:
+        entry = map_scope_files.get(scope)
+        if not entry:
+            continue
+        map_name, file_name = entry
+        map_path = vendor_dir / file_name
+        if map_path.is_file():
+            maps_inline.append({
+                "name": map_name,
+                "json": map_path.read_text(encoding="utf-8", errors="replace"),
+            })
 
     html = render_template(
         "pages/dashboard_export.html",
         workspace=ws,
         dashboard=dashboard,
-        widgets=export_widgets,
+        pages=_jsonable(export_pages),
+        widgets=_jsonable(export_widgets),
+        datasets=_jsonable(datasets),
         echarts_inline=echarts_inline,
+        maps_inline=maps_inline,
     )
 
     from io import BytesIO

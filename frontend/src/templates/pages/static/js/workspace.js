@@ -335,8 +335,15 @@ function applyDashboardShell(dashboard) {
         titleEl.textContent = dashboard.title;
     }
     const widgetCount = document.getElementById('dashboard-widget-count');
-    if (widgetCount && Array.isArray(dashboard.widgets)) {
-        widgetCount.textContent = String(dashboard.widgets.length);
+    if (widgetCount) {
+        let count = 0;
+        if (Array.isArray(dashboard.pages)) {
+            const active = dashboard.pages.find((p) => p.id === dashboard.activePageId) || dashboard.pages[0];
+            count = (active?.widgets || []).length;
+        } else if (Array.isArray(dashboard.widgets)) {
+            count = dashboard.widgets.length;
+        }
+        widgetCount.textContent = String(count);
     }
     if (typeof window.hydrateDashboardFromWorkspace === 'function') {
         window.hydrateDashboardFromWorkspace(dashboard);
