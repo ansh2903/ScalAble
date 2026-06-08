@@ -16,7 +16,7 @@ def get_requirements(file_path: str) ->List[str]:
     return requirements
 
 setup(
-    name="ScalAble",
+    name="spore",
     version="0.5",
     author="Ansh Sharma",
     author_email="anshsharma2903@gmail.com",

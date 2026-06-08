@@ -1,10 +1,10 @@
-# CLAUDE.md — ScalAble agent guide
+# CLAUDE.md — Spore agent guide
 
-This file helps AI assistants work effectively in the ScalAble repository.
+This file helps AI assistants work effectively in the Spore repository.
 
 ## Project summary
 
-**ScalAble** is a web app for querying SQL/NoSQL databases with natural language. The backend package is **`spore`** (Flask + LangChain + Redis sessions). The UI is server-rendered Jinja templates with JavaScript for chat streaming and Jupyter kernels over Socket.IO.
+**Spore** is a web app for querying SQL/NoSQL databases with natural language. The backend package is **`spore`** (Flask + LangChain + Redis sessions). The UI is server-rendered Jinja templates with JavaScript for chat streaming and Jupyter kernels over Socket.IO.
 
 **Primary user flow:** connect database → chat (NL→SQL) → review generated SQL → preview or materialize → optional notebook analysis.
 

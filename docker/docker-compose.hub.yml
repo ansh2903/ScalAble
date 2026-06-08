@@ -1,7 +1,7 @@
 name: spore
 
 # Run-only stack using prebuilt images from Docker Hub. No source checkout
-# needed — download this file, create a .env with ENCRYPTION_KEY, then:
+# needed — download this file, then:
 #   docker compose -f docker-compose.hub.yml up -d
 #
 # Override image tags / provider URLs via environment or a .env file.
@@ -25,9 +25,7 @@ services:
       - FLASK_ENV=production
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      # REQUIRED: generate with
-      #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-      - ENCRYPTION_KEY=${ENCRYPTION_KEY:?set ENCRYPTION_KEY in your .env}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-QVC5YEPET9Os5uS4fJRWbnGicEBXO5e_x4DzOkdz_DA=}
       - SPORE_DATA_DIR=/data
       - KERNEL_DATA_MOUNT=/data
       # Kernel Python version is the startup knob. Change it (env or .env) to run

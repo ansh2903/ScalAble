@@ -1,12 +1,12 @@
 # AGENTS.md — Cursor agent guide
 
-This file helps Cursor and other AI agents work effectively in the ScalAble repository.
+This file helps Cursor and other AI agents work effectively in the Spore repository.
 
 > For the same conventions in Claude Code, see [CLAUDE.md](CLAUDE.md).
 
 ## Project summary
 
-**ScalAble** is a web app for querying SQL/NoSQL databases with natural language. The backend package is **`spore`** (Flask + LangChain + Redis sessions). The UI is server-rendered Jinja templates with JavaScript for chat streaming and Jupyter kernels over Socket.IO.
+**Spore** is a web app for querying SQL/NoSQL databases with natural language. The backend package is **`spore`** (Flask + LangChain + Redis sessions). The UI is server-rendered Jinja templates with JavaScript for chat streaming and Jupyter kernels over Socket.IO.
 
 **Primary user flow:** connect database → chat (NL→SQL) → review generated SQL → preview or materialize → optional notebook analysis.
 

@@ -1,6 +1,6 @@
 # Acknowledgments
 
-ScalAble would not be possible without the open-source ecosystem and tools below.
+Spore would not be possible without the open-source ecosystem and tools below.
 
 ## Core frameworks
 

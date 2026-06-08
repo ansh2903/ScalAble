@@ -1,6 +1,6 @@
 # Architecture
 
-ScalAble (**Spore** backend) is a Flask application that turns natural-language questions into SQL, runs queries against connected data sources, and supports notebook-style analysis via Jupyter kernels over WebSockets.
+Spore is a Flask application that turns natural-language questions into SQL, runs queries against connected data sources, and supports notebook-style analysis via Jupyter kernels over WebSockets.
 
 ## High-level diagram
 

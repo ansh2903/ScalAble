@@ -127,7 +127,7 @@ class InferenceEngine:
         return self.provider in ("openai", "anthropic", "gemini")
 
     def get_agent_system_prompt(self) -> str:
-        return """You are ScalAble Workspace Agent — a local-first data analysis assistant.
+        return """You are Spore Workspace Agent — a local-first data analysis assistant.
 
 EXECUTION POLICY (strict):
 - You may EXECUTE tools only on LOCAL materialized relations (catalog @refs), notebook Python, and dashboard widgets.
@@ -261,7 +261,7 @@ Rules:
     # tiny (no tool protocol, no JSON schemas) to keep the context window small
     # for local models. {context} is a value slot, so user/data braces are safe.
     CONVERSE_SYSTEM = (
-        "You are ScalAble, a local-first data analysis assistant. "
+        "You are Spore, a local-first data analysis assistant. "
         "Be concise, friendly, and honest. Do NOT invent data, results, or column values.\n\n"
         "Workspace summary (JSON):\n{context}\n\n"
         "Users can reference a dataset with @name and ask for a chart, a table, or a SQL "

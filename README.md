@@ -29,10 +29,34 @@
 - Docker (for sandboxed kernel execution)
 - *Optional:* [Ollama](https://ollama.com/) for local LLMs
 
-### Install and Run
+### Run with Docker (recommended)
+
+No checkout required. Grab the run-only compose file and start the full stack
+(app + Redis + a sandboxed Python kernel), then open `http://localhost:5000`.
 
 ```bash
-git clone [https://github.com/ansh2903/spore.git](https://github.com/ansh2903/spore.git)
+curl -fsSL https://raw.githubusercontent.com/ansh2903/spore/main/docker/docker-compose.hub.yml -o docker-compose.yml
+docker compose up -d
+```
+
+Optional tweaks via a `.env` file next to the compose file:
+
+```bash
+# Pick the sandbox Python version (a matching spore-kernel tag must be published)
+KERNEL_PYTHON_VERSION=3.12
+# Point at your own LLM endpoints (host providers must listen on 0.0.0.0)
+OLLAMA_BASE=http://host.docker.internal:11434
+LMSTUDIO_BASE=http://host.docker.internal:1234
+# Override the session encryption key (recommended for shared/production use)
+ENCRYPTION_KEY=
+```
+
+To update later: `docker compose pull && docker compose up -d`.
+
+### Run from source
+
+```bash
+git clone https://github.com/ansh2903/spore.git
 cd spore
 
 # Set up virtual environment
@@ -50,3 +74,4 @@ docker run -d --name keydb -p 6379:6379 eqalpha/keydb:latest
 
 # Launch Spore
 python -m spore._app
+```

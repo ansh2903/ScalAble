@@ -12,8 +12,8 @@
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/ansh2903/scalable.git
-cd scalable
+git clone https://github.com/ansh2903/spore.git
+cd spore
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e .
@@ -73,7 +73,7 @@ This builds with context `..`, mounts the repo at `/app`, and starts KeyDB plus 
 ## Project layout
 
 ```
-scalable/
+spore/
 ├── spore/                 # Backend (Flask app package)
 │   ├── _app.py            # Entry point
 │   ├── _routes/           # Blueprints: interface, connections, workspace

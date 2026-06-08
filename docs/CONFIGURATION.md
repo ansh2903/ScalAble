@@ -1,6 +1,6 @@
 # Configuration
 
-ScalAble reads configuration from environment variables (`.env`) and a JSON file for LLM runtime settings.
+Spore reads configuration from environment variables (`.env`) and a JSON file for LLM runtime settings.
 
 ## Environment variables
 
@@ -8,7 +8,7 @@ Copy [.env.example](../.env.example) to `.env` at the repository root.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `SECRET_KEY` | `scalable_secret_key` | Flask session signing key. Change in production. |
+| `SECRET_KEY` | `spore_secret_key` | Flask session signing key. Change in production. |
 | `DEBUG` | `True` | Flask debug mode when `True`. |
 | `APP_HOST` | `127.0.0.1` | Bind address for `python -m spore._app`. |
 | `APP_PORT` | `5000` | HTTP port. |

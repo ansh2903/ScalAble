@@ -1,4 +1,4 @@
-# Contributing to ScalAble
+# Contributing to Spore
 
 Thank you for your interest in contributing. This document covers how to set up a dev environment, where to make changes, and what we expect in pull requests.
 

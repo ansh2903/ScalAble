@@ -1,6 +1,6 @@
 # Design
 
-ScalAble is a natural-language interface to SQL and NoSQL databases. Users describe what they want in plain English; the system generates queries, lets them review and edit, runs them against connected sources, and presents results with optional visualizations and notebook analysis.
+Spore is a natural-language interface to SQL and NoSQL databases. Users describe what they want in plain English; the system generates queries, lets them review and edit, runs them against connected sources, and presents results with optional visualizations and notebook analysis.
 
 ## Product vision
 
