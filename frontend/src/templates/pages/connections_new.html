@@ -5,7 +5,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>Add Database | DataFlow AI</title>
+    <title>Add Connection | Spore</title>
     <link
         href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500&amp;family=Fredoka:wght@400;600;700&amp;family=Pacifico&amp;display=swap"
         rel="stylesheet" />
@@ -69,12 +69,12 @@
             border-radius: 60% 40% 70% 30% / 30% 60% 40% 70%;
         }
         .heavy-card {
-            @apply bg-white border-2 border-slate-200 rounded-organic transition-all duration-300;
-            box-shadow: 0 12px 0 -4px theme('colors.slate.100');
+            @apply bg-white border border-slate-200 rounded-[2rem] transition-all duration-300;
+            box-shadow: 0 20px 50px rgba(0, 163, 108, 0.05);
         }
-        .heavy-card:hover {
-            @apply border-primary/30;
-            box-shadow: 0 16px 0 -4px rgba(0, 163, 108, 0.1);
+        .source-card {
+            @apply bg-white border border-slate-200 rounded-3xl transition-all duration-300;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
         }
         .soft-gradient-bg {
             background: radial-gradient(circle at 50% -20%, #ecfdf5 0%, #f8fafc 60%);
@@ -104,19 +104,20 @@
         [x-cloak] { display: none !important; }
         .f-label {
             display: block;
-            font-size: 9.5px; font-weight: 900;
-            text-transform: uppercase; letter-spacing: 0.16em;
-            color: #94a3b8; margin-bottom: 5px;
+            font-size: 10.5px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.08em;
+            color: #64748b; margin-bottom: 7px;
         }
         .f-input {
             width: 100%; background: white;
-            border: 1.5px solid #d8dbdf; border-radius: 10px;
-            padding: 8px 12px; font-size: 12.5px; font-weight: 500;
+            border: 1.5px solid #e2e8f0; border-radius: 12px;
+            padding: 10px 13px; font-size: 13px; font-weight: 500;
             font-family: 'JetBrains Mono', monospace; color: #1e293b;
             outline: none; transition: all 0.15s;
         }
-        .f-input:focus { border-color: #00A36C; box-shadow: 0 0 0 3px rgba(0,163,108,0.08); }
-        .f-input::placeholder { color: #cbd5e1; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .f-input:hover { border-color: #cbd5e1; }
+        .f-input:focus { border-color: #00A36C; box-shadow: 0 0 0 4px rgba(0,163,108,0.08); }
+        .f-input::placeholder { color: #cbd5e1; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 400; }
         .f-input:disabled { opacity: 0.45; cursor: not-allowed; }
 
         @keyframes fadeUp {
@@ -170,7 +171,7 @@
         <!-- Unified Sidebar -->
 
         <!-- Main Wizard Content -->
-    <main class="max-w-7xl mx-auto w-full flex flex-col px-8 pt-24 pb-10 space-y-10"
+    <main class="max-w-7xl mx-auto w-full flex flex-col px-8 pt-20  "
       x-data="{ 
         search: '', 
         activeTab: 'All',
@@ -188,40 +189,41 @@
     <form id="sourceForm" action="{{ url_for('connections.registry') }}" method="POST"
         enctype="multipart/form-data" @submit="loading = true">
 
-        <div id="dynamic-content-area" class="heavy-card p-8 bg-white relative overflow-hidden">
-            <!-- Header Section (Tightened) -->
+        <div id="dynamic-content-area" class="heavy-card p-8 md:p-10 bg-white relative overflow-hidden">
+            <!-- Header Section -->
             <div class="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8">
-                <div class="space-y-2">
+                <div class="space-y-3">
                     <nav class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                        <span class="text-primary">Connect</span>
-                        <span class="material-symbols-outlined text-[10px]">chevron_right</span>
+                        <a href="{{ url_for('connections.connections') }}" class="text-primary hover:text-primary-dark transition-colors">Connections</a>
+                        <span class="material-symbols-outlined text-[14px]">chevron_right</span>
                         <span>New Source</span>
                     </nav>
-                    <h1 class="text-4xl font-black text-slate-900 tracking-tighter">
-                        Source <span class="font-script text-primary font-normal">Connectivity</span>
+                    <h1 class="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
+                        Connect a <span style="font-family:'Pacifico',cursive; color:#00A36C; font-weight:400;">Source</span>
                     </h1>
+                    <p class="text-slate-400 text-sm font-medium">Choose where your data lives to get started.</p>
                 </div>
-                
-                <!-- Stepper (More compact) -->
-                <div class="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
+
+                <!-- Stepper -->
+                <div class="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100 shrink-0">
                     <div class="flex gap-1.5">
                         <div class="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(0,163,108,0.4)]"></div>
                         <div class="w-2 h-2 rounded-full bg-slate-200"></div>
                     </div>
-                    <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Step 1</span>
+                    <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Step 1 of 2</span>
                 </div>
             </div>
 
             <!-- Search and Filter Bar -->
             <div class="flex flex-col lg:flex-row gap-3 mb-8">
                 <div class="relative flex-1">
-                    <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+                    <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 text-[18px]">search</span>
                     <input
                         x-model="search"
-                        class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary/50 focus:ring-0 transition-all text-xs font-medium"
+                        class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl placeholder-slate-300 focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none transition-all text-sm font-medium"
                         placeholder="Search sources (e.g. Postgres)..." type="text" />
                 </div>
-                
+
                 <div class="flex bg-slate-100 p-1 rounded-xl shrink-0">
                     {% for tab in ['All', 'Databases', 'Warehouse', 'APIs'] %}
                     <button 
@@ -253,23 +255,23 @@
                             hx-get="/connections/new/{{ key }}" 
                             hx-target="#dynamic-content-area"
                             hx-swap="innerHTML"
-                            class="group relative p-4 rounded-xl border border-slate-100 bg-slate-50/50 transition-all duration-200 
-                                hover:bg-white hover:border-primary/40 hover:shadow-[0_20px_40px_-15px_rgba(0,163,108,0.1)] 
-                                active:scale-95 cursor-pointer overflow-hidden">
+                            class="group relative p-4 rounded-2xl border border-slate-200 bg-white transition-all duration-200 
+                                hover:border-primary/40 hover:shadow-[0_20px_40px_-15px_rgba(0,163,108,0.15)] hover:-translate-y-0.5
+                                active:scale-[0.98] cursor-pointer overflow-hidden">
 
                             <!-- Subtle background glow on hover -->
                             <div class="absolute -right-4 -top-4 w-16 h-16 bg-primary/5 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
-                            <div class="flex items-center gap-4">
+                            <div class="flex items-center gap-3.5">
                                 <!-- Icon Container -->
-                                <div class="relative z-10 w-10 h-10 shrink-0 bg-white rounded-lg flex items-center justify-center shadow-sm 
-                                            border border-slate-100 group-hover:border-primary/20 group-hover:shadow-md transition-all">
+                                <div class="relative z-10 w-11 h-11 shrink-0 bg-slate-50 rounded-xl flex items-center justify-center
+                                            border border-slate-200 group-hover:bg-white group-hover:border-primary/20 group-hover:shadow-md transition-all">
                                     {% if cfg.metadata.image %}
-                                        <img class="w-6 h-6 object-contain group-hover: transition-all" 
+                                        <img class="w-6 h-6 object-contain transition-all" 
                                             src="{{ url_for('static', filename=cfg.metadata.image) }}" 
                                             alt="{{ cfg.metadata.label }}" />
                                     {% else %}
-                                        <div class="text-[10px] font-black text-slate-400 group-hover:text-primary transition-colors">
+                                        <div class="text-[11px] font-black text-slate-400 group-hover:text-primary transition-colors">
                                             {{ cfg.metadata.label[:2] | upper }}
                                         </div>
                                     {% endif %}
@@ -280,10 +282,10 @@
                                     <h4 class="font-bold text-slate-900 text-sm tracking-tight group-hover:text-primary transition-colors truncate">
                                         {{ cfg.metadata.label }}
                                     </h4>
-                                    <!-- Optional: Added a tiny "action" hint -->
+                                    <!-- Action hint -->
                                     <div class="flex items-center gap-1 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
                                         <span class="text-[9px] font-black uppercase tracking-widest text-primary">Select</span>
-                                        <span class="material-symbols-outlined text-[10px] text-primary">arrow_forward</span>
+                                        <span class="material-symbols-outlined text-[12px] text-primary">arrow_forward</span>
                                     </div>
                                 </div>
                             </div>
@@ -294,11 +296,11 @@
                 {% endfor %}
             </div>
 
-            <!-- Footer (Slimmer) -->
-            <div class="flex items-center justify-between pt-6 mt-4 border-t border-slate-50">
-                <a href="{{ url_for('connections.connections')}}" class="text-[11px] font-bold text-slate-400 hover:text-primary transition-colors flex items-center gap-1">
-                    <span class="material-symbols-outlined text-sm">west</span>
-                    Back
+            <!-- Footer -->
+            <div class="flex items-center justify-between pt-6 mt-6 border-t border-slate-100">
+                <a href="{{ url_for('connections.connections')}}" class="text-[11px] font-bold text-slate-400 hover:text-primary transition-colors flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-base">west</span>
+                    Back to connections
                 </a>
                 
                 <div class="flex items-center gap-4">
@@ -313,100 +315,63 @@
         </div>
     </form>
 </main>
-</div>
 
-    <div id="toast-container">
-        <div class="fixed bottom-10 left-1/2 -translate-x-1/2 w-full max-w-2xl px-6 z-[100] space-y-4">
-            {% with messages = get_flashed_messages(with_categories=true) %}
-            {% for category, message in messages %}
-            <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)"
-                x-transition:enter="transition ease-out duration-500"
-                x-transition:enter-start="opacity-0 translate-y-8 scale-95"
-                x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-                x-transition:leave="transition ease-in duration-300" x-transition:leave-start="opacity-100 scale-100"
-                x-transition:leave-end="opacity-0 scale-95"
-                class="bg-slate-900/95 backdrop-blur-xl border border-slate-800 text-white p-5 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center gap-5">
-                <div class="w-12 h-12 rounded-full flex items-center justify-center shrink-0 relative">
-                    <div
-                        class="absolute inset-0 rounded-full animate-ping opacity-20 {% if category == 'error' %}bg-rose-500{% else %}bg-primary{% endif %}">
-                    </div>
-
-                    <div
-                        class="relative w-full h-full rounded-full flex items-center justify-center {% if category == 'error' %}bg-rose-500/20 text-rose-400{% else %}bg-primary/20 text-primary{% endif %}">
-                        <span class="material-symbols-outlined text-2xl">
-                            {% if category == 'error' %}rocket{% elif category == 'success' %}verified_user{% else %}info{%
-                            endif %}
-                        </span>
-                    </div>
+    <!-- Toast stack (server-rendered flashes + client-side sporeToast targets) -->
+    <div id="toast-container"
+        class="fixed bottom-10 left-1/2 -translate-x-1/2 w-full max-w-2xl px-6 z-[100] space-y-4">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+        <div x-data="sporeToastItem()" x-show="show" x-cloak
+            @mouseenter="pause()" @mouseleave="resume()"
+            role="alert" aria-live="polite"
+            x-transition:enter="transition ease-out duration-500"
+            x-transition:enter-start="opacity-0 translate-y-8 scale-95"
+            x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+            x-transition:leave="transition ease-in duration-300" x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-95"
+            class="relative overflow-hidden bg-slate-900/95 backdrop-blur-xl border border-slate-800 text-white p-5 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center gap-5">
+            <div class="w-12 h-12 rounded-full flex items-center justify-center shrink-0 relative">
+                <div
+                    class="absolute inset-0 rounded-full animate-ping opacity-20 {% if category == 'error' %}bg-rose-500{% else %}bg-emerald-500{% endif %}">
                 </div>
 
-                <div class="flex-1">
-                    <div class="flex items-center gap-2 mb-0.5">
-                        <p
-                            class="text-sm font-black uppercase tracking-widest {% if category == 'error' %}text-rose-400{% else %}text-primary{% endif %} font-headline">
-                            Mission Control
-                        </p>
-                        <span class="script-text text-white text-lg opacity-80 lowercase">
-                            {% if category == 'error' %}Anomaly{% else %}Update{% endif %}
-                        </span>
-                    </div>
-                    <p class="text-xs font-semibold text-slate-400 leading-relaxed">
-                        {{ message }}
-                    </p>
+                <div
+                    class="relative w-full h-full rounded-full flex items-center justify-center {% if category == 'error' %}bg-rose-500/20 text-rose-400{% else %}bg-emerald-500/20 text-emerald-400{% endif %}">
+                    <span class="material-symbols-outlined text-2xl">
+                        {% if category == 'error' %}rocket{% elif category == 'success' %}verified_user{% else %}info{%
+                        endif %}
+                    </span>
                 </div>
-
-                <button @click="show = false" class="group p-2 hover:bg-white/5 rounded-full transition-all">
-                    <span
-                        class="material-symbols-outlined text-slate-500 group-hover:text-white transition-colors">close</span>
-                </button>
             </div>
-            {% endfor %}
-            {% endwith %}
+
+            <div class="flex-1">
+                <div class="flex items-center gap-2 mb-0.5">
+                    <p
+                        class="text-sm font-black uppercase tracking-widest {% if category == 'error' %}text-rose-400{% else %}text-emerald-400{% endif %} font-headline">
+                        Mission Control
+                    </p>
+                    <span class="text-white text-lg opacity-80 lowercase" style="font-family:'Pacifico',cursive;">
+                        {% if category == 'error' %}Anomaly{% else %}Update{% endif %}
+                    </span>
+                </div>
+                <p class="text-xs font-semibold text-slate-400 leading-relaxed">
+                    {{ message }}
+                </p>
+            </div>
+
+            <button @click="dismiss()" class="group p-2 hover:bg-white/5 rounded-full transition-all">
+                <span
+                    class="material-symbols-outlined text-slate-500 group-hover:text-white transition-colors">close</span>
+            </button>
+
+            <div class="absolute bottom-0 left-0 h-1 rounded-full {% if category == 'error' %}bg-rose-400/70{% else %}bg-emerald-400/70{% endif %}"
+                :style="`width: ${progress}%`"></div>
         </div>
+        {% endfor %}
+        {% endwith %}
     </div>
 
+    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
 </body>
-<script>
-    function sporeToast(message, type = 'success') {
-        const container = document.getElementById('toast-container');
-        if (!container) return;
-
-        const isError = type === 'error';
-        const el = document.createElement('div');
-        el.innerHTML = `
-            <div x-data="{ show: true }"
-                 x-show="show"
-                 x-init="setTimeout(() => show = false, 5000)"
-                 x-transition:enter="transition ease-out duration-500"
-                 x-transition:enter-start="opacity-0 translate-y-8 scale-95"
-                 x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-                 x-transition:leave="transition ease-in duration-300"
-                 x-transition:leave-start="opacity-100 scale-100"
-                 x-transition:leave-end="opacity-0 scale-95"
-                 class="bg-slate-900/95 backdrop-blur-xl border border-slate-800 text-white p-5 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center gap-5">
-                <div class="w-12 h-12 rounded-full flex items-center justify-center shrink-0 relative">
-                    <div class="absolute inset-0 rounded-full animate-ping opacity-20 ${isError ? 'bg-rose-500' : 'bg-emerald-500'}"></div>
-                    <div class="relative w-full h-full rounded-full flex items-center justify-center ${isError ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400'}">
-                        <span class="material-symbols-outlined text-2xl">${isError ? 'rocket' : 'verified_user'}</span>
-                    </div>
-                </div>
-                <div class="flex-1">
-                    <div class="flex items-center gap-2 mb-0.5">
-                        <p class="text-sm font-black uppercase tracking-widest ${isError ? 'text-rose-400' : 'text-emerald-400'} font-headline">Mission Control</p>
-                        <span class="text-white text-lg opacity-80 lowercase" style="font-family:'Pacifico',cursive;">${isError ? 'Anomaly' : 'Update'}</span>
-                    </div>
-                    <p class="text-xs font-semibold text-slate-400 leading-relaxed">${message}</p>
-                </div>
-                <button @click="show = false" class="group p-2 hover:bg-white/5 rounded-full transition-all">
-                    <span class="material-symbols-outlined text-slate-500 group-hover:text-white transition-colors">close</span>
-                </button>
-            </div>
-        `;
-
-        container.appendChild(el.firstElementChild);
-        // Re-initialise Alpine on the new element
-        Alpine.initTree(container.lastElementChild);
-    }
-</script>
 
 </html>

@@ -22,15 +22,50 @@ class Settings:
     REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", None)
     
     # Host path where materialized data lands (Flask / ingest)
-    SPORE_DATA_DIR = os.getenv("SPORE_DATA_DIR", os.path.join(os.getcwd(), "volumes"))
-    
+    SPORE_DATA_DIR = os.getenv("SPORE_DATA_DIR", "/data")
+
     # Path visible inside the sandboxed Jupyter kernel container
     KERNEL_DATA_MOUNT = os.getenv("KERNEL_DATA_MOUNT", "/data")
+
+    # Containerized kernel (Docker API against rootless DinD)
+    KERNEL_PYTHON_VERSION = os.getenv("KERNEL_PYTHON_VERSION", "3.12")
+    KERNEL_IMAGE = os.getenv(
+        "KERNEL_IMAGE",
+        f"spore-kernel:{os.getenv('KERNEL_PYTHON_VERSION', '3.12')}",
+    )
+    KERNEL_HOST = os.getenv("KERNEL_HOST", "kernel-dind")
+    KERNEL_VOLUME_BIND = os.getenv("KERNEL_VOLUME_BIND", "/data")
+    KERNEL_NETWORK = os.getenv("KERNEL_NETWORK", "kernel_net")
+    KERNEL_VOLUME = os.getenv("KERNEL_VOLUME", "spore_volumes")
+    DOCKER_HOST = os.getenv("DOCKER_HOST", "")
+    KERNEL_MEM_LIMIT = os.getenv("KERNEL_MEM_LIMIT", "1g")
+    KERNEL_PIDS_LIMIT = int(os.getenv("KERNEL_PIDS_LIMIT", "256"))
+
+    @classmethod
+    def kernel_spec_name(cls) -> str:
+        version = cls.KERNEL_PYTHON_VERSION.replace(".", "")
+        return f"python{version}"
+
 
 settings = Settings()
 
 raw_origins = os.getenv("ALLOWED_ORIGINS", "http://127.0.0.1:5000,http://localhost:5000")
 ALLOWED_ORIGINS = [origin.strip() for origin in raw_origins.split(",")]
+
+# Default base URLs per LLM provider. Environment variables override the
+# built-in defaults; users can further override each one at runtime through the
+# Settings UI (persisted to settings.json -> "base_urls"). Empty/unset always
+# falls back to the default below.
+PROVIDER_BASE_URLS = {
+    "ollama": os.getenv("OLLAMA_BASE", "http://localhost:11434"),
+    "lmstudio": os.getenv("LMSTUDIO_BASE", "http://localhost:1234"),
+    "openai": os.getenv("OPENAI_BASE", "https://api.openai.com/v1"),
+}
+
+# Providers whose endpoint URL is user-configurable (exposed in the Settings UI
+# and honored by the inference engine). Cloud providers with fixed public
+# endpoints (anthropic, gemini) intentionally keep their SDK defaults.
+URL_CONFIGURABLE_PROVIDERS = ["ollama", "lmstudio", "openai"]
 
 # common_layers.py
 
@@ -113,6 +148,69 @@ VENDOR_CONFIG = [
             },
             "features": {"supports_ssh": True, "supports_ssl": True}
         },
+        "mysql": {
+            "metadata": {
+                "id": "mysql",
+                "label": "MySQL / MariaDB",
+                "kind": "database",
+                "image": "icons/mysql.png",
+            },
+            "fields": {
+                "host": {"label": "Host", "type": "text", "placeholder": "db.example.com", "required": True},
+                "port": {"label": "Port", "type": "number", "default": 3306, "required": True},
+                "database": {"label": "Database Name", "type": "text", "required": True},
+                "user": {"label": "Username", "type": "text", "required": True},
+                "password": {"label": "Password", "type": "password", "required": True},
+            },
+            "features": {"supports_ssh": True, "supports_ssl": True}
+        },
+        "mssql": {
+            "metadata": {
+                "id": "mssql",
+                "label": "Microsoft SQL Server",
+                "kind": "database",
+                "image": "icons/mssql.png",
+            },
+            "fields": {
+                "host": {"label": "Host", "type": "text", "placeholder": "sqlserver.example.com", "required": True},
+                "port": {"label": "Port", "type": "number", "default": 1433, "required": True},
+                "database": {"label": "Database Name", "type": "text", "required": True},
+                "user": {"label": "Username", "type": "text", "required": True},
+                "password": {"label": "Password", "type": "password", "required": True},
+                "schema": {"label": "Default Schema", "type": "text", "default": "dbo", "required": False},
+            },
+            "features": {"supports_ssh": True, "supports_ssl": True}
+        },
+        "mongodb": {
+            "metadata": {
+                "id": "mongodb",
+                "label": "MongoDB",
+                "kind": "database",
+                "image": "icons/mongodb.png",
+            },
+            "fields": {
+                "host": {"label": "Host", "type": "text", "placeholder": "cluster.example.com", "required": True},
+                "port": {"label": "Port", "type": "number", "default": 27017, "required": True},
+                "database": {"label": "Database Name", "type": "text", "required": True},
+                "user": {"label": "Username", "type": "text", "required": False},
+                "password": {"label": "Password", "type": "password", "required": False},
+                "auth_source": {"label": "Auth Database", "type": "text", "default": "admin", "required": False},
+                "connection_string": {"label": "Connection String (optional)", "type": "text", "placeholder": "mongodb+srv://user:pass@cluster/...", "required": False},
+            },
+            "features": {"supports_ssh": True, "supports_ssl": True}
+        },
+        "sqlite": {
+            "metadata": {
+                "id": "sqlite",
+                "label": "SQLite",
+                "kind": "database",
+                "image": "icons/SQLite.png",
+            },
+            "fields": {
+                "file_path": {"label": "Database File", "type": "file", "required": True},
+            },
+            "features": {"supports_ssh": False, "supports_ssl": False}
+        },
     }),
 
     ("Data Warehouses", {
@@ -145,6 +243,55 @@ VENDOR_CONFIG = [
                 "password": {"label": "Password", "type": "password", "required": False},
             },
             "ssl_profile": SNOWFLAKE_SSL_PROFILE,
+            "features": {"supports_ssh": False, "supports_ssl": True}
+        },
+        "redshift": {
+            "metadata": {
+                "id": "redshift",
+                "label": "Amazon Redshift",
+                "kind": "warehouse",
+                "image": "icons/redshift.png",
+            },
+            "fields": {
+                "host": {"label": "Cluster Endpoint", "type": "text", "placeholder": "cluster.xxxx.region.redshift.amazonaws.com", "required": True},
+                "port": {"label": "Port", "type": "number", "default": 5439, "required": True},
+                "database": {"label": "Database Name", "type": "text", "default": "dev", "required": True},
+                "user": {"label": "Username", "type": "text", "required": True},
+                "password": {"label": "Password", "type": "password", "required": True},
+                "schema": {"label": "Default Schema", "type": "text", "default": "public", "required": False},
+            },
+            "features": {"supports_ssh": True, "supports_ssl": True}
+        },
+        "clickhouse": {
+            "metadata": {
+                "id": "clickhouse",
+                "label": "ClickHouse",
+                "kind": "warehouse",
+                "image": "icons/clickhouse.png",
+            },
+            "fields": {
+                "host": {"label": "Host", "type": "text", "placeholder": "myhost.clickhouse.cloud", "required": True},
+                "port": {"label": "HTTP Port", "type": "number", "default": 8443, "required": True},
+                "database": {"label": "Database", "type": "text", "default": "default", "required": True},
+                "user": {"label": "Username", "type": "text", "default": "default", "required": True},
+                "password": {"label": "Password", "type": "password", "required": False},
+            },
+            "features": {"supports_ssh": False, "supports_ssl": True}
+        },
+        "databricks": {
+            "metadata": {
+                "id": "databricks",
+                "label": "Databricks",
+                "kind": "warehouse",
+                "image": "icons/databricks.png",
+            },
+            "fields": {
+                "server_hostname": {"label": "Server Hostname", "type": "text", "placeholder": "dbc-xxxx.cloud.databricks.com", "required": True},
+                "http_path": {"label": "HTTP Path", "type": "text", "placeholder": "/sql/1.0/warehouses/xxxx", "required": True},
+                "access_token": {"label": "Access Token", "type": "password", "required": True},
+                "catalog": {"label": "Catalog", "type": "text", "default": "hive_metastore", "required": False},
+                "schema": {"label": "Schema", "type": "text", "default": "default", "required": False},
+            },
             "features": {"supports_ssh": False, "supports_ssl": True}
         }
     }),

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 from datetime import datetime, timezone
 from typing import Any
 
@@ -15,6 +16,7 @@ from spore._compute.streams import (
     list_excel_sheets,
     normalize_rel_path,
     resolve_dataset_source,
+    resolve_source,
     resolve_stream_source,
     split_sheet_ref,
     streams_root,
@@ -198,3 +200,46 @@ def reconcile_relations(catalog: dict[str, Any] | None) -> dict[str, Any]:
             relations[name] = {**existing, **entry}
     catalog["relations"] = relations
     return catalog
+
+
+def _jsonable_value(val: Any) -> Any:
+    if val is None or isinstance(val, (str, int, float, bool)):
+        return val
+    if hasattr(val, "isoformat"):
+        return val.isoformat()
+    return str(val)
+
+
+def profile_relation(ref: str) -> list[dict[str, Any]]:
+    """Return per-column summary stats via DuckDB SUMMARIZE."""
+    abs_path, ext, _version, sheet = resolve_source(ref)
+    con = duckdb.connect()
+    try:
+        read_expr = duckdb_read_source(con, abs_path, ext, sheet)
+        rel = con.execute(f"SUMMARIZE SELECT * FROM {read_expr} AS _src")
+        columns = [d[0] for d in rel.description]
+        out: list[dict[str, Any]] = []
+        for row in rel.fetchall():
+            entry = {
+                columns[i]: _jsonable_value(row[i])
+                for i in range(len(columns))
+            }
+            out.append(entry)
+        return out
+    finally:
+        con.close()
+
+
+def delete_stream(stream_name: str) -> None:
+    """Remove a materialized stream directory under streams root."""
+    name = (stream_name or "").strip()
+    if not name or "/" in name or "\\" in name or name.startswith("."):
+        raise ValueError("Invalid stream name")
+
+    root = streams_root().resolve()
+    stream_dir = (streams_root() / name).resolve()
+    if not str(stream_dir).startswith(str(root) + os.sep):
+        raise ValueError("Path escapes streams root")
+    if not stream_dir.is_dir():
+        raise FileNotFoundError(f"Stream not found: {name}")
+    shutil.rmtree(stream_dir)

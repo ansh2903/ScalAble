@@ -14,7 +14,7 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 
 - Confirm Redis/KeyDB is running: `redis-cli -h 127.0.0.1 ping` → `PONG`
 - Check `REDIS_HOST` and `REDIS_PORT` in `.env`
-- In Docker Compose, use `REDIS_HOST=keydb`
+- In Docker Compose, use `REDIS_HOST=redis`
 
 ### `ModuleNotFoundError: spore` or `uuid_extensions`
 
@@ -64,13 +64,15 @@ Only sources registered in [`spore/_connectors/registry.py`](../spore/_connector
 
 ### Parquet files not visible in notebook
 
-- `SPORE_DATA_DIR` on the host must match where ingest writes files.
+- `SPORE_DATA_DIR` must match where ingest writes files (default `/data` in Docker).
 - `KERNEL_DATA_MOUNT` must be the path the Jupyter kernel uses (default `/data`).
-- In Docker, the `spore_data` volume is mounted at `/data`.
+- In Docker Compose, the `spore_volumes` named volume is mounted at `/data` on both `spore` and kernel containers.
 
 ### Kernel does not start
 
-- `jupyter-client` must be installed.
+- `jupyter-client` and `docker` Python packages must be installed in the `spore` image.
+- `DOCKER_HOST` must reach the DinD daemon (`tcp://kernel-dind:2375` in compose).
+- Ensure `kernel-image-builder` completed and `spore-kernel:3.12` exists inside DinD (`docker exec spore-kernel-dind docker images`).
 - Check browser console for Socket.IO connection errors.
 - Verify `ALLOWED_ORIGINS` includes your browser URL.
 

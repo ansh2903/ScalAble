@@ -19,9 +19,22 @@ from spore._logger import logging
 
 data_blueprint = generate_blueprint('data')
 
+
+def _reject_agent_execution():
+    if request.headers.get("X-Agent-Request"):
+        return jsonify({
+            "status": "error",
+            "message": "Agent cannot execute queries against remote data sources. Use the Data panel.",
+        }), 403
+    return None
+
+
 @data_blueprint.route('/query-preview', methods=["POST"])
 def preview():
     try:
+        blocked = _reject_agent_execution()
+        if blocked:
+            return blocked
         if request.method == "POST":
             query = request.form.get("query")
             selected_id = request.form.get("id")
@@ -61,6 +74,9 @@ def preview():
 @data_blueprint.route('/ingest', methods=['POST'])
 def ingest():
     try:
+        blocked = _reject_agent_execution()
+        if blocked:
+            return blocked
         query = request.form.get('query')
         dbid = request.form.get('id')
         stream_name = request.form.get('stream_name')

@@ -2,7 +2,11 @@ from flask import render_template, jsonify, request, redirect, url_for, flash
 
 from spore._engine.model_manager import reset_engine
 from spore._utils import model_ls, load_settings, save_settings
-from spore._config.settings import PROVIDER_FIELDS
+from spore._config.settings import (
+    PROVIDER_FIELDS,
+    PROVIDER_BASE_URLS,
+    URL_CONFIGURABLE_PROVIDERS,
+)
 from spore._routes.utils import generate_blueprint
 
 from spore._logger import logging
@@ -19,10 +23,28 @@ def settings():
         try:
             provider = request.form.get("provider")
 
+            existing = load_settings() or {}
+            api_keys = dict(existing.get("api_keys") or {})
+            submitted_key = (request.form.get("api_key") or "").strip()
+            if submitted_key and provider:
+                api_keys[provider] = submitted_key
+
+            # Per-provider endpoint URL. Empty submission reverts to the default
+            # (we drop the key so the resolver falls back to PROVIDER_BASE_URLS).
+            base_urls = dict(existing.get("base_urls") or {})
+            submitted_url = (request.form.get("base_url") or "").strip().rstrip("/")
+            if provider in URL_CONFIGURABLE_PROVIDERS:
+                if submitted_url:
+                    base_urls[provider] = submitted_url
+                else:
+                    base_urls.pop(provider, None)
+
             new_data = {
                 "provider": provider,
                 "model": request.form.get("model", settings.get("model")),
                 "keep_alive": request.form.get("keep_alive", "5m"),
+                "api_keys": api_keys,
+                "base_urls": base_urls,
                 "options": {
                     "num_predict":       int(request.form.get("num_predict", 256)),
                     "top_k":             int(request.form.get("top_k", 40)),
@@ -53,6 +75,8 @@ def settings():
         'pages/settings.html',
         settings=settings,
         provider_fields=PROVIDER_FIELDS,
+        provider_base_urls=PROVIDER_BASE_URLS,
+        url_providers=URL_CONFIGURABLE_PROVIDERS,
         current_provider=provider,
         current_model=model,
         all_providers=list(PROVIDER_FIELDS.keys()),
@@ -66,9 +90,12 @@ def models_list():
     provider = request.args.get("provider")
     if not provider:
         return jsonify({"error": "No provider specified"}), 400
-        
+
+    # Optional ad-hoc URL so the UI can test an endpoint before saving it.
+    base_url = (request.args.get("base_url") or "").strip().rstrip("/") or None
+
     try:
-        models = model_ls(provider)
+        models = model_ls(provider, base_url)
         return jsonify(models)
     except Exception as e:
         logging.error(f"Failed to fetch models for {provider}: {e}")

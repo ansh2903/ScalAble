@@ -131,7 +131,7 @@ function cellDragHandleHtml(cellId) {
 }
 
 const SPORE_CONNECTIONS = window.SPORE_CONNECTIONS || [];
-const socket = io();
+const socket = window.sporeSocket || (window.sporeSocket = io());
 
 const KERNEL_STATUS_CONFIG = {
   connecting:   { label: 'Connecting',   dot: 'bg-amber-400 animate-pulse', text: 'text-amber-600' },
@@ -1017,6 +1017,9 @@ function addPythonFromMaterialized(kernelPath, streamName, relationId, format) {
 
 window.sporePandasReadExpr = sporePandasReadExpr;
 window.addPythonFromMaterialized = addPythonFromMaterialized;
+window.sporeAddNotebookCell = function sporeAddNotebookCell(type, code) {
+  return addCell(type || 'python', code || '', { activateCommandMode: false });
+};
 
 async function materializeSqlCell(cellId) {
   const cell = cells[cellId];

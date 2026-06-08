@@ -198,3 +198,24 @@ def test_query_stream_special_column_names(streams_env):
     assert result["row_count"] >= 1
     assert "Sub-Category" in result["columns"]
     assert "amount" in result["columns"]
+
+
+def test_profile_relation(streams_env):
+    from spore._compute.relations import profile_relation
+
+    profile = profile_relation("test_stream")
+    assert len(profile) >= 1
+    first = profile[0]
+    assert "column_name" in first or "amount" in str(first)
+
+
+def test_delete_stream(streams_env):
+    from pathlib import Path
+    from spore._compute.relations import delete_stream, scan_stream
+
+    delete_stream("test_stream")
+    streams = Path(streams_env) / "streams"
+    assert not (streams / "test_stream").exists()
+
+    with pytest.raises(FileNotFoundError):
+        scan_stream("test_stream")

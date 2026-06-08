@@ -1,6 +1,6 @@
 from spore._engine.inference_engine import InferenceEngine
 
-from spore._utils import load_settings
+from spore._utils import clear_model_context_cache, load_settings
 from spore._logger import logging
 from spore._exception import CustomException
 
@@ -31,5 +31,6 @@ def get_engine():
 def reset_engine():
     global _engine_instance, _engine_config
     logging.info("Resetting InferenceEngine instance")
+    clear_model_context_cache()
     _engine_instance = None
     _engine_config = None

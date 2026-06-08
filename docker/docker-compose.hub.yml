@@ -1,12 +1,16 @@
 name: spore
 
+# Run-only stack using prebuilt images from Docker Hub. No source checkout
+# needed — download this file, create a .env with ENCRYPTION_KEY, then:
+#   docker compose -f docker-compose.hub.yml up -d
+#
+# Override image tags / provider URLs via environment or a .env file.
+
 services:
   spore:
     image: ${SPORE_IMAGE:-anshsharma2903/spore:latest}
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
     container_name: spore
+    pull_policy: always
     ports:
       - "5000:5000"
     depends_on:
@@ -14,20 +18,23 @@ services:
         condition: service_started
       kernel-dind:
         condition: service_started
-      kernel-image-builder:
+      kernel-image-puller:
         condition: service_completed_successfully
     environment:
       - APP_HOST=0.0.0.0
       - FLASK_ENV=production
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-QVC5YEPET9Os5uS4fJRWbnGicEBXO5e_x4DzOkdz_DA=}
+      # REQUIRED: generate with
+      #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:?set ENCRYPTION_KEY in your .env}
       - SPORE_DATA_DIR=/data
       - KERNEL_DATA_MOUNT=/data
       # Kernel Python version is the startup knob. Change it (env or .env) to run
-      # a different sandbox interpreter; the image tag tracks it automatically.
+      # a different sandbox interpreter; the published image tag tracks it. The
+      # matching tag (e.g. spore-kernel:3.11) must exist on the registry.
       - KERNEL_PYTHON_VERSION=${KERNEL_PYTHON_VERSION:-3.12}
-      - KERNEL_IMAGE=spore-kernel:${KERNEL_PYTHON_VERSION:-3.12}
+      - KERNEL_IMAGE=${KERNEL_IMAGE:-${KERNEL_NAMESPACE:-anshsharma2903}/spore-kernel:${KERNEL_PYTHON_VERSION:-3.12}}
       - KERNEL_HOST=kernel-dind
       - KERNEL_VOLUME_BIND=/data
       - DOCKER_HOST=tcp://kernel-dind:2375
@@ -66,17 +73,16 @@ services:
       - kernel_net
     restart: unless-stopped
 
-  kernel-image-builder:
+  # Pre-pull the kernel image into the DinD daemon so the first notebook kernel
+  # spawns instantly instead of waiting on a ~900MB pull.
+  kernel-image-puller:
     image: docker:27-cli
-    container_name: spore-kernel-image-builder
+    container_name: spore-kernel-image-puller
     environment:
       - DOCKER_HOST=tcp://kernel-dind:2375
-    volumes:
-      - ..:/build:ro
     command: >
       sh -c "until docker info >/dev/null 2>&1; do sleep 1; done &&
-      docker build --build-arg KERNEL_BASE_IMAGE=python:${KERNEL_PYTHON_VERSION:-3.12}-slim
-      -f /build/docker/Dockerfile.kernel -t spore-kernel:${KERNEL_PYTHON_VERSION:-3.12} /build"
+      docker pull ${KERNEL_IMAGE:-${KERNEL_NAMESPACE:-anshsharma2903}/spore-kernel:${KERNEL_PYTHON_VERSION:-3.12}}"
     depends_on:
       - kernel-dind
     networks:

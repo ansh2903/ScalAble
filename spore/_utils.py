@@ -164,6 +164,23 @@ def save_settings(data):
     with open(settings_path, "w") as new_settings:
         json.dump(data, new_settings, indent=2)
 
+def provider_base_url(provider, settings=None):
+    """Resolve the effective base URL for an LLM provider.
+
+    Precedence: settings.json ``base_urls[provider]`` > env-derived default
+    (``PROVIDER_BASE_URLS``). Empty/unset falls back to the default so behavior
+    stays the same when the user has not customized anything.
+    """
+    from spore._config.settings import PROVIDER_BASE_URLS
+
+    prov = (provider or "").lower().strip()
+    settings = settings if settings is not None else (load_settings() or {})
+    configured = (settings.get("base_urls") or {}).get(prov)
+    if configured and str(configured).strip():
+        return str(configured).strip().rstrip("/")
+    default = PROVIDER_BASE_URLS.get(prov) or ""
+    return default.rstrip("/")
+
 def is_running_in_docker():
     """Check if the app is running inside a Docker container."""
     path = "/proc/self/cgroup"
@@ -174,16 +191,16 @@ def is_running_in_docker():
             return any("docker" in line for line in f)
     return False
 
-def model_ls(provider):
+def model_ls(provider, base_url=None):
     if provider == "ollama":
-        return ollama_model_ls()
+        return ollama_model_ls(base_url)
     elif provider == "lmstudio":
-        return lmstudio_model_ls()
+        return lmstudio_model_ls(base_url)
     else:
         return []
     
-def ollama_model_ls():
-    OLLAMA_BASE = os.getenv('OLLAMA_BASE')
+def ollama_model_ls(base_url=None):
+    OLLAMA_BASE = (base_url or provider_base_url("ollama")).rstrip("/")
     OLLAMA_TAGS = (f'{OLLAMA_BASE}/api/tags')
     tag_data = requests.get(OLLAMA_TAGS).json()['models']
 
@@ -198,8 +215,8 @@ def ollama_model_ls():
 
     return models
 
-def lmstudio_model_ls():
-    LMSTUDIO_BASE = os.getenv('LMSTUDIO_BASE')
+def lmstudio_model_ls(base_url=None):
+    LMSTUDIO_BASE = (base_url or provider_base_url("lmstudio")).rstrip("/")
     LMSTUDIO_TAGS = (f'{LMSTUDIO_BASE}/api/v1/models')
 
     tag_data = requests.get(LMSTUDIO_TAGS).json()
@@ -215,6 +232,104 @@ def lmstudio_model_ls():
             }
             models.append(model)
     return models
+
+_MODEL_CONTEXT_CACHE: dict[str, int | None] = {}
+
+
+def clear_model_context_cache() -> None:
+    """Clear cached provider model context probes (call on engine reset)."""
+    _MODEL_CONTEXT_CACHE.clear()
+
+
+def ollama_model_context(model: str) -> int | None:
+    """Return Ollama model max context length via /api/show, or None on failure."""
+    base = provider_base_url("ollama")
+    if not base or not model:
+        return None
+    try:
+        resp = requests.post(
+            f"{base.rstrip('/')}/api/show",
+            json={"model": model},
+            timeout=5,
+        )
+        resp.raise_for_status()
+        model_info = resp.json().get("model_info") or {}
+        for key, value in model_info.items():
+            if key.endswith(".context_length") and value is not None:
+                return int(value)
+    except Exception as exc:
+        logging.warning("ollama_model_context failed for %s: %s", model, exc)
+    return None
+
+
+def lmstudio_model_context(model: str) -> int | None:
+    """Return LM Studio model max context length, or None on failure."""
+    base = provider_base_url("lmstudio")
+    if not base or not model:
+        return None
+    try:
+        resp = requests.get(f"{base.rstrip('/')}/api/v1/models", timeout=5)
+        resp.raise_for_status()
+        for unit in (resp.json().get("models") or []):
+            if unit.get("type") != "llm":
+                continue
+            if unit.get("key") != model:
+                continue
+            for field in ("max_context_length", "loaded_context_length"):
+                val = unit.get(field)
+                if val is not None:
+                    return int(val)
+    except Exception as exc:
+        logging.warning("lmstudio_model_context failed for %s: %s", model, exc)
+    return None
+
+
+def model_max_context(provider: str, model: str) -> int | None:
+    """Probe provider for model max context window; cached per provider:model."""
+    prov = (provider or "").lower().strip()
+    name = (model or "").strip()
+    if not prov or not name:
+        return None
+    cache_key = f"{prov}:{name}"
+    if cache_key in _MODEL_CONTEXT_CACHE:
+        return _MODEL_CONTEXT_CACHE[cache_key]
+    try:
+        if prov == "ollama":
+            result = ollama_model_context(name)
+        elif prov == "lmstudio":
+            result = lmstudio_model_context(name)
+        else:
+            result = None
+    except Exception as exc:
+        logging.warning("model_max_context failed for %s/%s: %s", prov, name, exc)
+        result = None
+    _MODEL_CONTEXT_CACHE[cache_key] = result
+    return result
+
+
+def context_limit_info(settings: dict | None = None) -> dict[str, int | bool | None]:
+    """
+    Effective context window for the UI indicator.
+
+    effective = min(configured num_ctx, model max) when model max is known.
+    show is True only for local providers (ollama, lmstudio).
+    """
+    settings = settings if settings is not None else (load_settings() or {})
+    provider = (settings.get("provider") or "").lower()
+    model = settings.get("model") or ""
+    configured = int((settings.get("options") or {}).get("num_ctx", 2048))
+    model_max = model_max_context(provider, model)
+    effective = min(configured, model_max) if model_max else configured
+    clamped = bool(model_max and configured > model_max)
+    show = provider in {"ollama", "lmstudio"}
+    return {
+        "configured": configured,
+        "model_max": model_max,
+        "effective": effective,
+        "clamped": clamped,
+        "show": show,
+    }
+
 
 def file_size_fmt(size):
     if size < 1024:

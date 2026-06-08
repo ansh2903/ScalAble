@@ -10,10 +10,11 @@ from werkzeug.utils import secure_filename
 from spore._routes.utils import generate_blueprint
 from spore._utils import file_size_fmt
 from spore._logger import logging
+from spore._config.settings import settings
 
 fs_blueprint = generate_blueprint("fs")
 
-ROOT = os.path.abspath("volumes/streams")
+ROOT = os.path.abspath(os.path.join(settings.SPORE_DATA_DIR, "streams"))
 MEMORY_THRESHOLD = 1 * 1024**3  # 1GB
 
 

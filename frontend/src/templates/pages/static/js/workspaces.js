@@ -19,47 +19,45 @@ function hydrateWorkspaceTimestamps() {
         const raw = el.dataset.updated;
         el.textContent = `Updated ${formatWorkspaceUpdated(raw)}`;
     });
+    document.querySelectorAll('.workspace-created').forEach((el) => {
+        const raw = el.dataset.created;
+        el.textContent = `Created ${formatWorkspaceUpdated(raw)}`;
+    });
+}
+
+function filterWorkspaces(query) {
+    const q = (query || '').trim().toLowerCase();
+    document.querySelectorAll('.workspace-card').forEach((card) => {
+        const name = card.dataset.name || '';
+        const desc = card.dataset.description || '';
+        const match = !q || name.includes(q) || desc.includes(q);
+        card.classList.toggle('hidden', !match);
+    });
+}
+
+function openWorkspaceModal(detail) {
+    window.dispatchEvent(new CustomEvent('workspace-modal:open', { detail: detail || {} }));
 }
 
 function openWorkspace(id) {
     window.location.href = `/chat?workspace_id=${encodeURIComponent(id)}`;
 }
 
-async function createWorkspace() {
-    const name = window.prompt('Workspace name:', 'New Workspace');
-    if (!name || !name.trim()) return;
-    const description = window.prompt('Description (optional):', '') || '';
-
-    const res = await fetch('/api/workspaces', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), description: description.trim() }),
+function createWorkspace() {
+    openWorkspaceModal({
+        mode: 'create',
+        name: 'New Workspace',
+        description: '',
     });
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        alert(err.error || 'Failed to create workspace');
-        return;
-    }
-    const data = await res.json();
-    openWorkspace(data.workspace.id);
 }
 
-async function editWorkspace(id, currentName, currentDesc) {
-    const name = window.prompt('Workspace name:', currentName);
-    if (!name || !name.trim()) return;
-    const description = window.prompt('Description:', currentDesc || '') ?? '';
-
-    const res = await fetch(`/api/workspaces/${encodeURIComponent(id)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), description: description.trim() }),
+function editWorkspace(id, currentName, currentDesc) {
+    openWorkspaceModal({
+        mode: 'edit',
+        id,
+        name: currentName || '',
+        description: currentDesc || '',
     });
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        alert(err.error || 'Failed to update workspace');
-        return;
-    }
-    window.location.reload();
 }
 
 async function deleteWorkspace(id, name) {
@@ -74,6 +72,88 @@ async function deleteWorkspace(id, name) {
         return;
     }
     window.location.reload();
+}
+
+function workspaceModal() {
+    return {
+        open: false,
+        mode: 'create',
+        id: '',
+        name: '',
+        description: '',
+        error: '',
+        saving: false,
+
+        init() {
+            window.addEventListener('workspace-modal:open', (e) => {
+                const d = e.detail || {};
+                this.mode = d.mode || 'create';
+                this.id = d.id || '';
+                this.name = d.name ?? '';
+                this.description = d.description ?? '';
+                this.error = '';
+                this.saving = false;
+                this.open = true;
+                this.$nextTick(() => this.$refs.nameInput?.focus());
+            });
+        },
+
+        close() {
+            this.open = false;
+            this.error = '';
+        },
+
+        async submit() {
+            const name = (this.name || '').trim();
+            if (!name) {
+                this.error = 'Workspace name is required.';
+                return;
+            }
+
+            this.saving = true;
+            this.error = '';
+
+            try {
+                if (this.mode === 'edit') {
+                    const res = await fetch(`/api/workspaces/${encodeURIComponent(this.id)}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            name,
+                            description: (this.description || '').trim(),
+                        }),
+                    });
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => ({}));
+                        this.error = err.error || 'Failed to update workspace';
+                        return;
+                    }
+                    window.location.reload();
+                    return;
+                }
+
+                const res = await fetch('/api/workspaces', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name,
+                        description: (this.description || '').trim(),
+                    }),
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    this.error = err.error || 'Failed to create workspace';
+                    return;
+                }
+                const data = await res.json();
+                openWorkspace(data.workspace.id);
+            } catch (_err) {
+                this.error = 'Something went wrong. Please try again.';
+            } finally {
+                this.saving = false;
+            }
+        },
+    };
 }
 
 document.addEventListener('DOMContentLoaded', hydrateWorkspaceTimestamps);

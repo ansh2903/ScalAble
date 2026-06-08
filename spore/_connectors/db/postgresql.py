@@ -34,18 +34,13 @@ from ..base import BaseSource, SourceKind, SourceCapabilities
 from ..utils import (
     QueryKind,
     classify_query,
-    make_batch_sink,
-    normalize_output_format,
     normalize_preview_limit,
-    source_filename,
     status_row,
     strip_query_terminator,
     wrap_count_query,
     wrap_preview_query,
-    write_empty_dataset,
 )
 from spore._logger import logging
-from spore._config.settings import settings
 
 
 def _qi(name: str) -> str:
@@ -393,17 +388,14 @@ class PostgreSQLSource(BaseSource):
 
         Yields SSE chunks: start → progress (per batch) → done | error.
         Writes ``streams/<name>/source.<ext>`` where ``<ext>`` is determined
-        by ``output_format`` (parquet/csv/tsv/json/excel).
+        by ``output_format`` (parquet/csv/tsv/json/excel). The DuckDB batch loop
+        is shared with every other ATTACH-able source via ``stream_duckdb_ingest``.
         """
-        fmt = normalize_output_format(output_format)
-        dest = destination_path or settings.SPORE_DATA_DIR
-        stream_dir = os.path.join(dest, "streams", stream_name)
-        os.makedirs(stream_dir, exist_ok=True)
-        source_path = os.path.join(stream_dir, source_filename(fmt))
+        from .._duck import stream_duckdb_ingest
 
-        sink = duck = None
-        c = self.config
+        duck = None
         t0 = time.monotonic()
+        c = self.config
 
         try:
             with self.tunnel_context() as (host, port):
@@ -419,78 +411,22 @@ class PostgreSQLSource(BaseSource):
                 if schema:
                     duck.execute(f"SET search_path = {_qi(schema)};")
 
-                body = strip_query_terminator(query)
-                try:
-                    est_total_rows = duck.sql(wrap_count_query(body)).fetchone()[0]
-                except Exception:
-                    est_total_rows = None
-
-                reader = duck.sql(query).fetch_arrow_reader(batch_row_size)
-                rows_so_far = 0
-                bytes_so_far = 0
-                batch_index = 0
-                est_total_bytes = None
-                start_sent = False
-
-                for batch in reader:
-                    if sink is None:
-                        sink = make_batch_sink(source_path, batch.schema, fmt)
-                    sink.write_batch(batch)
-                    rows_so_far += batch.num_rows
-                    bytes_so_far += batch.nbytes
-                    batch_index += 1
-
-                    if not start_sent:
-                        if est_total_rows and rows_so_far:
-                            est_total_bytes = round(bytes_so_far / rows_so_far * est_total_rows)
-                        yield {
-                            "type": "start",
-                            "stream_name": stream_name,
-                            "format": fmt,
-                            "est_total_rows": est_total_rows,
-                            "est_total_bytes": est_total_bytes,
-                        }
-                        start_sent = True
-
-                    yield {
-                        "type": "progress",
-                        "rows_so_far": rows_so_far,
-                        "bytes_so_far": bytes_so_far,
-                        "batch_index": batch_index,
-                    }
-
-                if sink is None:
-                    if not start_sent:
-                        yield {
-                            "type": "start",
-                            "stream_name": stream_name,
-                            "format": fmt,
-                            "est_total_rows": est_total_rows,
-                            "est_total_bytes": None,
-                        }
-                        start_sent = True
-
-                    arrow_schema = duck.sql(query).arrow().schema
-                    write_empty_dataset(source_path, arrow_schema, fmt)
-
-            logging.info(f"[postgresql] ingested {rows_so_far} rows → {source_path}")
-            yield {
-                "type": "done",
-                "path": stream_dir,
-                "format": fmt,
-                "filename": os.path.basename(source_path),
-                "total_rows": rows_so_far,
-                "total_bytes": bytes_so_far,
-                "elapsed_ms": int((time.monotonic() - t0) * 1000),
-            }
+                yield from stream_duckdb_ingest(
+                    duck=duck,
+                    query=query,
+                    stream_name=stream_name,
+                    destination_path=destination_path,
+                    output_format=output_format,
+                    batch_row_size=batch_row_size,
+                    dialect="postgresql",
+                    t0=t0,
+                )
 
         except Exception as e:
             logging.error(f"[postgresql] ingest failed: {e}")
             yield {"type": "error", "content": str(e)}
 
         finally:
-            if sink:
-                sink.close()
             if duck:
                 duck.close()
 

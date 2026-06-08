@@ -17,8 +17,15 @@ Copy [.env.example](../.env.example) to `.env` at the repository root.
 | `REDIS_PASSWORD` | _(empty)_ | Optional Redis password. |
 | `ALLOWED_ORIGINS` | `http://127.0.0.1:5000,http://localhost:5000` | Comma-separated CORS origins for Socket.IO. |
 | `ENCRYPTION_KEY` | _(required)_ | Fernet key for encrypting DB credentials in session. |
-| `SPORE_DATA_DIR` | `./data` | Host directory for materialized Parquet files. |
+| `SPORE_DATA_DIR` | `/data` | Directory for materialized Parquet and streams (Flask + kernel volume). |
 | `KERNEL_DATA_MOUNT` | `/data` | Path visible inside the Jupyter kernel for relations. |
+| `KERNEL_PYTHON_VERSION` | `3.12` | Python version tag for the sandbox kernel image (deploy-time). |
+| `KERNEL_IMAGE` | `spore-kernel:3.12` | Docker image used for per-session notebook kernels. |
+| `KERNEL_HOST` | `kernel-dind` | Hostname of the DinD daemon (ZMQ client target). |
+| `KERNEL_VOLUME_BIND` | `/data` | Bind source inside DinD for the shared data volume. |
+| `DOCKER_HOST` | _(empty)_ | Docker API URL (`tcp://kernel-dind:2375` in compose). |
+| `KERNEL_MEM_LIMIT` | `1g` | Memory limit per kernel container. |
+| `KERNEL_PIDS_LIMIT` | `256` | Process limit per kernel container. |
 | `OLLAMA_BASE` | `http://localhost:11434` | Ollama API base URL. |
 | `OLLAMA_ENDPOINT` | `http://localhost:11434/api/generate` | Legacy Ollama generate endpoint. |
 | `LMSTUDIO_BASE` | `http://localhost:1234` | LM Studio API base. |
@@ -34,10 +41,11 @@ Defined in [`spore/_config/settings.py`](../spore/_config/settings.py).
 
 When running via [`docker/docker-compose.yml`](../docker/docker-compose.yml):
 
-- `REDIS_HOST=keydb`
+- `REDIS_HOST=redis` (KeyDB on an internal backend network; not exposed to the host)
+- `DOCKER_HOST=tcp://kernel-dind:2375` (spawn kernels in rootless DinD)
+- `KERNEL_IMAGE=spore-kernel:3.12` (built by the `kernel-image-builder` init service)
+- `SPORE_DATA_DIR=/data` and `KERNEL_DATA_MOUNT=/data` (shared named volume `spore_volumes`)
 - `OLLAMA_BASE=http://host.docker.internal:11434` (Ollama on the host)
-- `SPORE_DATA_DIR=/app/data`
-- `KERNEL_DATA_MOUNT=/data`
 
 Inside containers, `localhost` database hosts are rewritten to `host.docker.internal` when registering connections.
 

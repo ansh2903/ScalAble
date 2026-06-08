@@ -16,10 +16,52 @@ HTTP route → SourceConnector → REGISTRY[source_type] → BaseSource
 | `source_type` | Class | Module |
 |---------------|-------|--------|
 | `postgresql` | `PostgreSQLSource` | `spore/_connectors/db/postgresql.py` |
+| `mysql` | `MySQLSource` | `spore/_connectors/db/mysql.py` (MySQL / MariaDB) |
+| `mssql` | `MSSQLSource` | `spore/_connectors/db/mssql.py` (SQL Server / Azure SQL) |
+| `sqlite` | `SQLiteSource` | `spore/_connectors/db/sqlite.py` |
+| `mongodb` | `MongoDBSource` | `spore/_connectors/db/mongodb.py` |
 | `bigquery` | `BigQuerySource` | `spore/_connectors/warehouse/bigquery.py` (if deps installed) |
 | `snowflake` | `SnowflakeSource` | `spore/_connectors/warehouse/snowflake.py` (if deps installed) |
+| `redshift` | `RedshiftSource` | `spore/_connectors/warehouse/redshift.py` |
+| `clickhouse` | `ClickHouseSource` | `spore/_connectors/warehouse/clickhouse.py` |
+| `databricks` | `DatabricksSource` | `spore/_connectors/warehouse/databricks.py` |
+| `rest_api` / `graphql_api` | `RestAPISource` / `GraphQLAPISource` | `spore/_connectors/api/` |
+| `csv_file` / `excel_file` / `json_file` / `parquet_file` | file sources | `spore/_connectors/files/` |
 
-Other modules (`mysql.py`, `mssql.py`, `mongodb.py`, file/API connectors) exist but must be wired into `registry.py` before use.
+Database drivers are **lazy-imported**, so a connector module loads even when its
+driver isn't installed — the helpful `pip install …` error only surfaces when you
+actually connect. Most SQL databases (MySQL, SQL Server, SQLite, Redshift,
+Databricks) share the generic cursor machinery in
+[`spore/_connectors/db/_dbapi.py`](../spore/_connectors/db/_dbapi.py).
+
+> **MongoDB note:** MongoDB has no SQL surface. The `query` string is interpreted
+> as either a bare collection name (`orders`) or a JSON find-spec such as
+> `{"collection": "orders", "filter": {...}, "limit": 100}`.
+
+## Ingest strategy (memory safety)
+
+Ingest must never materialise a whole result set in memory. Every connector
+streams in bounded batches, emitting `start` → `progress` → `done` SSE chunks.
+The mechanism depends on what the source supports:
+
+| Source | Ingest mechanism |
+|--------|------------------|
+| PostgreSQL | DuckDB `ATTACH (TYPE POSTGRES)` + `fetch_arrow_reader()` |
+| MySQL / MariaDB | DuckDB `ATTACH (TYPE MYSQL)` + `fetch_arrow_reader()` |
+| SQLite | DuckDB `ATTACH (TYPE SQLITE)` + `fetch_arrow_reader()` |
+| Redshift | psycopg2 **server-side named cursor** with `itersize` (DuckDB's PG scanner is unreliable on Redshift's catalog) |
+| SQL Server | `pymssql` cursor `fetchmany()` (driver streams from server) |
+| MongoDB | `pymongo` cursor with `batch_size()` |
+| ClickHouse | `query_row_block_stream()` (native server-side blocks) |
+| Databricks | `fetchmany_arrow()` (native Arrow cloud-fetch chunks) |
+| BigQuery | `RowIterator.to_arrow_iterable()` |
+| Snowflake | `cursor.fetch_arrow_batches()` |
+
+The shared DuckDB batch loop, sink, and chunk protocol live in
+[`spore/_connectors/_duck.py`](../spore/_connectors/_duck.py); DuckDB-attachable
+SQL databases plug into it via `DuckDBSQLSource` in
+[`spore/_connectors/db/_dbapi.py`](../spore/_connectors/db/_dbapi.py). Previews
+are always row-bounded (`LIMIT n`), so they are memory safe regardless of backend.
 
 ## Adding a new connector
 

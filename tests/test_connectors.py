@@ -93,8 +93,15 @@ def test_qs_escapes_single_quotes():
 def test_registry_keys():
     assert set(REGISTRY.keys()) == {
         "postgresql",
+        "mysql",
+        "mssql",
+        "sqlite",
+        "mongodb",
         "bigquery",
         "snowflake",
+        "redshift",
+        "clickhouse",
+        "databricks",
         "rest_api",
         "graphql_api",
         "csv_file",

@@ -84,4 +84,10 @@ if __name__ == "__main__":
     app = create_app()
     logging.info(f"Spore started on host: {settings.APP_HOST}")
     sys.stdout.flush()
-    socketio.run(app, host=settings.APP_HOST, port=settings.APP_PORT, debug=settings.DEBUG)
+    socketio.run(
+        app,
+        host=settings.APP_HOST,
+        port=settings.APP_PORT,
+        debug=settings.DEBUG,
+        allow_unsafe_werkzeug=True,
+    )

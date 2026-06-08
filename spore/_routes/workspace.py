@@ -1,15 +1,22 @@
 from flask import stream_with_context, render_template, Response, jsonify, request, session, flash, current_app, send_file
 from pathlib import Path
 import importlib
+import time
 
 from spore._connectors import SourceConnector
 from spore._engine.model_manager import get_engine
 from spore._engine.query_executor import run_query
-from spore._utils import file_size_fmt, decrypt_creds, downloadable_json, downloadable_excel, downloadable_csv, load_settings
+from spore._utils import file_size_fmt, decrypt_creds, downloadable_json, downloadable_excel, downloadable_csv, load_settings, context_limit_info
 from spore._routes.utils import generate_blueprint
 from spore._workspace.store import get_workspace_store
 from spore._compute.query import query_stream
-from spore._compute.relations import reconcile_relations, scan_stream
+from spore._compute.relations import (
+    delete_stream,
+    profile_relation,
+    reconcile_relations,
+    scan_stream,
+)
+from spore._compute.streams import duckdb_read_source, resolve_source
 
 import psutil
 import time
@@ -17,6 +24,9 @@ import pandas as pd
 import traceback
 import json
 import os
+import tempfile
+import duckdb
+from io import BytesIO
 import datetime as _dt
 import decimal as _decimal
 
@@ -40,8 +50,8 @@ def _resolve_workspace(workspace_id: str | None):
 
 @workspace_blueprint.route('/chat', methods=['GET', 'POST'])
 def chat():
+    settings = load_settings() or {}
     try:
-        settings = load_settings() or {}
         provider, model = settings.get("provider", None), settings.get("model", None)
         connections = session.get('connections', [])
         workspace_id = request.args.get('workspace_id')
@@ -50,6 +60,10 @@ def chat():
         logging.error(f"Error fetching connections: {str(e)}")
         connections = []
         workspace, workspace_state = _resolve_workspace(None)
+        provider = settings.get("provider")
+        model = settings.get("model")
+
+    ctx_info = context_limit_info(settings)
 
     return render_template(
         "pages/chat.html",
@@ -58,6 +72,9 @@ def chat():
         model=model,
         workspace=workspace,
         workspace_state=workspace_state,
+        asset_version=int(time.time()),
+        context_limit=ctx_info["effective"],
+        context_show=ctx_info["show"],
     )
 
 @workspace_blueprint.route('/chat/ask', methods=['POST'])
@@ -443,6 +460,153 @@ def api_register_relation(workspace_id):
     data["relations"] = relations
     store.patch_state(workspace_id, {"data": data})
     return jsonify({"relation": entry})
+
+
+def _safe_download_name(ref: str, ext: str) -> str:
+    base = (ref or "export").replace("/", "_").replace("\\", "_").replace("::", "_")
+    return f"{base}.{ext}"
+
+
+def _relation_download_response(ref: str, fmt: str):
+    fmt = (fmt or "parquet").lower().strip()
+    if fmt == "xlsx":
+        fmt = "excel"
+
+    if fmt not in ("csv", "json", "excel", "parquet"):
+        return jsonify({"error": "Unsupported format"}), 400
+
+    try:
+        abs_path, ext, _version, sheet = resolve_source(ref)
+    except (FileNotFoundError, ValueError) as e:
+        return jsonify({"error": str(e)}), 404
+
+    download_name = _safe_download_name(ref, "xlsx" if fmt == "excel" else fmt)
+
+    if fmt == "parquet" and ext == "parquet" and not sheet:
+        return send_file(
+            abs_path,
+            as_attachment=True,
+            download_name=download_name,
+            mimetype="application/octet-stream",
+        )
+
+    con = duckdb.connect()
+    try:
+        read_expr = duckdb_read_source(con, abs_path, ext, sheet)
+
+        if fmt == "excel":
+            df = con.execute(f"SELECT * FROM {read_expr} AS _src").fetchdf()
+            buf = BytesIO()
+            df.to_excel(buf, index=False, engine="openpyxl")
+            buf.seek(0)
+            return send_file(
+                buf,
+                as_attachment=True,
+                download_name=download_name,
+                mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+
+        fd, tmp_path = tempfile.mkstemp(suffix=f".{fmt}")
+        os.close(fd)
+        escaped = tmp_path.replace("'", "''")
+        duck_fmt = fmt.upper()
+        con.execute(
+            f"COPY (SELECT * FROM {read_expr} AS _src) TO '{escaped}' (FORMAT {duck_fmt})"
+        )
+        mimetypes = {
+            "csv": "text/csv",
+            "json": "application/json",
+            "parquet": "application/octet-stream",
+        }
+        return send_file(
+            tmp_path,
+            as_attachment=True,
+            download_name=download_name,
+            mimetype=mimetypes.get(fmt, "application/octet-stream"),
+        )
+    except Exception as e:
+        logging.error(f"relation download error: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+    finally:
+        con.close()
+
+
+@workspace_blueprint.route(
+    '/api/workspaces/<string:workspace_id>/relations/<string:ref>/preview',
+    methods=['GET'],
+)
+def api_relation_preview(workspace_id, ref):
+    store = get_workspace_store()
+    if not store.get_workspace(workspace_id):
+        return jsonify({"error": "Not found"}), 404
+    limit = min(int(request.args.get("limit", 100)), 10_000)
+    try:
+        data = query_stream(ref, limit=limit)
+        return jsonify({
+            "ref": ref,
+            "columns": data.get("columns") or [],
+            "rows": data.get("rows") or [],
+            "row_count": data.get("row_count"),
+        })
+    except (FileNotFoundError, ValueError) as e:
+        return jsonify({"error": str(e)}), 404
+    except Exception as e:
+        logging.error(f"relation preview error: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@workspace_blueprint.route(
+    '/api/workspaces/<string:workspace_id>/relations/<string:ref>/profile',
+    methods=['GET'],
+)
+def api_relation_profile(workspace_id, ref):
+    store = get_workspace_store()
+    if not store.get_workspace(workspace_id):
+        return jsonify({"error": "Not found"}), 404
+    try:
+        columns = profile_relation(ref)
+        return jsonify({"ref": ref, "columns": columns})
+    except (FileNotFoundError, ValueError) as e:
+        return jsonify({"error": str(e)}), 404
+    except Exception as e:
+        logging.error(f"relation profile error: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@workspace_blueprint.route(
+    '/api/workspaces/<string:workspace_id>/relations/<string:ref>/download',
+    methods=['GET'],
+)
+def api_relation_download(workspace_id, ref):
+    store = get_workspace_store()
+    if not store.get_workspace(workspace_id):
+        return jsonify({"error": "Not found"}), 404
+    fmt = request.args.get("format", "parquet")
+    return _relation_download_response(ref, fmt)
+
+
+@workspace_blueprint.route(
+    '/api/workspaces/<string:workspace_id>/relations/<string:ref>',
+    methods=['DELETE'],
+)
+def api_delete_relation(workspace_id, ref):
+    store = get_workspace_store()
+    if not store.get_workspace(workspace_id):
+        return jsonify({"error": "Not found"}), 404
+    try:
+        delete_stream(ref)
+    except FileNotFoundError as e:
+        return jsonify({"error": str(e)}), 404
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+    state = store.get_state(workspace_id) or {}
+    data = reconcile_relations(state.get("data") or {})
+    relations = dict(data.get("relations") or {})
+    relations.pop(ref, None)
+    data["relations"] = relations
+    store.patch_state(workspace_id, {"data": data})
+    return jsonify({"ok": True, "ref": ref})
 
 
 @workspace_blueprint.route('/api/workspaces/<string:workspace_id>/dashboard/export', methods=['GET'])

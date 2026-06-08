@@ -3476,6 +3476,24 @@
   window.getDashboardState = () => dashboardState;
   window.toggleDashboardDeck = toggleDashboardDeck;
 
+  window.sporeAddDashboardWidget = function sporeAddDashboardWidget(args) {
+    const type = args?.type || 'bar';
+    const widget = createWidget(type);
+    if (args?.ref) {
+      widget.source = { kind: 'stream', ref: args.ref };
+    }
+    if (args?.title) widget.title = args.title;
+    if (args?.transform) widget.transform = { ...widget.transform, ...args.transform };
+    const page = currentPage();
+    if (page) {
+      page.widgets.push(widget);
+      scheduleSave();
+      renderGrid();
+      refreshWidget(widget.id);
+    }
+    return widget.id;
+  };
+
   document.addEventListener('DOMContentLoaded', () => {
     bindControls();
     renderVizGrid();

@@ -742,7 +742,7 @@ function fsDownload(path) {
 }
 
 function fsCopyPath(path) {
-    const full = path ? `volumes/streams/${path}` : 'volumes/streams';
+    const full = path ? `streams/${path}` : 'streams';
     navigator.clipboard.writeText(full);
     fsSetStatus('Copied');
     setTimeout(() => fsSetStatus(''), 1500);

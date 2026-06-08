@@ -143,7 +143,7 @@ Registered in [`spore/_kernel/socket_events.py`](../spore/_kernel/socket_events.
 
 ### `kernel_output` chunk types
 
-Emitted by `SessionKernel.execute()` — typically includes stdout, stderr, execute_result, display_data (e.g. Plotly figures). Each chunk includes `cell_id` for the requesting notebook cell.
+Emitted by `DockerKernel.execute()` — typically includes stdout, stderr, execute_result, display_data (e.g. Plotly figures). Each chunk includes `cell_id` for the requesting notebook cell.
 
 ## Static assets
 

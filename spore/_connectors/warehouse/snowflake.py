@@ -4,6 +4,8 @@ Snowflake warehouse connector — remote pushdown preview + streaming ingest to 
 
 import json
 import os
+import time
+from typing import Generator
 
 from ..base import BaseSource, SourceKind, SourceCapabilities
 from ..utils import (
@@ -166,7 +168,12 @@ class SnowflakeSource(BaseSource):
         memory_ceiling: str = "1GB",
         batch_row_size: int = 10_000,
         output_format: str = "parquet",
-    ) -> tuple[str, str]:
+    ) -> Generator[dict, None, None]:
+        """Stream Snowflake results as Arrow batches — bounded memory.
+
+        Uses the connector's native ``fetch_arrow_batches()`` so result chunks
+        arrive pre-encoded as Arrow and are written one at a time.
+        """
         import pyarrow as pa
 
         fmt = normalize_output_format(output_format)
@@ -176,29 +183,78 @@ class SnowflakeSource(BaseSource):
         source_path = os.path.join(stream_dir, source_filename(fmt))
 
         sink = None
-        cols: list[str] = []
+        t0 = time.monotonic()
+
         try:
             with self.connection_context() as conn:
                 cur = conn.cursor()
                 cur.execute(query)
+                est_total_rows = getattr(cur, "rowcount", None)
                 cols = [d[0] for d in cur.description]
-                while True:
-                    rows = cur.fetchmany(batch_row_size)
-                    if not rows:
-                        break
-                    batch = pa.RecordBatch.from_pydict(
-                        {cols[i]: [r[i] for r in rows] for i in range(len(cols))}
-                    )
+
+                rows_so_far = 0
+                bytes_so_far = 0
+                batch_index = 0
+                est_total_bytes = None
+                start_sent = False
+
+                for table in cur.fetch_arrow_batches():
+                    if table.num_rows == 0:
+                        continue
                     if sink is None:
-                        sink = make_batch_sink(source_path, batch.schema, fmt)
-                    sink.write_batch(batch)
-            if sink is None:
-                empty_schema = pa.schema([(c, pa.string()) for c in cols])
-                write_empty_dataset(source_path, empty_schema, fmt)
-            return "success", stream_dir
+                        sink = make_batch_sink(source_path, table.schema, fmt)
+                    for batch in table.to_batches():
+                        sink.write_batch(batch)
+                    rows_so_far += table.num_rows
+                    bytes_so_far += table.nbytes
+                    batch_index += 1
+
+                    if not start_sent:
+                        if est_total_rows and rows_so_far:
+                            est_total_bytes = round(
+                                bytes_so_far / rows_so_far * est_total_rows
+                            )
+                        yield {
+                            "type": "start",
+                            "stream_name": stream_name,
+                            "format": fmt,
+                            "est_total_rows": est_total_rows,
+                            "est_total_bytes": est_total_bytes,
+                        }
+                        start_sent = True
+
+                    yield {
+                        "type": "progress",
+                        "rows_so_far": rows_so_far,
+                        "bytes_so_far": bytes_so_far,
+                        "batch_index": batch_index,
+                    }
+
+                if sink is None:
+                    if not start_sent:
+                        yield {
+                            "type": "start",
+                            "stream_name": stream_name,
+                            "format": fmt,
+                            "est_total_rows": est_total_rows,
+                            "est_total_bytes": None,
+                        }
+                    empty_schema = pa.schema([(c, pa.string()) for c in cols])
+                    write_empty_dataset(source_path, empty_schema, fmt)
+
+            logging.info(f"[snowflake] ingested {rows_so_far} rows → {source_path}")
+            yield {
+                "type": "done",
+                "path": stream_dir,
+                "format": fmt,
+                "filename": os.path.basename(source_path),
+                "total_rows": rows_so_far,
+                "total_bytes": bytes_so_far,
+                "elapsed_ms": int((time.monotonic() - t0) * 1000),
+            }
         except Exception as e:
             logging.error(f"[snowflake] ingest failed: {e}")
-            return "error", str(e)
+            yield {"type": "error", "content": str(e)}
         finally:
             if sink:
                 sink.close()

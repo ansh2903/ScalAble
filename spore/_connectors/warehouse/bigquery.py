@@ -4,6 +4,8 @@ BigQuery warehouse connector — remote pushdown preview + streaming ingest to P
 
 import json
 import os
+import time
+from typing import Generator
 
 from ..base import BaseSource, SourceKind, SourceCapabilities
 from ..utils import (
@@ -124,28 +126,88 @@ class BigQuerySource(BaseSource):
         memory_ceiling: str = "1GB",
         batch_row_size: int = 10_000,
         output_format: str = "parquet",
-    ) -> tuple[str, str]:
+    ) -> Generator[dict, None, None]:
+        """Stream BigQuery results as Arrow batches — never materialises the full table.
+
+        Uses ``RowIterator.to_arrow_iterable()`` so only one batch is held in
+        memory at a time, instead of the previous full ``to_arrow()`` load.
+        """
         fmt = normalize_output_format(output_format)
         dest = destination_path or settings.SPORE_DATA_DIR
         stream_dir = os.path.join(dest, "streams", stream_name)
         os.makedirs(stream_dir, exist_ok=True)
         source_path = os.path.join(stream_dir, source_filename(fmt))
 
+        sink = None
+        t0 = time.monotonic()
+
         try:
             client = self._client()
-            job = client.query(query)
-            arrow_table = job.result().to_arrow(max_results=None)
+            row_iter = client.query(query).result()
+            est_total_rows = getattr(row_iter, "total_rows", None)
 
-            if arrow_table.num_rows == 0:
-                write_empty_dataset(source_path, arrow_table.schema, fmt)
-            else:
-                sink = make_batch_sink(source_path, arrow_table.schema, fmt)
-                try:
-                    for batch in arrow_table.to_batches(max_chunksize=batch_row_size):
-                        sink.write_batch(batch)
-                finally:
-                    sink.close()
-            return "success", stream_dir
+            rows_so_far = 0
+            bytes_so_far = 0
+            batch_index = 0
+            est_total_bytes = None
+            start_sent = False
+            last_schema = None
+
+            for batch in row_iter.to_arrow_iterable():
+                last_schema = batch.schema
+                if sink is None:
+                    sink = make_batch_sink(source_path, batch.schema, fmt)
+                sink.write_batch(batch)
+                rows_so_far += batch.num_rows
+                bytes_so_far += batch.nbytes
+                batch_index += 1
+
+                if not start_sent:
+                    if est_total_rows and rows_so_far:
+                        est_total_bytes = round(
+                            bytes_so_far / rows_so_far * est_total_rows
+                        )
+                    yield {
+                        "type": "start",
+                        "stream_name": stream_name,
+                        "format": fmt,
+                        "est_total_rows": est_total_rows,
+                        "est_total_bytes": est_total_bytes,
+                    }
+                    start_sent = True
+
+                yield {
+                    "type": "progress",
+                    "rows_so_far": rows_so_far,
+                    "bytes_so_far": bytes_so_far,
+                    "batch_index": batch_index,
+                }
+
+            if sink is None:
+                if not start_sent:
+                    yield {
+                        "type": "start",
+                        "stream_name": stream_name,
+                        "format": fmt,
+                        "est_total_rows": est_total_rows,
+                        "est_total_bytes": None,
+                    }
+                schema = last_schema or row_iter.to_arrow().schema
+                write_empty_dataset(source_path, schema, fmt)
+
+            logging.info(f"[bigquery] ingested {rows_so_far} rows → {source_path}")
+            yield {
+                "type": "done",
+                "path": stream_dir,
+                "format": fmt,
+                "filename": os.path.basename(source_path),
+                "total_rows": rows_so_far,
+                "total_bytes": bytes_so_far,
+                "elapsed_ms": int((time.monotonic() - t0) * 1000),
+            }
         except Exception as e:
             logging.error(f"[bigquery] ingest failed: {e}")
-            return "error", str(e)
+            yield {"type": "error", "content": str(e)}
+        finally:
+            if sink:
+                sink.close()

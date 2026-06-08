@@ -637,10 +637,10 @@
                                    text-[10px] font-black uppercase tracking-widest">
                             <span class="material-symbols-outlined text-[14px]">dashboard</span> Dashboard
                         </button>
-                        <button onclick="openExportPanel()" data-view="export" class="view-tab inline-flex items-center gap-1.5 h-full px-3 rounded-pill
+                        <button onclick="openCatalogPanel()" data-view="catalog" class="view-tab inline-flex items-center gap-1.5 h-full px-3 rounded-pill
                                    text-slate-500 hover:text-slate-900 hover:bg-white transition-colors
                                    text-[10px] font-black uppercase tracking-widest">
-                            <span class="material-symbols-outlined text-[14px]">file_export</span> Export
+                            <span class="material-symbols-outlined text-[14px]">dataset</span> Catalog
                         </button>
                     </div>
                 </div>
@@ -1453,127 +1453,143 @@
                 </div>
             </div>
             
-            <div id="exportPanel" class="hidden flex flex-col flex-1 min-h-0 overflow-hidden">
+            <div id="catalogPanel" class="hidden flex flex-col flex-1 min-h-0 overflow-hidden">
                 <header class="px-6 py-3 flex items-center justify-between shrink-0 border-b border-slate-200/70
                bg-[radial-gradient(circle_at_1px_1px,_rgba(0,163,108,0.06)_1px,_transparent_0)]
                [background-size:14px_14px]">
                     <div>
                         <h1 class="text-base font-black text-slate-900 tracking-tight leading-tight">
-                            Export_Job_Untitled<span class="font-mono font-medium text-slate-400">.exp</span>
+                            <span id="catalog-header-name">{{ workspace.name }}</span><span class="font-mono font-medium text-slate-400">.catalog</span>
                         </h1>
                         <div class="flex items-center gap-1.5 mt-1 flex-wrap">
                             <span class="inline-flex items-center gap-1.5 h-5 px-2 rounded-pill bg-white border border-slate-200 text-[9px] font-black uppercase tracking-widest text-slate-500">
-                                Relations <span class="font-mono text-slate-900 ml-0.5">0 selected</span>
+                                Relations <span id="catalog-count" class="font-mono text-slate-900 ml-0.5">0</span>
                             </span>
                             <span class="inline-flex items-center gap-1.5 h-5 px-2 rounded-pill bg-primary-soft border border-primary/20 text-[9px] font-black uppercase tracking-widest text-primary-dark">
-                                Format <span class="font-mono ml-0.5">Parquet</span>
+                                Total <span id="catalog-total-size" class="font-mono ml-0.5">0 B</span>
                             </span>
                             <span class="inline-flex items-center gap-1.5 h-5 px-2 rounded-pill bg-white border border-slate-200 text-[9px] font-black uppercase tracking-widest text-slate-500">
-                                Size <span class="font-mono text-slate-900 ml-0.5">0 B</span>
+                                Refreshed <span id="catalog-last-refresh" class="font-mono text-slate-900 ml-0.5">—</span>
                             </span>
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <div class="inline-flex items-center h-8 rounded-pill bg-slate-50 border border-slate-200 p-0.5 gap-0.5 shadow-inner">
-                            <button type="button" class="inline-flex items-center h-full px-2.5 rounded-pill text-slate-500 hover:bg-white text-[10px] font-black uppercase tracking-widest">CSV</button>
-                            <button type="button" class="inline-flex items-center h-full px-2.5 rounded-pill bg-primary text-white shadow-tactile text-[10px] font-black uppercase tracking-widest">Parquet</button>
-                            <button type="button" class="inline-flex items-center h-full px-2.5 rounded-pill text-slate-500 hover:bg-white text-[10px] font-black uppercase tracking-widest">Excel</button>
-                            <button type="button" class="inline-flex items-center h-full px-2.5 rounded-pill text-slate-500 hover:bg-white text-[10px] font-black uppercase tracking-widest">JSON</button>
-                        </div>
-                        <button type="button"
+                        <button type="button" id="catalog-btn-refresh" onclick="loadCatalog()"
                             class="inline-flex items-center gap-1.5 h-8 px-4 rounded-pill bg-primary text-white text-[10px] font-black uppercase tracking-widest shadow-tactile hover:translate-y-[-1px] transition-all">
-                            <span class="material-symbols-outlined text-[14px]">file_export</span>
-                            Run Export
+                            <span class="material-symbols-outlined text-[14px]">refresh</span>
+                            Refresh
                         </button>
                     </div>
                 </header>
 
                 <div class="flex flex-1 min-h-0 overflow-hidden">
-                    <div class="w-[60%] border-r border-slate-200 flex flex-col bg-white min-w-0">
+                    <div class="w-[40%] border-r border-slate-200 flex flex-col bg-white min-w-0">
                         <div class="p-4 border-b border-slate-100">
-                            <label class="inline-flex items-center w-full max-w-md h-8 rounded-pill border border-slate-200 bg-slate-50 px-2.5 gap-1.5">
+                            <label class="inline-flex items-center w-full h-8 rounded-pill border border-slate-200 bg-slate-50 px-2.5 gap-1.5">
                                 <span class="material-symbols-outlined text-[14px] text-slate-400">search</span>
-                                <input type="text" placeholder="Search relations…"
+                                <input id="catalog-search" type="text" placeholder="Search relations…"
                                     class="flex-1 bg-transparent border-0 text-[11px] font-mono text-slate-700 placeholder:text-slate-400 focus:ring-0 focus:outline-none p-0" />
                             </label>
                         </div>
-                        <div class="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin">
-                            <label class="flex items-center gap-3 rounded-xl border border-slate-200 p-3 hover:border-primary/30 cursor-pointer transition-colors">
-                                <input type="checkbox" class="rounded border-slate-300 text-primary focus:ring-primary" checked />
-                                <div class="w-9 h-9 rounded-pill bg-primary-soft border border-primary/20 flex items-center justify-center shrink-0">
-                                    <span class="material-symbols-outlined text-primary text-[18px]">database</span>
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-[11px] font-black text-slate-900 font-mono truncate">events_30d</p>
-                                    <p class="text-[9px] font-mono text-slate-400 mt-0.5">12,432 rows · 4.1 MB · pulled 12m ago</p>
-                                </div>
-                                <select class="text-[10px] font-mono border-slate-200 rounded-pill py-1 px-2 focus:ring-primary focus:border-primary">
-                                    <option>Parquet</option>
-                                    <option>CSV</option>
-                                </select>
-                            </label>
-                            <label class="flex items-center gap-3 rounded-xl border border-slate-200 p-3 hover:border-primary/30 cursor-pointer transition-colors">
-                                <input type="checkbox" class="rounded border-slate-300 text-primary focus:ring-primary" />
-                                <div class="w-9 h-9 rounded-pill bg-primary-soft border border-primary/20 flex items-center justify-center shrink-0">
-                                    <span class="material-symbols-outlined text-primary text-[18px]">database</span>
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-[11px] font-black text-slate-900 font-mono truncate">cohorts_q3</p>
-                                    <p class="text-[9px] font-mono text-slate-400 mt-0.5">8,201 rows · 2.2 MB · pulled 1h ago</p>
-                                </div>
-                                <select class="text-[10px] font-mono border-slate-200 rounded-pill py-1 px-2 focus:ring-primary focus:border-primary">
-                                    <option>Parquet</option>
-                                    <option>CSV</option>
-                                </select>
-                            </label>
-                            <label class="flex items-center gap-3 rounded-xl border border-slate-200 p-3 hover:border-primary/30 cursor-pointer transition-colors">
-                                <input type="checkbox" class="rounded border-slate-300 text-primary focus:ring-primary" />
-                                <div class="w-9 h-9 rounded-pill bg-primary-soft border border-primary/20 flex items-center justify-center shrink-0">
-                                    <span class="material-symbols-outlined text-primary text-[18px]">database</span>
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-[11px] font-black text-slate-900 font-mono truncate">dau_breakdown</p>
-                                    <p class="text-[9px] font-mono text-slate-400 mt-0.5">3,890 rows · 890 KB · pulled 3h ago</p>
-                                </div>
-                                <select class="text-[10px] font-mono border-slate-200 rounded-pill py-1 px-2 focus:ring-primary focus:border-primary">
-                                    <option>Parquet</option>
-                                    <option>CSV</option>
-                                </select>
-                            </label>
+                        <div id="catalog-list" class="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-thin">
+                            <p class="text-[10px] font-mono text-slate-400 text-center py-8">Loading relations…</p>
                         </div>
                     </div>
 
-                    <div class="flex-1 overflow-y-auto p-6 bg-slate-50/50 scrollbar-thin min-w-0">
-                        <h2 class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Destination</h2>
-                        <div class="inline-flex items-center h-8 rounded-pill bg-slate-50 border border-slate-200 p-0.5 gap-0.5 shadow-inner mb-6">
-                            <button type="button" class="inline-flex items-center h-full px-3 rounded-pill text-slate-500 hover:bg-white text-[10px] font-black uppercase tracking-widest">Cloud</button>
-                            <button type="button" class="inline-flex items-center h-full px-3 rounded-pill text-slate-500 hover:bg-white text-[10px] font-black uppercase tracking-widest">Share Link</button>
-                        </div>
-
-                        <div class="rounded-xl border border-slate-200 bg-white p-4 space-y-4 shadow-data-card max-w-md">
-                            <label class="block">
-                                <span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Filename</span>
-                                <input type="text" value="export_events_30d.parquet"
-                                    class="mt-1 w-full rounded-pill border-slate-200 font-mono text-[11px] focus:border-primary focus:ring-primary" />
-                            </label>
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" class="rounded border-slate-300 text-primary focus:ring-primary" checked />
-                                <span class="text-[10px] font-black uppercase tracking-widest text-slate-600">Open after export</span>
-                            </label>
-                        </div>
-
-                        <div class="hidden rounded-xl border border-slate-200 bg-white p-4 space-y-3 max-w-md mt-4">
-                            <div class="inline-flex gap-1">
-                                <button type="button" class="h-7 px-2.5 rounded-pill bg-primary text-white text-[9px] font-black uppercase">S3</button>
-                                <button type="button" class="h-7 px-2.5 rounded-pill border border-slate-200 text-[9px] font-black uppercase text-slate-500">GCS</button>
+                    <div class="flex-1 flex flex-col min-h-0 bg-slate-50/50 min-w-0">
+                        <div id="catalog-detail-empty" class="flex-1 flex items-center justify-center p-6">
+                            <div class="text-center max-w-sm">
+                                <span class="material-symbols-outlined text-4xl text-slate-300 mb-3">dataset</span>
+                                <h2 class="text-sm font-black text-slate-900 uppercase tracking-tight mb-2">No relation selected</h2>
+                                <p class="text-[11px] text-slate-500 font-medium">
+                                    Select a materialized relation to inspect schema, preview rows, or profile columns.
+                                </p>
                             </div>
-                            <input type="text" placeholder="bucket-name" class="w-full rounded-pill border-slate-200 font-mono text-[11px]" />
-                            <input type="text" placeholder="path/to/export/" class="w-full rounded-pill border-slate-200 font-mono text-[11px]" />
                         </div>
 
-                        <p class="mt-6 text-[9px] font-mono text-slate-400 max-w-md">
-                            Generated link is valid until manually revoked.
-                        </p>
+                        <div id="catalog-detail" class="hidden flex flex-col flex-1 min-h-0 overflow-hidden">
+                            <div class="px-6 py-3 border-b border-slate-200/70 bg-white shrink-0">
+                                <div class="flex items-start justify-between gap-3 flex-wrap">
+                                    <div class="min-w-0">
+                                        <h2 id="catalog-detail-name" class="text-sm font-black text-slate-900 font-mono truncate"></h2>
+                                        <p id="catalog-detail-meta" class="text-[9px] font-mono text-slate-400 mt-0.5"></p>
+                                    </div>
+                                    <div class="flex items-center gap-2 flex-wrap shrink-0">
+                                        <div class="relative" id="catalog-download-menu">
+                                            <button type="button" id="catalog-download-toggle"
+                                                class="inline-flex items-center gap-1 h-8 px-3 rounded-pill bg-primary text-white text-[10px] font-black uppercase tracking-widest shadow-tactile">
+                                                <span class="material-symbols-outlined text-[14px]">download</span>
+                                                Download
+                                                <span class="material-symbols-outlined text-[14px]">expand_more</span>
+                                            </button>
+                                            <div id="catalog-download-dropdown"
+                                                class="hidden absolute right-0 top-full mt-1 min-w-[140px] rounded-xl border border-slate-200 bg-white shadow-lg py-1 z-50">
+                                                <button type="button" data-catalog-fmt="parquet"
+                                                    class="catalog-download-opt w-full text-left px-3 py-2 text-[11px] font-bold text-slate-700 hover:bg-slate-50">Parquet</button>
+                                                <button type="button" data-catalog-fmt="csv"
+                                                    class="catalog-download-opt w-full text-left px-3 py-2 text-[11px] font-bold text-slate-700 hover:bg-slate-50">CSV</button>
+                                                <button type="button" data-catalog-fmt="excel"
+                                                    class="catalog-download-opt w-full text-left px-3 py-2 text-[11px] font-bold text-slate-700 hover:bg-slate-50">Excel</button>
+                                                <button type="button" data-catalog-fmt="json"
+                                                    class="catalog-download-opt w-full text-left px-3 py-2 text-[11px] font-bold text-slate-700 hover:bg-slate-50">JSON</button>
+                                            </div>
+                                        </div>
+                                        <button type="button" id="catalog-btn-repull"
+                                            class="inline-flex items-center gap-1.5 h-8 px-3 rounded-pill border border-slate-200 bg-white text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-primary/30 hover:text-primary transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                                            <span class="material-symbols-outlined text-[14px]">sync</span>
+                                            Re-pull
+                                        </button>
+                                        <button type="button" id="catalog-btn-drop"
+                                            class="inline-flex items-center gap-1.5 h-8 px-3 rounded-pill border border-red-200 bg-white text-[10px] font-black uppercase tracking-widest text-red-600 hover:bg-red-50 transition-all">
+                                            <span class="material-symbols-outlined text-[14px]">delete</span>
+                                            Drop
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="inline-flex items-center h-7 rounded-pill bg-slate-50 border border-slate-200 p-0.5 gap-0.5 shadow-inner mt-3">
+                                    <button type="button" data-catalog-tab="schema"
+                                        class="catalog-detail-tab inline-flex items-center h-full px-3 rounded-pill bg-primary text-white text-[9px] font-black uppercase tracking-widest shadow-tactile">Schema</button>
+                                    <button type="button" data-catalog-tab="preview"
+                                        class="catalog-detail-tab inline-flex items-center h-full px-3 rounded-pill text-slate-500 hover:bg-white text-[9px] font-black uppercase tracking-widest">Preview</button>
+                                    <button type="button" data-catalog-tab="profile"
+                                        class="catalog-detail-tab inline-flex items-center h-full px-3 rounded-pill text-slate-500 hover:bg-white text-[9px] font-black uppercase tracking-widest">Profile</button>
+                                </div>
+                            </div>
+
+                            <div class="flex-1 overflow-y-auto p-4 scrollbar-thin min-h-0">
+                                <div id="catalog-tab-schema" class="catalog-tab-pane">
+                                    <div class="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-data-card">
+                                        <table class="w-full text-left text-[11px]">
+                                            <thead class="bg-slate-50 border-b border-slate-100">
+                                                <tr>
+                                                    <th class="px-3 py-2 font-black uppercase tracking-widest text-[9px] text-slate-400">Column</th>
+                                                    <th class="px-3 py-2 font-black uppercase tracking-widest text-[9px] text-slate-400">Type</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="catalog-schema-body"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div id="catalog-tab-preview" class="catalog-tab-pane hidden">
+                                    <div id="catalog-preview-loading" class="text-[10px] font-mono text-slate-400 py-4">Loading preview…</div>
+                                    <div id="catalog-preview-wrap" class="hidden rounded-xl border border-slate-200 bg-white overflow-auto shadow-data-card max-h-full">
+                                        <table class="w-full text-left text-[10px] font-mono">
+                                            <thead id="catalog-preview-head" class="bg-slate-50 border-b border-slate-100 sticky top-0"></thead>
+                                            <tbody id="catalog-preview-body"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div id="catalog-tab-profile" class="catalog-tab-pane hidden">
+                                    <div id="catalog-profile-loading" class="text-[10px] font-mono text-slate-400 py-4">Loading profile…</div>
+                                    <div id="catalog-profile-wrap" class="hidden rounded-xl border border-slate-200 bg-white overflow-auto shadow-data-card max-h-full">
+                                        <table class="w-full text-left text-[10px] font-mono">
+                                            <thead id="catalog-profile-head" class="bg-slate-50 border-b border-slate-100 sticky top-0"></thead>
+                                            <tbody id="catalog-profile-body"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1586,12 +1602,27 @@
         <section id="chat-panel"
             class="overflow-hidden w-[400px] xl:w-[400px] flex-shrink-0 flex flex-col bg-white/40 border-r border-slate-200/60 p-3">
             <div class="flex items-center justify-between mb-3">
-                <div>
-                    <h2 class="text-lg font-black tracking-tight text-slate-900">{{ model }}</h2>
-                    <div class="flex items-center gap-2 mt-0.5">
-                        <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
-                        <span class="text-[9px] font-black text-primary uppercase tracking-widest">Selected model</span>
+                <div class="min-w-0 flex-1">
+                    <h2 class="text-lg font-black tracking-tight text-slate-900 truncate">{{ model }}</h2>
+                    <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                        <span id="agent-provider-badge"
+                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-pill text-[8px] font-black uppercase tracking-widest bg-emerald-100 text-emerald-800">
+                            <span class="w-1 h-1 rounded-full bg-emerald-500"></span>
+                            {{ provider }}
+                        </span>
                     </div>
+                </div>
+                <div class="flex items-center gap-1 shrink-0">
+                    <button id="agent-new-chat-btn" type="button"
+                        class="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-primary hover:border-primary/30 transition-all"
+                        title="New chat">
+                        <span class="material-symbols-outlined text-[16px]">add_comment</span>
+                    </button>
+                    <button id="agent-stop-btn" type="button"
+                        class="hidden shrink-0 p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 transition-all"
+                        title="Stop agent">
+                        <span class="material-symbols-outlined text-[16px]">stop_circle</span>
+                    </button>
                 </div>
             </div>
 
@@ -1600,74 +1631,47 @@
                 <div class="inline-flex items-center gap-2 px-3 py-1 bg-slate-900 rounded-pill mb-6">
                     <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
                     <span id="system-status" class="text-[8px] font-black tracking-[0.2em] text-white uppercase">
-                        Laboratory Core: Standby
+                        Agent: Standby
                     </span>
                 </div>
 
                 <h1 class="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter text-center">
-                    Initialize <span
-                        class="script-text text-5xl md:text-6xl inline-block -rotate-1 text-primary">analysis.</span>
+                    Ask your <span
+                        class="script-text text-5xl md:text-6xl inline-block -rotate-1 text-primary">agent.</span>
                 </h1>
-
             </div>
 
-            <div id='chat-messages-container' class="flex-1 overflow-y-auto space-y-2 pr-1 mb-3 scrollbar-thin">
+            <div id='chat-messages-container' class="flex-1 overflow-y-auto space-y-2 pr-1 mb-3 scrollbar-thin hidden">
             </div>
 
             <div id="input-wrapper" class="transition-all duration-500 heavy-card bg-white overflow-hidden">
 
-                <div class="px-3 py-1.5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-xs text-primary">database</span>
-                        <button id="chat-conn-chip" type="button"
-                            class="inline-flex items-center gap-1.5 h-6 px-2 rounded-pill bg-white border border-slate-200 text-[9px] font-black uppercase tracking-widest text-slate-600 hover:text-primary hover:border-primary/30 transition-all"
-                            onclick="document.getElementById('selected_db_id')?.focus()">
-                            Select Context
-                            <span class="material-symbols-outlined text-[14px] text-slate-300">expand_more</span>
-                        </button>
-                    </div>
-
-                    <div class="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
-                        <button id="mode-ai" onclick="setMode('ai')"
-                            class="mode-btn active px-2.5 py-1 text-[9px] font-black rounded-md transition-all uppercase tracking-wider">
-                            <span class="flex items-center gap-1">
-                                <span class="material-symbols-outlined text-[11px]">auto_awesome</span>
-                                AI
-                            </span>
-                        </button>
-                        <button id="mode-sql" onclick="setMode('sql')"
-                            class="mode-btn px-2.5 py-1 text-[9px] font-black rounded-md transition-all uppercase tracking-wider">
-                            <span class="flex items-center gap-1">
-                                <span class="material-symbols-outlined text-[11px]">terminal</span>
-                                SQL
-                            </span>
-                        </button>
+                <div class="px-3 py-1.5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between gap-2">
+                    <span id="agent-context-chip"
+                        class="text-[8px] font-black uppercase tracking-widest text-slate-400 truncate">
+                        Workspace agent
+                    </span>
+                    <div id="agent-context-usage" class="shrink-0 text-right {{ '' if context_show else 'hidden' }}" data-limit="{{ context_limit or 2048 }}">
+                        <span class="text-[8px] font-mono text-slate-400">ctx 0 / {{ context_limit }}</span>
+                        <div class="w-16 h-1 bg-slate-200 rounded-full overflow-hidden mt-0.5 ml-auto">
+                            <div class="h-full bg-slate-400 transition-all" style="width:0%"></div>
+                        </div>
                     </div>
                 </div>
 
-                <div id="input-ai">
+                <div id="input-agent" class="relative">
                     <textarea id="messageInput"
                         class="w-full bg-transparent border-none focus:ring-0 text-xs resize-none h-16 placeholder:text-slate-400 font-bold p-3"
-                        placeholder="Ask for an analysis..."></textarea>
-                </div>
-
-                <div id="input-sql" class="hidden">
-                    <textarea id="sqlInput"
-                        class="w-full bg-transparent border-none focus:ring-0 text-xs resize-none h-16 placeholder:text-slate-400 font-mono p-3 text-slate-700"
-                        placeholder="SELECT * FROM your_table WHERE ..."></textarea>
-                </div>
-
-                <div class="flex justify-between items-center p-2 pt-0">
-                    <div class="flex gap-1">
-                        <input type="file" id="hiddenFileInput" class="hidden" accept=".csv,.json,.xlsx">
-                        <button onclick="document.getElementById('hiddenFileInput').click()"
-                            class="p-1.5 hover:bg-primary-soft rounded-lg text-slate-400 hover:text-primary transition-all flex items-center gap-1">
-                            <span class="material-symbols-outlined text-lg">attach_file</span>
-                        </button>
+                        placeholder="/source show top customers · @stream plot revenue · analyze in notebook…"></textarea>
+                    <div id="agent-mention-menu"
+                        class="hidden absolute left-2 right-2 bottom-full mb-1 max-h-40 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg z-30">
                     </div>
+                </div>
+
+                <div class="flex justify-end items-center p-2 pt-0">
                     <button id="sendMessageBtn"
                         class="bg-primary text-white px-4 py-2 rounded-lg text-[10px] font-black flex items-center gap-2 shadow-tactile hover:translate-y-[-1px] active:translate-y-[1px] transition-all">
-                        <span id="send-label">SEND INSIGHT</span>
+                        <span id="send-label">RUN AGENT</span>
                         <span class="material-symbols-outlined text-xs">send</span>
                     </button>
                 </div>
@@ -1688,17 +1692,20 @@
         window.SPORE_CONNECTIONS = {{ connections | tojson }};
         window.SPORE_WORKSPACE = {{ workspace | tojson }};
         window.SPORE_WORKSPACE_STATE = {{ workspace_state | tojson }};
+        window.SPORE_PROVIDER = {{ provider | tojson }};
+        window.SPORE_MODEL = {{ model | tojson }};
     </script>
-    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/sidepanel.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/MIME.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/notebook.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/data.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/files-data.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/api-data.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/workspace.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/scripts.js') }}?v={{ asset_version }}"></script>
+    <script src="{{ url_for('static', filename='js/agent.js') }}?v={{ asset_version }}"></script>
+    <script src="{{ url_for('static', filename='js/sidepanel.js') }}?v={{ asset_version }}"></script>
+    <script src="{{ url_for('static', filename='js/MIME.js') }}?v={{ asset_version }}"></script>
+    <script src="{{ url_for('static', filename='js/notebook.js') }}?v={{ asset_version }}"></script>
+    <script src="{{ url_for('static', filename='js/data.js') }}?v={{ asset_version }}"></script>
+    <script src="{{ url_for('static', filename='js/files-data.js') }}?v={{ asset_version }}"></script>
+    <script src="{{ url_for('static', filename='js/api-data.js') }}?v={{ asset_version }}"></script>
+    <script src="{{ url_for('static', filename='js/chat.js') }}?v={{ asset_version }}"></script>
+    <script src="{{ url_for('static', filename='js/workspace.js') }}?v={{ asset_version }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}?v={{ asset_version }}"></script>
     <script>
         window.MathJax = {
             tex: {

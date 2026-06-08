@@ -14,7 +14,7 @@ flowchart TB
     IE[InferenceEngine]
     SC[SourceConnector]
     CTX[Compute context]
-    KM[SessionKernel]
+    KM[DockerKernel]
   end
   subgraph external [External]
     LLM[Ollama / OpenAI / etc.]
@@ -92,7 +92,16 @@ The Jupyter kernel reads materialized data from `KERNEL_DATA_MOUNT` (e.g. `/data
 
 ### Notebook kernel (Socket.IO)
 
-`kernel_execute` runs arbitrary Python in an isolated Jupyter kernel per Socket.IO session (`request.sid`). Output streams back as `kernel_output` events (text, plots via Plotly, etc.).
+`kernel_execute` runs arbitrary Python in an isolated Jupyter kernel per Socket.IO session (`request.sid`). Each kernel is a **Docker container** spawned inside a rootless DinD daemon (`kernel-dind`); the container only mounts the shared data volume at `KERNEL_DATA_MOUNT`. The Flask app connects over ZMQ via published ports on the DinD host. Output streams back as `kernel_output` events (text, plots via Plotly, etc.).
+
+```mermaid
+flowchart LR
+  spore[spore Flask] -->|"Docker API"| dind[kernel-dind]
+  spore -->|"ZMQ"| dind
+  dind --> kernel[kernel container]
+  vol[(spore_volumes)] --- spore
+  vol --- kernel
+```
 
 ## Session model
 

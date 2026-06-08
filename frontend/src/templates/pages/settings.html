@@ -166,24 +166,27 @@
     </header>
 
 <body class="soft-gradient-bg min-h-screen">
-    <!-- ── Flash messages ── -->
-    <div class="fixed bottom-10 left-1/2 -translate-x-1/2 w-full max-w-2xl px-6 z-[100] space-y-4">
+    <!-- Toast stack (server-rendered flashes + client-side sporeToast targets) -->
+    <div id="toast-container"
+        class="fixed bottom-10 left-1/2 -translate-x-1/2 w-full max-w-2xl px-6 z-[100] space-y-4">
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% for category, message in messages %}
-        <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)"
+        <div x-data="sporeToastItem()" x-show="show" x-cloak
+            @mouseenter="pause()" @mouseleave="resume()"
+            role="alert" aria-live="polite"
             x-transition:enter="transition ease-out duration-500"
             x-transition:enter-start="opacity-0 translate-y-8 scale-95"
             x-transition:enter-end="opacity-100 translate-y-0 scale-100"
             x-transition:leave="transition ease-in duration-300" x-transition:leave-start="opacity-100 scale-100"
             x-transition:leave-end="opacity-0 scale-95"
-            class="bg-slate-900/95 backdrop-blur-xl border border-slate-800 text-white p-5 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center gap-5">
+            class="relative overflow-hidden bg-slate-900/95 backdrop-blur-xl border border-slate-800 text-white p-5 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center gap-5">
             <div class="w-12 h-12 rounded-full flex items-center justify-center shrink-0 relative">
                 <div
-                    class="absolute inset-0 rounded-full animate-ping opacity-20 {% if category == 'error' %}bg-rose-500{% else %}bg-primary{% endif %}">
+                    class="absolute inset-0 rounded-full animate-ping opacity-20 {% if category == 'error' %}bg-rose-500{% else %}bg-emerald-500{% endif %}">
                 </div>
 
                 <div
-                    class="relative w-full h-full rounded-full flex items-center justify-center {% if category == 'error' %}bg-rose-500/20 text-rose-400{% else %}bg-primary/20 text-primary{% endif %}">
+                    class="relative w-full h-full rounded-full flex items-center justify-center {% if category == 'error' %}bg-rose-500/20 text-rose-400{% else %}bg-emerald-500/20 text-emerald-400{% endif %}">
                     <span class="material-symbols-outlined text-2xl">
                         {% if category == 'error' %}rocket{% elif category == 'success' %}verified_user{% else %}info{%
                         endif %}
@@ -194,10 +197,10 @@
             <div class="flex-1">
                 <div class="flex items-center gap-2 mb-0.5">
                     <p
-                        class="text-sm font-black uppercase tracking-widest {% if category == 'error' %}text-rose-400{% else %}text-primary{% endif %} font-headline">
+                        class="text-sm font-black uppercase tracking-widest {% if category == 'error' %}text-rose-400{% else %}text-emerald-400{% endif %} font-headline">
                         Mission Control
                     </p>
-                    <span class="script-text text-white text-lg opacity-80 lowercase">
+                    <span class="text-white text-lg opacity-80 lowercase" style="font-family:'Pacifico',cursive;">
                         {% if category == 'error' %}Anomaly{% else %}Update{% endif %}
                     </span>
                 </div>
@@ -206,10 +209,13 @@
                 </p>
             </div>
 
-            <button @click="show = false" class="group p-2 hover:bg-white/5 rounded-full transition-all">
+            <button @click="dismiss()" class="group p-2 hover:bg-white/5 rounded-full transition-all">
                 <span
                     class="material-symbols-outlined text-slate-500 group-hover:text-white transition-colors">close</span>
             </button>
+
+            <div class="absolute bottom-0 left-0 h-1 rounded-full {% if category == 'error' %}bg-rose-400/70{% else %}bg-emerald-400/70{% endif %}"
+                :style="`width: ${progress}%`"></div>
         </div>
         {% endfor %}
         {% endwith %}
@@ -418,6 +424,19 @@
                         </div>
                     </div>
 
+                    <!-- Endpoint URL (configurable per provider) -->
+                    <div x-show="supportsEndpoint" x-cloak class="fade-in">
+                        <label class="form-label-clean flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs">link</span> Endpoint URL
+                        </label>
+                        <input type="text" class="form-input-clean font-mono text-xs" :placeholder="endpointPlaceholder"
+                            x-model="endpointUrl" />
+                        <p class="text-[10px] text-slate-400 font-medium mt-2 px-1">
+                            Override where this provider is reached. Leave blank to use the default
+                            (<span class="font-mono" x-text="endpointPlaceholder"></span>).
+                        </p>
+                    </div>
+
                     <!-- Active model badge -->
                     <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                         <div class="flex items-center justify-between mb-1">
@@ -440,7 +459,7 @@
                         </div>
                         <div>
                             <h3 class="font-black text-slate-900 text-sm">API Credentials</h3>
-                            <p class="text-xs text-slate-500">Stored as environment variables. Not saved to disk.</p>
+                            <p class="text-xs text-slate-500">Saved in settings.json for this provider. Leave blank to keep existing key.</p>
                         </div>
                     </div>
 
@@ -448,8 +467,8 @@
                         <div class="fade-in">
                             <label class="form-label-clean">OpenAI API Key</label>
                             <div class="api-key-wrap">
-                                <input :type="showKey ? 'text' : 'password'" name="api_key" class="form-input-clean"
-                                    placeholder="sk-proj-…" />
+                                <input :type="showKey ? 'text' : 'password'" x-model="apiKey" class="form-input-clean"
+                                    :placeholder="hasSavedApiKey ? '••••••••  (saved — enter new to replace)' : 'sk-proj-…'" />
                                 <button type="button" @click="showKey = !showKey">
                                     <span class="material-symbols-outlined text-base"
                                         x-text="showKey ? 'visibility_off' : 'visibility'"></span>
@@ -462,8 +481,8 @@
                         <div class="fade-in">
                             <label class="form-label-clean">Anthropic API Key</label>
                             <div class="api-key-wrap">
-                                <input :type="showKey ? 'text' : 'password'" name="api_key" class="form-input-clean"
-                                    placeholder="sk-ant-…" />
+                                <input :type="showKey ? 'text' : 'password'" x-model="apiKey" class="form-input-clean"
+                                    :placeholder="hasSavedApiKey ? '••••••••  (saved — enter new to replace)' : 'sk-ant-…'" />
                                 <button type="button" @click="showKey = !showKey">
                                     <span class="material-symbols-outlined text-base"
                                         x-text="showKey ? 'visibility_off' : 'visibility'"></span>
@@ -476,8 +495,8 @@
                         <div class="fade-in">
                             <label class="form-label-clean">Google API Key</label>
                             <div class="api-key-wrap">
-                                <input :type="showKey ? 'text' : 'password'" name="api_key" class="form-input-clean"
-                                    placeholder="AIza…" />
+                                <input :type="showKey ? 'text' : 'password'" x-model="apiKey" class="form-input-clean"
+                                    :placeholder="hasSavedApiKey ? '••••••••  (saved — enter new to replace)' : 'AIza…'" />
                                 <button type="button" @click="showKey = !showKey">
                                     <span class="material-symbols-outlined text-base"
                                         x-text="showKey ? 'visibility_off' : 'visibility'"></span>
@@ -508,6 +527,8 @@
                         <!-- Hidden fields -->
                         <input type="hidden" name="provider" :value="provider" />
                         <input type="hidden" name="model" :value="selectedModel" />
+                        <input type="hidden" name="api_key" :value="apiKey" />
+                        <input type="hidden" name="base_url" :value="endpointUrl" />
 
                         <!-- ── Parameter grid ── -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-8">
@@ -718,6 +739,8 @@
         // Injected from Flask
         const INITIAL_SETTINGS = {{ settings | tojson }};
         const PROVIDER_FIELDS = {{ provider_fields | tojson }};
+        const PROVIDER_BASE_URLS = {{ provider_base_urls | tojson }};
+        const URL_PROVIDERS = {{ url_providers | tojson }};
 
         const DEFAULTS = {
             temperature: 0.7,
@@ -767,15 +790,24 @@
 
                 showKey: false,
                 saving: false,
+                apiKey: '',
+                endpointUrl: (INITIAL_SETTINGS.base_urls || {})[INITIAL_SETTINGS.provider || 'ollama'] || '',
 
                 // ── Computed-like helpers ── 
                 get isLocal() { return LOCAL_PROVIDERS.includes(this.provider); },
+                get supportsEndpoint() { return URL_PROVIDERS.includes(this.provider); },
+                get endpointPlaceholder() { return PROVIDER_BASE_URLS[this.provider] || 'http://host:port'; },
+                get hasSavedApiKey() {
+                    const keys = INITIAL_SETTINGS.api_keys || {};
+                    return !!(keys[this.provider]);
+                },
                 get availableProviders() { return ALL_PROVIDERS.filter(p => p.tab === this.tab); },
                 get providerLabel() { return (ALL_PROVIDERS.find(p => p.value === this.provider) || {}).label || this.provider; },
                 get providerStatusText() {
-                    if (this.provider === 'ollama') return 'Ollama instance on localhost:11434';
-                    if (this.provider === 'lmstudio') return 'LM Studio on localhost:1234';
-                    if (this.provider === 'openai') return 'OpenAI Cloud API';
+                    const eff = (this.endpointUrl || '').trim() || PROVIDER_BASE_URLS[this.provider];
+                    if (this.provider === 'ollama') return `Ollama instance on ${eff}`;
+                    if (this.provider === 'lmstudio') return `LM Studio on ${eff}`;
+                    if (this.provider === 'openai') return `OpenAI-compatible API on ${eff}`;
                     if (this.provider === 'anthropic') return 'Anthropic Cloud API';
                     if (this.provider === 'gemini') return 'Google Cloud API';
                     return '';
@@ -792,7 +824,7 @@
                     const match = ALL_PROVIDERS.find(p => p.value === this.provider);
                     if (match) this.tab = match.tab;
 
-                    this.savedOpts = JSON.parse(JSON.stringify({ opts: this.opts, model: this.selectedModel, keepAlive: this.keepAlive }));
+                    this.savedOpts = JSON.parse(JSON.stringify({ opts: this.opts, model: this.selectedModel, keepAlive: this.keepAlive, endpointUrl: this.endpointUrl }));
 
                     if (this.isLocal) this.fetchModels();
                 },
@@ -813,6 +845,8 @@
                     this.models = [];
                     this.modelError = '';
                     this.selectedModel = '';
+                    this.apiKey = '';
+                    this.endpointUrl = (INITIAL_SETTINGS.base_urls || {})[this.provider] || '';
                     if (this.isLocal) this.fetchModels();
                 },
 
@@ -822,7 +856,9 @@
                     this.loadingModels = true;
                     this.modelError = '';
                     try {
-                        const res = await fetch(`/models_list?provider=${this.provider}`);
+                        let url = `/models_list?provider=${encodeURIComponent(this.provider)}`;
+                        if (this.endpointUrl.trim()) url += `&base_url=${encodeURIComponent(this.endpointUrl.trim())}`;
+                        const res = await fetch(url);
                         if (!res.ok) throw new Error(`HTTP ${res.status}`);
                         const data = await res.json();
                         if (data.error) throw new Error(data.error);
@@ -847,6 +883,7 @@
                     if (!confirm('Reset all parameters to their default values?')) return;
                     this.opts = { ...DEFAULTS };
                     this.keepAlive = '5m';
+                    this.endpointUrl = '';
                 },
 
                 // ── Discard changes ──
@@ -855,6 +892,7 @@
                     this.opts = JSON.parse(JSON.stringify(this.savedOpts.opts));
                     this.selectedModel = this.savedOpts.model;
                     this.keepAlive = this.savedOpts.keepAlive;
+                    this.endpointUrl = this.savedOpts.endpointUrl || '';
                 },
 
                 // ── Submit ──

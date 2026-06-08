@@ -113,6 +113,28 @@
         }
         [x-cloak] { display: none !important; }
 
+        /* Scrollable list areas with a slim, themed scrollbar */
+        .scroll-area {
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: theme('colors.slate.300') transparent;
+        }
+        .scroll-area::-webkit-scrollbar {
+            width: 8px;
+        }
+        .scroll-area::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .scroll-area::-webkit-scrollbar-thumb {
+            background-color: theme('colors.slate.200');
+            border-radius: 9999px;
+            border: 2px solid transparent;
+            background-clip: content-box;
+        }
+        .scroll-area:hover::-webkit-scrollbar-thumb {
+            background-color: theme('colors.slate.300');
+        }
+
         /* Flash messages */
         .flash-success { @apply bg-primary/10 border border-primary/30 text-primary-dark rounded-2xl px-5 py-3 text-sm font-bold flex items-center gap-2; }
         .flash-error   { @apply bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl px-5 py-3 text-sm font-bold flex items-center gap-2; }
@@ -206,12 +228,12 @@
                 <div class="flex flex-col items-end gap-4">
                     <div class="hidden md:flex gap-4 mb-2">
                         <div class="text-right border-r border-slate-200 pr-4">
-                            <p class="text-[10px] uppercase font-mono text-slate-400">Memory Pressure</p>
-                            <p class="text-sm font-bold text-slate-700">0.04%</p>
+                            <p class="text-[10px] uppercase font-mono text-slate-400">Workspaces</p>
+                            <p class="text-sm font-bold text-slate-700">{{ workspaces|length }}</p>
                         </div>
                         <div class="text-right">
-                            <p class="text-[10px] uppercase font-mono text-slate-400">Connected Sources</p>
-                            <p class="text-sm font-bold text-slate-700">12</p>
+                            <p class="text-[10px] uppercase font-mono text-slate-400">Connections</p>
+                            <p class="text-sm font-bold text-slate-700">{{ connections|length }}</p>
                         </div>
                     </div>
 
@@ -228,19 +250,32 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
             <!-- Workspaces Section -->
             <section class="lg:col-span-2 space-y-6">
-                <div class="flex justify-between items-end px-2">
-                    <h3 class="text-2xl font-extrabold text-on-surface tracking-tight">Workspaces</h3>
-                    <button type="button" onclick="createWorkspace()"
-                        class="text-sm font-bold text-primary hover:text-[#008c5c] transition-colors flex items-center gap-1">
-                        <span class="material-symbols-outlined text-[16px]">add</span> New
-                    </button>
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 px-2">
+                    <div>
+                        <h3 class="text-2xl font-extrabold text-slate-900 tracking-tight">Workspaces</h3>
+                        <p class="text-sm text-slate-400 font-medium mt-1">{{ workspaces|length }} workspace{{ 's' if workspaces|length != 1 else '' }}</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="relative flex-1 sm:flex-none sm:w-56">
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-[16px]">search</span>
+                            <input id="workspace-search" type="text" placeholder="Filter workspaces..."
+                                oninput="filterWorkspaces(this.value)"
+                                class="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium placeholder-slate-300 focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none transition-all" />
+                        </div>
+                        <button type="button" onclick="createWorkspace()"
+                            class="text-sm font-bold text-primary hover:text-[#008c5c] transition-colors flex items-center gap-1 shrink-0">
+                            <span class="material-symbols-outlined text-[16px]">add</span> New
+                        </button>
+                    </div>
                 </div>
-                <div id="workspace-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div id="workspace-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6 scroll-area max-h-[280px] px-1 pb-2">
                     {% if workspaces %}
                     {% for ws in workspaces %}
                     <div
-                        class="workspace-card bg-white rounded-3xl p-8 shadow-heavy border border-slate-200 hover:border-primary/30 hover:shadow-[0_20px_40px_-10px_rgba(0,163,108,0.1)] transition-all cursor-pointer group flex flex-col gap-6"
+                        class="workspace-card bg-white rounded-3xl p-8 shadow-data-card border border-slate-200 hover:border-primary/30 hover:shadow-[0_20px_40px_-10px_rgba(0,163,108,0.1)] transition-all cursor-pointer group flex flex-col gap-6"
                         data-workspace-id="{{ ws.id }}"
+                        data-name="{{ ws.name|lower }}"
+                        data-description="{{ (ws.description or '')|lower }}"
                         onclick="openWorkspace('{{ ws.id }}')">
                         <div class="flex justify-between items-start">
                             <div
@@ -269,7 +304,8 @@
                         <div class="mt-auto flex justify-between items-center pt-6 border-t border-slate-100">
                             <span class="text-xs font-bold text-slate-400 uppercase tracking-wider workspace-updated"
                                 data-updated="{{ ws.updated_at }}">Updated —</span>
-                            <span class="text-[10px] font-mono text-slate-400 truncate max-w-[120px]">{{ ws.created_at }}…</span>
+                            <span class="text-[10px] font-mono text-slate-400 workspace-created"
+                                data-created="{{ ws.created_at }}">Created —</span>
                         </div>
                     </div>
                     {% endfor %}
@@ -288,35 +324,123 @@
             <!-- Data Connections Section -->
             <section class="space-y-6">
                 <div class="flex justify-between items-end px-2">
-                    <h3 class="text-2xl font-extrabold text-on-surface tracking-tight">Data Connections</h3>
-                    <a href="/connections">
-                        <button class="text-secondary hover:text-primary transition-colors p-1">
-                            <span class="material-symbols-outlined">add</span>
-                        </button>
+                    <div>
+                        <h3 class="text-2xl font-extrabold text-slate-900 tracking-tight">Data Connections</h3>
+                        <p class="text-sm text-slate-400 font-medium mt-1">{{ connections|length }} source{{ 's' if connections|length != 1 else '' }}</p>
+                    </div>
+                    <a href="/connections/new"
+                        class="text-slate-400 hover:text-primary transition-colors p-1"
+                        title="Add connection">
+                        <span class="material-symbols-outlined">add</span>
                     </a>
                 </div>
-                <div
-                    class="bg-surface-bright rounded-3xl p-3 shadow-heavy border border-surface-container-high flex flex-col gap-2">
+                {% if connections %}
+                <div class="bg-white rounded-3xl p-3 shadow-data-card border border-slate-200 flex flex-col gap-1 scroll-area max-h-[272px]">
                     {% for connection in connections %}
-                    <!-- Connection 1 -->
-                    <div
-                        class="p-4 rounded-2xl flex items-center justify-between group cursor-pointer hover:bg-surface-container transition-colors">
-                        <div class="flex items-center gap-4">
+                    {% set icon_file = source_icons.get(connection.source_type) %}
+                    <a href="/connections"
+                        class="p-4 rounded-2xl flex items-center justify-between group cursor-pointer hover:bg-slate-50 transition-colors">
+                        <div class="flex items-center gap-4 min-w-0">
                             <div
-                                class="w-12 h-12 rounded-xl bg-surface flex items-center justify-center text-on-surface border border-surface-container-high">
-                                <span class="material-symbols-outlined text-[24px]">database</span>
+                                class="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-200 shrink-0">
+                                {% if icon_file %}
+                                <img src="{{ url_for('static', filename=icon_file) }}"
+                                    alt="{{ connection.source_type }}"
+                                    class="w-7 h-7 object-contain" />
+                                {% else %}
+                                <span class="material-symbols-outlined text-[24px] text-slate-500">database</span>
+                                {% endif %}
                             </div>
-                            <div>
-                                <h5 class="font-bold text-sm text-on-surface">{{ connection.name }}</h5>
-                                <p class="text-xs text-secondary font-mono mt-0.5">{{ connection.source_type }}</p>
+                            <div class="min-w-0">
+                                <h5 class="font-bold text-sm text-slate-900 truncate">{{ connection.name }}</h5>
+                                <p class="text-xs text-slate-500 font-mono mt-0.5">{{ connection.source_type }}</p>
+                                {% if connection.desc %}
+                                <p class="text-xs text-slate-400 mt-0.5 truncate">{{ connection.desc }}</p>
+                                {% endif %}
                             </div>
                         </div>
-                    </div>
+                        <div class="flex flex-col items-end gap-1 shrink-0 ml-3">
+                            {% if connection.created_at %}
+                            <span class="text-[10px] font-mono text-slate-400">{{ connection.created_at }}</span>
+                            {% endif %}
+                            <span class="material-symbols-outlined text-[16px] text-slate-300 group-hover:text-primary transition-colors">chevron_right</span>
+                        </div>
+                    </a>
                     {% endfor %}
                 </div>
+                <a href="/connections"
+                    class="block text-center text-xs font-bold text-primary hover:text-[#008c5c] transition-colors py-2">
+                    Manage all connections →
+                </a>
+                {% else %}
+                <div class="rounded-3xl border-2 border-dashed border-slate-200 p-8 text-center bg-white/50">
+                    <span class="material-symbols-outlined text-4xl text-slate-300 mb-3">sensors_off</span>
+                    <p class="text-sm text-slate-500 font-medium mb-4">No connections yet. Link a database to start querying.</p>
+                    <a href="/connections/new"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-pill bg-primary text-white text-xs font-black uppercase tracking-widest hover:bg-primary-dark transition-colors">
+                        <span class="material-symbols-outlined text-[14px]">add</span> Add Connection
+                    </a>
+                </div>
+                {% endif %}
             </section>
         </div>
     </main>
+
+    <!-- Workspace create/edit modal -->
+    <div x-data="workspaceModal()" x-cloak
+        @keydown.escape.window="close()"
+        class="fixed inset-0 z-[100] flex items-center justify-center p-4"
+        x-show="open"
+        style="display: none;">
+        <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="close()" x-show="open"
+            x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
+        <div class="relative bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-md p-8 fade-in"
+            x-show="open"
+            x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+            @click.stop>
+            <div class="flex items-start justify-between mb-6">
+                <div>
+                    <p class="text-[10px] font-black uppercase tracking-widest text-primary mb-1"
+                        x-text="mode === 'edit' ? 'Edit workspace' : 'New workspace'"></p>
+                    <h3 class="text-xl font-extrabold text-slate-900"
+                        x-text="mode === 'edit' ? 'Update details' : 'Create a workspace'"></h3>
+                </div>
+                <button type="button" @click="close()"
+                    class="text-slate-400 hover:text-slate-600 transition-colors p-1">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+            <form @submit.prevent="submit()" class="space-y-5">
+                <div>
+                    <label class="form-label-clean" for="ws-modal-name">Name</label>
+                    <input id="ws-modal-name" x-ref="nameInput" type="text" x-model="name" required
+                        class="form-input-clean" placeholder="My analysis workspace" />
+                </div>
+                <div>
+                    <label class="form-label-clean" for="ws-modal-desc">Description</label>
+                    <textarea id="ws-modal-desc" x-model="description" rows="3"
+                        class="form-input-clean resize-none" placeholder="Optional notes about this workspace"></textarea>
+                </div>
+                <p x-show="error" x-text="error" class="text-sm font-bold text-rose-600"></p>
+                <div class="flex items-center justify-end gap-3 pt-2">
+                    <button type="button" @click="close()"
+                        class="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" :disabled="saving"
+                        class="px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-primary text-white text-sm font-bold transition-all disabled:opacity-50 flex items-center gap-2">
+                        <span x-show="saving" class="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
+                        <span x-text="mode === 'edit' ? 'Save changes' : 'Create & open'"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="{{ url_for('static', filename='js/workspaces.js') }}"></script>
 </body>
 
