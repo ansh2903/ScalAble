@@ -66,15 +66,6 @@
         .organic-border {
             border-radius: 60% 40% 70% 30% / 30% 60% 40% 70%;
         }
-        .heavy-card {
-            @apply bg-white border-2 border-slate-200 rounded-organic transition-all duration-300;
-            box-shadow: 0 12px 0 -4px theme('colors.slate.100');
-        }
-        .heavy-card:hover {
-            @apply border-primary/30;
-            transform: translateY(-2px);
-            box-shadow: 0 16px 0 -4px rgba(0, 163, 108, 0.1);
-        }
         .custom-range {
             @apply h-2 w-full bg-slate-200 rounded-full appearance-none cursor-pointer;
         }
@@ -169,6 +160,10 @@
                     style="font-family: 'Pacifico', cursive;">
                     Spore
                 </span>
+                <span class="self-center transform translate-y-[1px] font-mono text-[8px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-1.5 py-0.5 rounded-md uppercase tracking-widest select-none">
+                    Beta
+                </span>
+
             </div>
 
             <nav class=" md:flex items-center bg-black/5 rounded-full px-2 py-1 border border-black/5">

@@ -12,6 +12,11 @@
 # is exactly what docker-compose.hub.yml pulls when KERNEL_PYTHON_VERSION is set.
 #
 # Requires: docker login already done for the target namespace.
+
+# cd /home/ansh/Desktop/Projects/dev/ScalAble/ScalAble && docker build -f docker/Dockerfile -t anshsharma2903/spore:latest . 2>&1 | tail -4 && echo "=== verify ===" && docker run --rm --entrypoint sh anshsharma2903/spore:latest -c "echo pyc=\$(find spore frontend -name '*.pyc' | wc -l); grep -rl 'ScalAble' spore frontend 2>/dev/null || echo 'CLEAN: no ScalAble in image'"
+
+# cd /home/ansh/Desktop/Projects/dev/ScalAble/ScalAble && docker push anshsharma2903/spore:latest 2>&1 | tail -6 && echo "=== final hub check ===" && docker manifest inspect anshsharma2903/spore:latest >/dev/null 2>&1 && echo "app: ON HUB" && docker manifest inspect anshsharma2903/spore-kernel:3.12 >/dev/null 2>&1 && echo "kernel: ON HUB"
+
 set -euo pipefail
 
 NAMESPACE="${NAMESPACE:-anshsharma2903}"

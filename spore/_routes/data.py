@@ -4,7 +4,7 @@ import importlib
 from spore._connectors import SourceConnector
 from spore._engine.model_manager import get_engine
 from spore._engine.query_executor import run_query
-from spore._utils import file_size_fmt, decrypt_creds, downloadable_json, downloadable_excel, downloadable_csv, load_settings
+from spore._utils import file_size_fmt, decrypt_creds, downloadable_json, downloadable_excel, downloadable_csv, load_settings, data_runtime
 from spore._routes.utils import generate_blueprint
 
 import psutil
@@ -81,7 +81,7 @@ def ingest():
         dbid = request.form.get('id')
         stream_name = request.form.get('stream_name')
         memory_ceiling = request.form.get('memory_ceiling') or '1GB'
-        batch_row_size = int(request.form.get('batch_row_size', 10_000))
+        batch_row_size = int(request.form.get('batch_row_size') or data_runtime()["batch_row_size"])
         output_format = request.form.get('format') or 'parquet'
 
         connection = session.get("connections", [])

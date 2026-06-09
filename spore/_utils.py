@@ -164,6 +164,107 @@ def save_settings(data):
     with open(settings_path, "w") as new_settings:
         json.dump(data, new_settings, indent=2)
 
+
+def merge_settings_section(section: str, patch: dict) -> dict:
+    """Merge ``patch`` into ``settings.json`` under ``section``, preserving other keys."""
+    data = load_settings() or {}
+    current = dict(data.get(section) or {})
+    current.update(patch)
+    data[section] = current
+    save_settings(data)
+    return data
+
+
+def _parse_mem_limit_mb(mem_limit) -> int:
+    """Convert Docker-style mem limit (e.g. ``1g``, ``512m``) to megabytes."""
+    if isinstance(mem_limit, (int, float)):
+        return int(mem_limit)
+    raw = str(mem_limit).strip().lower()
+    if raw.endswith("g"):
+        return int(float(raw[:-1]) * 1024)
+    if raw.endswith("m"):
+        return int(float(raw[:-1]))
+    if raw.endswith("k"):
+        return max(1, int(float(raw[:-1]) / 1024))
+    return int(float(raw))
+
+
+def _format_mem_limit_mb(mb: int) -> str:
+    return f"{int(mb)}m"
+
+
+DEFAULT_KERNEL_STARTUP_CODE = """try:
+    import sys
+    from IPython.core.display import display
+
+    def custom_displayhook(value):
+        if value is None:
+            return
+        display(value)
+
+    sys.displayhook = custom_displayhook
+
+    import plotly.io as pio
+    pio.renderers.default = "plotly_mimetype"
+except Exception:
+    pass
+"""
+
+
+def kernel_runtime(settings_data: dict | None = None) -> dict:
+    """Effective kernel config: settings.json overrides env defaults."""
+    from spore._config.settings import settings as env
+
+    data = settings_data if settings_data is not None else (load_settings() or {})
+    kernel = data.get("kernel") or {}
+    python_version = kernel.get("python_version") or env.KERNEL_PYTHON_VERSION
+    packages = kernel.get("packages") or []
+    if not isinstance(packages, list):
+        packages = []
+    return {
+        "startup_code": kernel.get("startup_code", DEFAULT_KERNEL_STARTUP_CODE),
+        "packages": packages,
+        "python_version": python_version,
+        "image": f"spore-kernel:{python_version}",
+        "kernel_spec_name": f"python{python_version.replace('.', '')}",
+    }
+
+
+def security_runtime(settings_data: dict | None = None) -> dict:
+    """Effective sandbox limits: settings.json overrides env defaults."""
+    from spore._config.settings import settings as env
+
+    data = settings_data if settings_data is not None else (load_settings() or {})
+    security = data.get("security") or {}
+    default_mb = _parse_mem_limit_mb(env.KERNEL_MEM_LIMIT)
+    mem_limit_mb = int(security.get("mem_limit_mb", default_mb))
+    pids_limit = int(security.get("pids_limit", env.KERNEL_PIDS_LIMIT))
+    exec_timeout = int(security.get("exec_timeout", 30))
+    return {
+        "mem_limit_mb": mem_limit_mb,
+        "mem_limit": _format_mem_limit_mb(mem_limit_mb),
+        "pids_limit": pids_limit,
+        "exec_timeout": exec_timeout,
+    }
+
+
+def data_runtime(settings_data: dict | None = None) -> dict:
+    """Effective data/cache config: settings.json overrides env defaults."""
+    from spore._config.settings import settings as env
+
+    data = settings_data if settings_data is not None else (load_settings() or {})
+    data_cfg = data.get("data") or {}
+    return {
+        "batch_row_size": int(data_cfg.get("batch_row_size", 10_000)),
+        "connect_timeout": int(data_cfg.get("connect_timeout", 5)),
+        "data_dir": data_cfg.get("data_dir") or env.SPORE_DATA_DIR,
+    }
+
+
+def repo_root() -> Path:
+    return Path(__file__).parents[1]
+
+
 def provider_base_url(provider, settings=None):
     """Resolve the effective base URL for an LLM provider.
 

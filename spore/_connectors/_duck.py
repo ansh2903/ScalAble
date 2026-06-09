@@ -26,7 +26,7 @@ from .utils import (
     wrap_count_query,
     write_empty_dataset,
 )
-from spore._config.settings import settings
+from spore._utils import data_runtime
 from spore._logger import logging
 
 
@@ -48,7 +48,7 @@ def stream_duckdb_ingest(
     selected (``USE``) so ``query`` resolves against it.
     """
     fmt = normalize_output_format(output_format)
-    dest = destination_path or settings.SPORE_DATA_DIR
+    dest = destination_path or data_runtime()["data_dir"]
     stream_dir = os.path.join(dest, "streams", stream_name)
     os.makedirs(stream_dir, exist_ok=True)
     source_path = os.path.join(stream_dir, source_filename(fmt))

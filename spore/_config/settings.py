@@ -371,21 +371,6 @@ VENDOR_CONFIG = [
     })
 ]
 
-"""
-                                ('APIs', [
-                                ('REST API', 'rest_api', '', 'Connect via standard HTTP endpoints.'),
-                                ('GraphQL API', 'graphql_api', '', 'Query specific data via GraphQL.'),
-                                ('gRPC API', 'grpc_api', '', 'High-performance RPC framework.')
-                                ]),
-                            
-                                ('Local Files', [
-                                ('CSV File', 'csv_file', '', 'Ingest flat CSV data.'),
-                                ('Excel File', 'excel_file', '', 'Import sheets from .xlsx files.'),
-                                ('JSON File', 'json_file', '', 'Parse nested or flat JSON files.')
-                                ])
-
-"""
-
 # For LLMs
 PROVIDER_FIELDS = {
     "ollama": ["model", "keep_alive", "num_predict", "num_ctx", "num_batch", "num_thread", "num_gpu", "top_k", "top_p", "temperature", "repeat_penalty", "use_mmap", "use_mlock"],

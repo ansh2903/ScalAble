@@ -68,13 +68,8 @@
             border-radius: 60% 40% 70% 30% / 30% 60% 40% 70%;
         }
         .heavy-card {
-            @apply bg-white border-2 border-slate-200 rounded-organic transition-all duration-300;
-            box-shadow: 0 12px 0 -4px theme('colors.slate.100');
-        }
-        .heavy-card:hover {
-            @apply border-primary/30;
-            transform: translateY(-2px);
-            box-shadow: 0 16px 0 -4px rgba(0, 163, 108, 0.1);
+            @apply bg-white  rounded-3xl transition-all duration-300;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
         }
         .custom-range {
             @apply h-2 w-full bg-slate-200 rounded-full appearance-none cursor-pointer;
@@ -96,8 +91,8 @@
             @apply absolute bottom-0 left-3 right-3 h-1 bg-primary rounded-full;
         }
         .script-text {
-            @apply font-script text-primary not-italic;
-            text-transform: none;
+            @apply text-emerald-600 font-script not-italic;
+
         }
         .form-input-clean {
             @apply w-full bg-white border-2 border-slate-200 rounded-2xl px-4 py-2.5 text-sm font-medium focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all outline-none;
@@ -125,56 +120,50 @@
     </style>
 </head>
 
+<header class="header-glass fixed top-0 w-full z-50 h-16 border-b border-black/5">
+    <div class="max-w-[1400px] mx-auto h-full flex items-center justify-between px-6 md:px-8">
 
-    <header class="header-glass fixed top-0 w-full z-50 h-16 border-b border-black/5">
-        <div class="max-w-[1400px] mx-auto h-full flex items-center justify-between px-6 md:px-8">
-
-            <div class="flex items-center gap-3 group cursor-pointer">
-                <div class="w-9 h-9 flex items-center justify-center relative">
-                    <svg class="w-full h-full" fill="none" viewbox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M16 30 C 16 20, 10 16, 13 6" fill="none" stroke="#059669" stroke-linecap="round"
-                            stroke-width="2.5"></path>
-                        <path d="M16 30 C 18 22, 24 18, 21 10" fill="none" stroke="#10b981" stroke-linecap="round"
-                            stroke-width="2"></path>
-                        <circle cx="13" cy="6" fill="#059669" r="3.5"></circle>
-                        <circle cx="21" cy="10" fill="#10b981" r="2.5"></circle>
-                        <circle cx="25" cy="18" fill="#34d399" r="1.5"></circle>
-                        <circle cx="8" cy="20" fill="#059669" r="2"></circle>
-                    </svg>
-                </div>
-                <span class="text-2xl font-playful font-bold tracking-tight text-slate-900"
-                    style="font-family: 'Pacifico', cursive;">
-                    Spore
-                </span>
+        <div class="flex items-center gap-3 group cursor-pointer">
+            <div class="w-9 h-9 flex items-center justify-center relative">
+                <svg class="w-full h-full" fill="none" viewbox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M16 30 C 16 20, 10 16, 13 6" fill="none" stroke="#059669" stroke-linecap="round"
+                        stroke-width="2.5"></path>
+                    <path d="M16 30 C 18 22, 24 18, 21 10" fill="none" stroke="#10b981" stroke-linecap="round"
+                        stroke-width="2"></path>
+                    <circle cx="13" cy="6" fill="#059669" r="3.5"></circle>
+                    <circle cx="21" cy="10" fill="#10b981" r="2.5"></circle>
+                    <circle cx="25" cy="18" fill="#34d399" r="1.5"></circle>
+                    <circle cx="8" cy="20" fill="#059669" r="2"></circle>
+                </svg>
             </div>
-
-            <nav class=" md:flex items-center bg-black/5 rounded-full px-2 py-1 border border-black/5">
-                <a class="nav-link px-4 py-1.5 rounded-full text-xs font-medium transition-all hover:bg-white/50"
-                    href="/">
-                    Mission Control
-                </a>
-                <a class="nav-link px-4 py-1.5 rounded-full text-xs font-medium transition-all hover:bg-white/50"
-                    href="/connections">
-                    Connection Center   
-                </a>
-                <a class="nav-link nav-link-active px-4 py-1.5 rounded-full text-xs font-bold bg-emerald-600 shadow-sm"
-                    href="/settings">
-                    Calibration
-                </a>
-            </nav>
+            <span class="text-2xl font-playful font-bold tracking-tight text-slate-900"
+                style="font-family: 'Pacifico', cursive;">
+                Spore
+            </span>
         </div>
-    </header>
+
+        <nav class=" md:flex items-center bg-black/5 rounded-full px-2 py-1 border border-black/5">
+            <a class="nav-link px-4 py-1.5 rounded-full text-xs font-medium transition-all hover:bg-white/50" href="/">
+                Mission Control
+            </a>
+            <a class="nav-link px-4 py-1.5 rounded-full text-xs font-medium transition-all hover:bg-white/50"
+                href="/connections">
+                Connection Center
+            </a>
+            <a class="nav-link nav-link-active px-4 py-1.5 rounded-full text-xs font-bold bg-emerald-600 shadow-sm"
+                href="/settings">
+                Calibration
+            </a>
+        </nav>
+    </div>
+</header>
 
 <body class="soft-gradient-bg min-h-screen">
-    <!-- Toast stack (server-rendered flashes + client-side sporeToast targets) -->
-    <div id="toast-container"
-        class="fixed bottom-10 left-1/2 -translate-x-1/2 w-full max-w-2xl px-6 z-[100] space-y-4">
+    <div id="toast-container" class="fixed bottom-10 left-1/2 -translate-x-1/2 w-full max-w-2xl px-6 z-[100] space-y-4">
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% for category, message in messages %}
-        <div x-data="sporeToastItem()" x-show="show" x-cloak
-            @mouseenter="pause()" @mouseleave="resume()"
-            role="alert" aria-live="polite"
-            x-transition:enter="transition ease-out duration-500"
+        <div x-data="sporeToastItem()" x-show="show" x-cloak @mouseenter="pause()" @mouseleave="resume()" role="alert"
+            aria-live="polite" x-transition:enter="transition ease-out duration-500"
             x-transition:enter-start="opacity-0 translate-y-8 scale-95"
             x-transition:enter-end="opacity-100 translate-y-0 scale-100"
             x-transition:leave="transition ease-in duration-300" x-transition:leave-start="opacity-100 scale-100"
@@ -221,60 +210,52 @@
         {% endwith %}
     </div>
     <!-- ── Main layout ── -->
-    <div class="pt-28 pb-12 px-10 max-w-[1600px] mx-auto grid grid-cols-12 gap-10" x-data="settingsApp()"
+    <div class="max-w-7xl mx-auto w-full flex flex-col lg:flex-row gap-10 px-8 pt-24 pb-10" x-data="settingsApp()"
         x-init="init()">
 
         <!-- ── Sidebar ── -->
-        <aside class="col-span-12 lg:col-span-3 space-y-6">
+        <aside class="w-full lg:w-1/4 space-y-6">
             <div class="heavy-card p-6">
                 <h2 class="text-xs font-black uppercase tracking-[0.2em] text-slate-400 mb-6 flex items-center gap-2">
                     <span class="material-symbols-outlined text-sm">terminal</span> Studio Control
                 </h2>
                 <nav class="space-y-2">
-                    <a class="flex items-center justify-between px-4 py-3 rounded-2xl bg-primary text-white shadow-tactile font-bold"
-                        href="#">
+                    <button type="button" @click="activeLab = 'llm'"
+                        :class="activeLab === 'llm' ? 'bg-primary text-white shadow-tactile' : 'text-slate-600 hover:bg-slate-50'"
+                        class="w-full flex items-center justify-between px-4 py-3 rounded-xl font-bold transition-all">
                         <div class="flex items-center gap-3">
                             <span class="material-symbols-outlined">science</span>
-                            <span>Laboratory</span>
+                            <span>LLM Lab</span>
                         </div>
-                    </a>
-                    <a class="flex items-center justify-between px-4 py-3 rounded-2xl text-slate-600 hover:bg-primary-soft hover:text-primary transition-all group"
-                        href="#">
+                    </button>
+                    <button type="button" @click="activeLab = 'kernel'; onKernelLabOpen()"
+                        :class="activeLab === 'kernel' ? 'bg-primary text-white shadow-tactile' : 'text-slate-600 hover:bg-slate-50'"
+                        class="w-full flex items-center justify-between px-4 py-3 rounded-xl font-bold transition-all">
+                        <div class="flex items-center gap-3">
+                            <span class="material-symbols-outlined">deployed_code</span>
+                            <span>Kernel Lab</span>
+                        </div>
+                    </button>
+                    <button type="button" @click="activeLab = 'data'; onDataLabOpen()"
+                        :class="activeLab === 'data' ? 'bg-primary text-white shadow-tactile' : 'text-slate-600 hover:bg-slate-50'"
+                        class="w-full flex items-center justify-between px-4 py-3 rounded-xl font-bold transition-all">
                         <div class="flex items-center gap-3">
                             <span class="material-symbols-outlined">database</span>
-                            <span class="font-bold">Databases</span>
+                            <span>Data &amp; Cache Lab</span>
                         </div>
-                        <span
-                            class="material-symbols-outlined opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
-                    </a>
-                    <a class="flex items-center justify-between px-4 py-3 rounded-2xl text-slate-600 hover:bg-primary-soft hover:text-primary transition-all group"
-                        href="#">
+                    </button>
+                    <button type="button" @click="activeLab = 'security'"
+                        :class="activeLab === 'security' ? 'bg-primary text-white shadow-tactile' : 'text-slate-600 hover:bg-slate-50'"
+                        class="w-full flex items-center justify-between px-4 py-3 rounded-xl font-bold transition-all">
                         <div class="flex items-center gap-3">
-                            <span class="material-symbols-outlined">inventory_2</span>
-                            <span class="font-bold">Asset Vault</span>
+                            <span class="material-symbols-outlined">shield</span>
+                            <span>Security &amp; Compute Lab</span>
                         </div>
-                        <span
-                            class="material-symbols-outlined opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
-                    </a>
-                    <a class="flex items-center justify-between px-4 py-3 rounded-2xl text-slate-600 hover:bg-primary-soft hover:text-primary transition-all group"
-                        href="#">
-                        <div class="flex items-center gap-3">
-                            <span class="material-symbols-outlined">query_stats</span>
-                            <span class="font-bold">Run History</span>
-                        </div>
-                        <span
-                            class="material-symbols-outlined opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
-                    </a>
+                    </button>
                 </nav>
             </div>
-            <button
-                class="w-full py-5 bg-slate-900 text-white rounded-organic font-black text-lg shadow-xl flex items-center justify-center gap-3 hover:translate-y-[-2px] transition-all">
-                <span class="material-symbols-outlined text-2xl">play_circle</span>
-                START EXECUTION
-            </button>
-
             <!-- ── Current provider status card ── -->
-            <div
+            <div x-show="activeLab === 'llm'" x-cloak
                 class="p-6 bg-slate-900 rounded-organic text-white relative overflow-hidden shadow-2xl transition-all duration-500">
                 <div class="relative z-10 space-y-4">
                     <div class="flex items-center justify-between">
@@ -328,23 +309,29 @@
         </aside>
 
         <!-- ── Main content ── -->
-        <main class="col-span-12 lg:col-span-9 grid grid-cols-12 gap-10">
+        <main class="w-full lg:w-3/4 space-y-10">
 
-            <!-- ── Left panel: provider + model selection ── -->
-            <section class="col-span-12 lg:col-span-5 space-y-8">
-                <div>
-                    <h1 class="text-5xl font-black text-slate-900 mb-3 tracking-tighter">
-                        Laboratory<span class="script-text text-6xl ml-2">
-                            Calibration</span>
+            <!-- ── LLM Lab ── -->
+            <section x-show="activeLab === 'llm'" x-cloak
+                class="relative overflow-hidden bg-white border border-emerald-100 rounded-[2.5rem] p-8 md:p-12 shadow-[0_20px_50px_rgba(0,163,108,0.05)]">
+
+                <div class="relative z-10">
+                    <h1 class="text-4xl md:text-5xl font-bold text-slate-900 mb-3 tracking-tight mb-4">
+                        LLM<span class="script-text"> Laboratory</span>
                     </h1>
-                    <p class="text-slate-500 font-medium leading-relaxed">
-                        Streamlined model management for local and cloud-based AI workflows.
+                    <p class="text-slate-500 text-lg max-w-xl leading-relaxed">
+                        Configure your AI model and API key settings.
                     </p>
                 </div>
 
                 <!-- Provider + model picker card -->
-                <div class="heavy-card p-6 space-y-5">
+                <div class="p-6 space-y-5">
 
+                    <!-- Model selection (left) + connection help (right) -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+
+                        <!-- Left: model + endpoint + active badge -->
+                        <div class="space-y-5">
                     <!-- Local / Cloud tabs -->
                     <div class="flex flex-wrap gap-2">
                         <button type="button" @click="switchTab('local')"
@@ -369,85 +356,113 @@
                         </select>
                     </div>
 
-                    <!-- Model selector -->
-                    <div>
-                        <div class="flex items-center justify-between mb-2">
-                            <label class="form-label-clean mb-0">Model</label>
-                            <button type="button" @click="fetchModels()"
-                                class="text-[10px] font-black text-primary hover:text-primary-dark flex items-center gap-1 transition-colors">
-                                <span class="material-symbols-outlined text-xs"
-                                    :class="loadingModels && 'animate-spin'">refresh</span>
-                                REFRESH
-                            </button>
+                            <!-- Model selector -->
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between mb-2">
+                                    <label class="form-label-clean mb-0">Model</label>
+                                    <button type="button" @click="fetchModels()"
+                                        class="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 transition-colors">
+                                        <span class="material-symbols-outlined text-sm"
+                                            :class="loadingModels && 'animate-spin'">refresh</span>
+                                        REFRESH
+                                    </button>
+                                </div>
+
+                                <!-- Loading state -->
+                                <div x-show="loadingModels"
+                                    class="flex items-center gap-2 px-4 py-3 bg-slate-50 rounded-2xl border-2 border-slate-100">
+                                    <span
+                                        class="material-symbols-outlined text-primary text-sm animate-spin">progress_activity</span>
+                                    <span class="text-xs text-slate-500 font-medium">Fetching models…</span>
+                                </div>
+
+                                <!-- Fetch error -->
+                                <div x-show="!loadingModels && modelError"
+                                    class="px-4 py-3 bg-rose-50 rounded-2xl border-2 border-rose-100 text-xs text-rose-600 font-bold flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-sm">warning</span>
+                                    <span x-text="modelError"></span>
+                                </div>
+
+                                <!-- Model list (local providers) -->
+                                <div x-show="!loadingModels && !modelError && isLocal && models.length > 0"
+                                    class="space-y-2 max-h-52 overflow-y-auto pr-1 fade-in">
+                                    <template x-for="m in models" :key="m.model">
+                                        <button type="button" @click="selectedModel = m.model" :class="selectedModel === m.model
+                                                    ? 'border-primary bg-primary-soft text-primary'
+                                                    : 'border-slate-100 bg-slate-50 text-slate-700 hover:border-primary/40'"
+                                            class="w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all text-left">
+                                            <div>
+                                                <p class="font-bold text-sm" x-text="m.model"></p>
+                                                <p class="text-[10px] font-mono text-primary/60 mt-1"
+                                                    x-text="(m.paramater_size || 'LLM') + (m.model_size ? ' · ' + (m.model_size / (1024**3)).toFixed(1) + ' GB' : '')">
+                                                </p>
+                                            </div>
+                                            <span x-show="selectedModel === m.model"
+                                                class="material-symbols-outlined text-primary text-lg">check_circle</span>
+                                        </button>
+                                    </template>
+                                </div>
+
+                                <!-- Model text input (cloud providers or no models fetched) -->
+                                <div x-show="!loadingModels && (!isLocal || models.length === 0)" class="fade-in">
+                                    <input type="text" class="form-input-clean" :placeholder="cloudModelPlaceholder"
+                                        x-model="selectedModel" />
+                                    <p class="text-[10px] text-slate-400 font-medium mt-2 px-1" x-text="cloudModelHint">
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Endpoint URL (configurable per provider) -->
+                            <div x-show="supportsEndpoint" x-cloak class="fade-in">
+                                <label class="form-label-clean flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-xs">link</span> Endpoint URL
+                                </label>
+                                <input type="text" class="form-input-clean font-mono text-xs"
+                                    :placeholder="endpointPlaceholder" x-model="endpointUrl" />
+                                <p class="text-[10px] text-slate-400 font-medium mt-2 px-1">
+                                    Override where this provider is reached. Leave blank to use the default
+                                    (<span class="font-mono" x-text="endpointPlaceholder"></span>).
+                                </p>
+                            </div>
+
+                            <!-- Active model badge -->
+                            <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                <div class="flex items-center justify-between mb-1">
+                                    <span
+                                        class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Currently
+                                        Active</span>
+                                    <span class="px-2 py-0.5 text-[10px] font-black rounded uppercase"
+                                        :class="isLocal ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700'"
+                                        x-text="isLocal ? 'Local' : 'Cloud'"></span>
+                                </div>
+                                <h4 class="font-black text-slate-900" x-text="selectedModel || '—'"></h4>
+                                <p class="text-xs text-slate-500 mt-1" x-text="providerStatusText"></p>
+                            </div>
                         </div>
 
-                        <!-- Loading state -->
-                        <div x-show="loadingModels"
-                            class="flex items-center gap-2 px-4 py-3 bg-slate-50 rounded-2xl border-2 border-slate-100">
-                            <span
-                                class="material-symbols-outlined text-primary text-sm animate-spin">progress_activity</span>
-                            <span class="text-xs text-slate-500 font-medium">Fetching models…</span>
+                        <!-- Right: connection help -->
+                        <div class="rounded-2xl border-2 p-5 h-full bg-emerald-50 border-emerald-100">
+                            <div class="flex items-center gap-2 mb-3">
+                                <span class="material-symbols-outlined text-lg text-emerald-600">help</span>
+                                <h4 class="font-black text-sm text-emerald-700">Trouble connecting?</h4>
+                            </div>
+                            <p class="text-xs leading-relaxed mb-4 text-slate-600">
+                                If models aren't loading or the provider isn't responding, make sure your endpoint and
+                                API key are correct and hit <span class="font-bold">Refresh</span>. For local providers,
+                                the server must be running and reachable. See the troubleshooting guide on GitHub for
+                                help.
+                            </p>
+                            <a href="https://github.com/ansh2903/spore/blob/main/docs/TROUBLESHOOTING.md" target="_blank"
+                                rel="noopener noreferrer"
+                                class="inline-flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-xl border-2 bg-white border-emerald-200 text-emerald-700 hover:border-emerald-300 transition-all">
+                                <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                                    <path
+                                        d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.041-1.412-4.041-1.412-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z">
+                                    </path>
+                                </svg>
+                                Troubleshooting guide
+                            </a>
                         </div>
-
-                        <!-- Fetch error -->
-                        <div x-show="!loadingModels && modelError"
-                            class="px-4 py-3 bg-rose-50 rounded-2xl border-2 border-rose-100 text-xs text-rose-600 font-bold flex items-center gap-2">
-                            <span class="material-symbols-outlined text-sm">warning</span>
-                            <span x-text="modelError"></span>
-                        </div>
-
-                        <!-- Model list (local providers) -->
-                        <div x-show="!loadingModels && !modelError && isLocal && models.length > 0"
-                            class="space-y-2 max-h-52 overflow-y-auto pr-1 fade-in">
-                            <template x-for="m in models" :key="m.model">
-                                <button type="button" @click="selectedModel = m.model" :class="selectedModel === m.model
-                                            ? 'border-primary bg-primary-soft text-primary'
-                                            : 'border-slate-100 bg-slate-50 text-slate-700 hover:border-primary/40'"
-                                    class="w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all text-left">
-                                    <div>
-                                        <p class="font-bold text-sm" x-text="m.model"></p>
-                                        <p class="text-[10px] font-mono text-primary/60 mt-1"
-                                            x-text="(m.paramater_size || 'LLM') + (m.model_size ? ' · ' + (m.model_size / (1024**3)).toFixed(1) + ' GB' : '')">
-                                        </p>
-                                    </div>
-                                    <span x-show="selectedModel === m.model"
-                                        class="material-symbols-outlined text-primary text-lg">check_circle</span>
-                                </button>
-                            </template>
-                        </div>
-
-                        <!-- Model text input (cloud providers or no models fetched) -->
-                        <div x-show="!loadingModels && (!isLocal || models.length === 0)" class="fade-in">
-                            <input type="text" class="form-input-clean" :placeholder="cloudModelPlaceholder"
-                                x-model="selectedModel" />
-                            <p class="text-[10px] text-slate-400 font-medium mt-2 px-1" x-text="cloudModelHint"></p>
-                        </div>
-                    </div>
-
-                    <!-- Endpoint URL (configurable per provider) -->
-                    <div x-show="supportsEndpoint" x-cloak class="fade-in">
-                        <label class="form-label-clean flex items-center gap-1.5">
-                            <span class="material-symbols-outlined text-xs">link</span> Endpoint URL
-                        </label>
-                        <input type="text" class="form-input-clean font-mono text-xs" :placeholder="endpointPlaceholder"
-                            x-model="endpointUrl" />
-                        <p class="text-[10px] text-slate-400 font-medium mt-2 px-1">
-                            Override where this provider is reached. Leave blank to use the default
-                            (<span class="font-mono" x-text="endpointPlaceholder"></span>).
-                        </p>
-                    </div>
-
-                    <!-- Active model badge -->
-                    <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                        <div class="flex items-center justify-between mb-1">
-                            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Currently
-                                Active</span>
-                            <span class="px-2 py-0.5 text-[10px] font-black rounded uppercase"
-                                :class="isLocal ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700'"
-                                x-text="isLocal ? 'Local' : 'Cloud'"></span>
-                        </div>
-                        <h4 class="font-black text-slate-900" x-text="selectedModel || '—'"></h4>
-                        <p class="text-xs text-slate-500 mt-1" x-text="providerStatusText"></p>
                     </div>
                 </div>
 
@@ -459,7 +474,8 @@
                         </div>
                         <div>
                             <h3 class="font-black text-slate-900 text-sm">API Credentials</h3>
-                            <p class="text-xs text-slate-500">Saved in settings.json for this provider. Leave blank to keep existing key.</p>
+                            <p class="text-xs text-slate-500">Saved in settings.json for this provider. Leave blank to
+                                keep existing key.</p>
                         </div>
                     </div>
 
@@ -505,230 +521,501 @@
                         </div>
                     </template>
                 </div>
-            </section>
 
-            <!-- ── Right panel: parameter tuning ── -->
-            <section class="col-span-12 lg:col-span-7">
-                <div class="heavy-card p-8 h-full">
-                    <div class="flex items-center justify-between mb-8">
-                        <div class="flex items-center gap-4">
-                            <div class="p-3 bg-primary-soft organic-border text-primary">
-                                <span class="material-symbols-outlined text-2xl">tune</span>
-                            </div>
-                            <h2 class="text-2xl font-black text-slate-900 tracking-tight">Tweak &amp; Discover</h2>
+                <div class="my-8 border-t border-slate-200">
+                </div>
+
+                <div class="flex items-center justify-between mb-8">
+                    <div class="flex items-center gap-4">
+                        <div class="p-3 bg-primary-soft organic-border text-primary">
+                            <span class="material-symbols-outlined text-2xl">tune</span>
                         </div>
-                        <span
-                            class="text-[10px] font-black text-white bg-primary px-4 py-1.5 rounded-pill uppercase tracking-widest"
-                            x-text="providerLabel + ' · Active'"></span>
+                        <h2 class="text-2xl font-black text-slate-900 tracking-tight">Tweak &amp; Discover</h2>
+                    </div>
+                    <span
+                        class="text-[10px] font-black text-white bg-primary px-4 py-1.5 rounded-pill uppercase tracking-widest"
+                        x-text="providerLabel + ' · Active'"></span>
+                </div>
+
+                <form class="space-y-8" method="POST" id="settings-form" @submit="onFormSubmit($event)">
+
+                    <!-- Hidden fields -->
+                    <input type="hidden" name="provider" :value="provider" />
+                    <input type="hidden" name="model" :value="selectedModel" />
+                    <input type="hidden" name="api_key" :value="apiKey" />
+                    <input type="hidden" name="base_url" :value="endpointUrl" />
+
+                    <!-- ── Parameter grid ── -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-8">
+
+                        <!-- Left column -->
+                        <div class="space-y-6">
+
+                            <!-- Temperature (all providers) -->
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-center px-1">
+                                    <label class="form-label-clean mb-0">Temperature</label>
+                                    <span class="font-mono text-xs font-bold text-primary"
+                                        x-text="opts.temperature"></span>
+                                </div>
+                                <input name="temperature" class="custom-range" max="1" min="0" step="0.01" type="range"
+                                    x-model="opts.temperature" />
+                            </div>
+
+                            <!-- Top K (ollama, anthropic, gemini) -->
+                            <div class="space-y-3" x-show="has('top_k')" x-cloak>
+                                <div class="flex justify-between items-center px-1">
+                                    <label class="form-label-clean mb-0">Top K</label>
+                                    <span class="font-mono text-xs font-bold text-primary" x-text="opts.top_k"></span>
+                                </div>
+                                <input name="top_k" class="custom-range" max="100" min="0" step="1" type="range"
+                                    x-model="opts.top_k" />
+                            </div>
+
+                            <!-- Top P (all) -->
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-center px-1">
+                                    <label class="form-label-clean mb-0">Top P</label>
+                                    <span class="font-mono text-xs font-bold text-primary" x-text="opts.top_p"></span>
+                                </div>
+                                <input name="top_p" class="custom-range" max="1" min="0" step="0.01" type="range"
+                                    x-model="opts.top_p" />
+                            </div>
+
+                            <!-- OpenAI-specific penalties -->
+                            <div class="space-y-4" x-show="has('frequency_penalty')" x-cloak>
+                                <div class="space-y-3">
+                                    <div class="flex justify-between items-center px-1">
+                                        <label class="form-label-clean mb-0">Frequency Penalty</label>
+                                        <span class="font-mono text-xs font-bold text-primary"
+                                            x-text="opts.frequency_penalty"></span>
+                                    </div>
+                                    <input name="frequency_penalty" class="custom-range" max="2" min="-2" step="0.01"
+                                        type="range" x-model="opts.frequency_penalty" />
+                                </div>
+                                <div class="space-y-3">
+                                    <div class="flex justify-between items-center px-1">
+                                        <label class="form-label-clean mb-0">Presence Penalty</label>
+                                        <span class="font-mono text-xs font-bold text-primary"
+                                            x-text="opts.presence_penalty"></span>
+                                    </div>
+                                    <input name="presence_penalty" class="custom-range" max="2" min="-2" step="0.01"
+                                        type="range" x-model="opts.presence_penalty" />
+                                </div>
+                            </div>
+
+                            <!-- Ollama: num_thread + num_batch -->
+                            <div class="grid grid-cols-2 gap-4" x-show="has('num_thread')" x-cloak>
+                                <div>
+                                    <label class="form-label-clean">Num Thread</label>
+                                    <input name="num_thread" class="form-input-clean" type="number"
+                                        x-model="opts.num_thread" />
+                                </div>
+                                <div>
+                                    <label class="form-label-clean">Num Batch</label>
+                                    <input name="num_batch" class="form-input-clean" type="number"
+                                        x-model="opts.num_batch" />
+                                </div>
+                            </div>
+
+                            <!-- Ollama: num_gpu -->
+                            <div x-show="has('num_gpu')" x-cloak>
+                                <label class="form-label-clean">GPU Layers (num_gpu)</label>
+                                <input name="num_gpu" class="form-input-clean" type="number" x-model="opts.num_gpu" />
+                            </div>
+
+                        </div>
+
+                        <!-- Right column -->
+                        <div class="space-y-6">
+
+                            <!-- Num Predict (all) -->
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-center px-1">
+                                    <label class="form-label-clean mb-0">
+                                        <span x-text="isLocal ? 'Num Predict' : 'Max Tokens'"></span>
+                                    </label>
+                                    <span class="font-mono text-xs font-bold text-primary"
+                                        x-text="opts.num_predict"></span>
+                                </div>
+                                <input name="num_predict" class="custom-range" max="4096" min="128" step="128"
+                                    type="range" x-model="opts.num_predict" />
+                            </div>
+
+                            <!-- Context window (ollama, lm_studio) -->
+                            <div class="space-y-3" x-show="has('num_ctx')" x-cloak>
+                                <div class="flex justify-between items-center px-1">
+                                    <label class="form-label-clean mb-0">Context (num_ctx)</label>
+                                    <span class="font-mono text-xs font-bold text-primary" x-text="opts.num_ctx"></span>
+                                </div>
+                                <input name="num_ctx" class="custom-range" max="8192" min="1024" step="512" type="range"
+                                    x-model="opts.num_ctx" />
+                            </div>
+
+                            <!-- Repeat penalty (ollama only) -->
+                            <div class="space-y-3" x-show="has('repeat_penalty')" x-cloak>
+                                <div class="flex justify-between items-center px-1">
+                                    <label class="form-label-clean mb-0">Repeat Penalty</label>
+                                    <span class="font-mono text-xs font-bold text-primary"
+                                        x-text="opts.repeat_penalty"></span>
+                                </div>
+                                <input name="repeat_penalty" class="custom-range" max="2" min="0.5" step="0.01"
+                                    type="range" x-model="opts.repeat_penalty" />
+                            </div>
+
+                            <!-- Ollama toggles -->
+                            <div class="space-y-3" x-show="has('use_mmap')" x-cloak>
+                                <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                    <input name="use_mmap" id="use_mmap" :checked="opts.use_mmap"
+                                        @change="opts.use_mmap = $event.target.checked"
+                                        class="rounded border-slate-300 text-primary focus:ring-primary w-4 h-4"
+                                        type="checkbox" />
+                                    <label for="use_mmap" class="text-xs font-bold text-slate-700 cursor-pointer">
+                                        Use MMAP <span class="text-slate-400 font-normal ml-1">Memory-map model
+                                            file</span>
+                                    </label>
+                                </div>
+                                <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                    <input name="use_mlock" id="use_mlock" :checked="opts.use_mlock"
+                                        @change="opts.use_mlock = $event.target.checked"
+                                        class="rounded border-slate-300 text-primary focus:ring-primary w-4 h-4"
+                                        type="checkbox" />
+                                    <label for="use_mlock" class="text-xs font-bold text-slate-700 cursor-pointer">
+                                        Use MLock <span class="text-slate-400 font-normal ml-1">Pin model in
+                                            RAM</span>
+                                    </label>
+                                </div>
+                                <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                    <input name="penalize_newline" id="penalize_newline"
+                                        :checked="opts.penalize_newline"
+                                        @change="opts.penalize_newline = $event.target.checked"
+                                        class="rounded border-slate-300 text-primary focus:ring-primary w-4 h-4"
+                                        type="checkbox" />
+                                    <label for="penalize_newline"
+                                        class="text-xs font-bold text-slate-700 cursor-pointer">
+                                        Penalize Newline
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Keep alive (ollama) -->
+                            <div x-show="has('keep_alive')" x-cloak class="flex items-center gap-3">
+                                <label class="form-label-clean mb-0 flex-1">Keep Alive</label>
+                                <input name="keep_alive" class="form-input-clean w-28 text-center" type="text"
+                                    x-model="keepAlive" placeholder="5m" />
+                            </div>
+
+                            <!-- Info chip for cloud providers with fewer options -->
+                            <div x-show="!isLocal" x-cloak
+                                class="p-4 bg-blue-50 rounded-2xl border border-blue-100 text-xs text-blue-700 font-medium leading-relaxed">
+                                <span class="font-black block mb-1">Cloud provider selected</span>
+                                Some parameters (context window, GPU layers, etc.) are managed by the provider and
+                                not exposed here.
+                            </div>
+                        </div>
                     </div>
 
-                    <form class="space-y-8" method="POST" id="settings-form" @submit="onFormSubmit($event)">
-
-                        <!-- Hidden fields -->
-                        <input type="hidden" name="provider" :value="provider" />
-                        <input type="hidden" name="model" :value="selectedModel" />
-                        <input type="hidden" name="api_key" :value="apiKey" />
-                        <input type="hidden" name="base_url" :value="endpointUrl" />
-
-                        <!-- ── Parameter grid ── -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-8">
-
-                            <!-- Left column -->
-                            <div class="space-y-6">
-
-                                <!-- Temperature (all providers) -->
-                                <div class="space-y-3">
-                                    <div class="flex justify-between items-center px-1">
-                                        <label class="form-label-clean mb-0">Temperature</label>
-                                        <span class="font-mono text-xs font-bold text-primary"
-                                            x-text="opts.temperature"></span>
-                                    </div>
-                                    <input name="temperature" class="custom-range" max="1" min="0" step="0.01"
-                                        type="range" x-model="opts.temperature" />
-                                </div>
-
-                                <!-- Top K (ollama, anthropic, gemini) -->
-                                <div class="space-y-3" x-show="has('top_k')" x-cloak>
-                                    <div class="flex justify-between items-center px-1">
-                                        <label class="form-label-clean mb-0">Top K</label>
-                                        <span class="font-mono text-xs font-bold text-primary"
-                                            x-text="opts.top_k"></span>
-                                    </div>
-                                    <input name="top_k" class="custom-range" max="100" min="0" step="1" type="range"
-                                        x-model="opts.top_k" />
-                                </div>
-
-                                <!-- Top P (all) -->
-                                <div class="space-y-3">
-                                    <div class="flex justify-between items-center px-1">
-                                        <label class="form-label-clean mb-0">Top P</label>
-                                        <span class="font-mono text-xs font-bold text-primary"
-                                            x-text="opts.top_p"></span>
-                                    </div>
-                                    <input name="top_p" class="custom-range" max="1" min="0" step="0.01" type="range"
-                                        x-model="opts.top_p" />
-                                </div>
-
-                                <!-- OpenAI-specific penalties -->
-                                <div class="space-y-4" x-show="has('frequency_penalty')" x-cloak>
-                                    <div class="space-y-3">
-                                        <div class="flex justify-between items-center px-1">
-                                            <label class="form-label-clean mb-0">Frequency Penalty</label>
-                                            <span class="font-mono text-xs font-bold text-primary"
-                                                x-text="opts.frequency_penalty"></span>
-                                        </div>
-                                        <input name="frequency_penalty" class="custom-range" max="2" min="-2"
-                                            step="0.01" type="range" x-model="opts.frequency_penalty" />
-                                    </div>
-                                    <div class="space-y-3">
-                                        <div class="flex justify-between items-center px-1">
-                                            <label class="form-label-clean mb-0">Presence Penalty</label>
-                                            <span class="font-mono text-xs font-bold text-primary"
-                                                x-text="opts.presence_penalty"></span>
-                                        </div>
-                                        <input name="presence_penalty" class="custom-range" max="2" min="-2" step="0.01"
-                                            type="range" x-model="opts.presence_penalty" />
-                                    </div>
-                                </div>
-
-                                <!-- Ollama: num_thread + num_batch -->
-                                <div class="grid grid-cols-2 gap-4" x-show="has('num_thread')" x-cloak>
-                                    <div>
-                                        <label class="form-label-clean">Num Thread</label>
-                                        <input name="num_thread" class="form-input-clean" type="number"
-                                            x-model="opts.num_thread" />
-                                    </div>
-                                    <div>
-                                        <label class="form-label-clean">Num Batch</label>
-                                        <input name="num_batch" class="form-input-clean" type="number"
-                                            x-model="opts.num_batch" />
-                                    </div>
-                                </div>
-
-                                <!-- Ollama: num_gpu -->
-                                <div x-show="has('num_gpu')" x-cloak>
-                                    <label class="form-label-clean">GPU Layers (num_gpu)</label>
-                                    <input name="num_gpu" class="form-input-clean" type="number"
-                                        x-model="opts.num_gpu" />
-                                </div>
-
-                            </div>
-
-                            <!-- Right column -->
-                            <div class="space-y-6">
-
-                                <!-- Num Predict (all) -->
-                                <div class="space-y-3">
-                                    <div class="flex justify-between items-center px-1">
-                                        <label class="form-label-clean mb-0">
-                                            <span x-text="isLocal ? 'Num Predict' : 'Max Tokens'"></span>
-                                        </label>
-                                        <span class="font-mono text-xs font-bold text-primary"
-                                            x-text="opts.num_predict"></span>
-                                    </div>
-                                    <input name="num_predict" class="custom-range" max="4096" min="128" step="128"
-                                        type="range" x-model="opts.num_predict" />
-                                </div>
-
-                                <!-- Context window (ollama, lm_studio) -->
-                                <div class="space-y-3" x-show="has('num_ctx')" x-cloak>
-                                    <div class="flex justify-between items-center px-1">
-                                        <label class="form-label-clean mb-0">Context (num_ctx)</label>
-                                        <span class="font-mono text-xs font-bold text-primary"
-                                            x-text="opts.num_ctx"></span>
-                                    </div>
-                                    <input name="num_ctx" class="custom-range" max="8192" min="1024" step="512"
-                                        type="range" x-model="opts.num_ctx" />
-                                </div>
-
-                                <!-- Repeat penalty (ollama only) -->
-                                <div class="space-y-3" x-show="has('repeat_penalty')" x-cloak>
-                                    <div class="flex justify-between items-center px-1">
-                                        <label class="form-label-clean mb-0">Repeat Penalty</label>
-                                        <span class="font-mono text-xs font-bold text-primary"
-                                            x-text="opts.repeat_penalty"></span>
-                                    </div>
-                                    <input name="repeat_penalty" class="custom-range" max="2" min="0.5" step="0.01"
-                                        type="range" x-model="opts.repeat_penalty" />
-                                </div>
-
-                                <!-- Ollama toggles -->
-                                <div class="space-y-3" x-show="has('use_mmap')" x-cloak>
-                                    <div
-                                        class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                                        <input name="use_mmap" id="use_mmap" :checked="opts.use_mmap"
-                                            @change="opts.use_mmap = $event.target.checked"
-                                            class="rounded border-slate-300 text-primary focus:ring-primary w-4 h-4"
-                                            type="checkbox" />
-                                        <label for="use_mmap" class="text-xs font-bold text-slate-700 cursor-pointer">
-                                            Use MMAP <span class="text-slate-400 font-normal ml-1">Memory-map model
-                                                file</span>
-                                        </label>
-                                    </div>
-                                    <div
-                                        class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                                        <input name="use_mlock" id="use_mlock" :checked="opts.use_mlock"
-                                            @change="opts.use_mlock = $event.target.checked"
-                                            class="rounded border-slate-300 text-primary focus:ring-primary w-4 h-4"
-                                            type="checkbox" />
-                                        <label for="use_mlock" class="text-xs font-bold text-slate-700 cursor-pointer">
-                                            Use MLock <span class="text-slate-400 font-normal ml-1">Pin model in
-                                                RAM</span>
-                                        </label>
-                                    </div>
-                                    <div
-                                        class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                                        <input name="penalize_newline" id="penalize_newline"
-                                            :checked="opts.penalize_newline"
-                                            @change="opts.penalize_newline = $event.target.checked"
-                                            class="rounded border-slate-300 text-primary focus:ring-primary w-4 h-4"
-                                            type="checkbox" />
-                                        <label for="penalize_newline"
-                                            class="text-xs font-bold text-slate-700 cursor-pointer">
-                                            Penalize Newline
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <!-- Keep alive (ollama) -->
-                                <div x-show="has('keep_alive')" x-cloak class="flex items-center gap-3">
-                                    <label class="form-label-clean mb-0 flex-1">Keep Alive</label>
-                                    <input name="keep_alive" class="form-input-clean w-28 text-center" type="text"
-                                        x-model="keepAlive" placeholder="5m" />
-                                </div>
-
-                                <!-- Info chip for cloud providers with fewer options -->
-                                <div x-show="!isLocal" x-cloak
-                                    class="p-4 bg-blue-50 rounded-2xl border border-blue-100 text-xs text-blue-700 font-medium leading-relaxed">
-                                    <span class="font-black block mb-1">Cloud provider selected</span>
-                                    Some parameters (context window, GPU layers, etc.) are managed by the provider and
-                                    not exposed here.
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- ── Footer actions ── -->
-                        <div class="flex items-center justify-between pt-8 border-t border-slate-100 mt-6">
-                            <button type="button" @click="resetDefaults()"
-                                class="text-xs font-black text-slate-400 hover:text-rose-500 uppercase tracking-widest transition-colors flex items-center gap-2">
-                                <span class="material-symbols-outlined text-sm">restart_alt</span>
-                                Reset Defaults
+                    <!-- ── Footer actions ── -->
+                    <div class="flex items-center justify-between pt-8 border-t border-slate-100 mt-6">
+                        <button type="button" @click="resetDefaults()"
+                            class="text-xs font-black text-slate-400 hover:text-rose-500 uppercase tracking-widest transition-colors flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm">restart_alt</span>
+                            Reset Defaults
+                        </button>
+                        <div class="flex gap-4">
+                            <button type="button" @click="discardChanges()"
+                                class="px-6 py-3 font-bold text-slate-500 hover:text-slate-800 transition-colors">
+                                Discard
                             </button>
-                            <div class="flex gap-4">
-                                <button type="button" @click="discardChanges()"
-                                    class="px-6 py-3 font-bold text-slate-500 hover:text-slate-800 transition-colors">
-                                    Discard
-                                </button>
-                                <button type="submit"
-                                    class="px-10 py-4 bg-primary text-white font-black rounded-2xl shadow-tactile hover:translate-y-[-2px] hover:shadow-tactile-hover transition-all flex items-center gap-2"
-                                    :disabled="saving" :class="saving && 'opacity-60 cursor-not-allowed'">
-                                    <span x-show="saving"
-                                        class="material-symbols-outlined text-base animate-spin">progress_activity</span>
-                                    <span x-text="saving ? 'SAVING…' : 'SAVE SETTINGS'"></span>
+                            <button type="submit"
+                                class="px-10 py-4 bg-primary text-white font-black rounded-2xl shadow-tactile hover:translate-y-[-2px] hover:shadow-tactile-hover transition-all flex items-center gap-2"
+                                :disabled="saving" :class="saving && 'opacity-60 cursor-not-allowed'">
+                                <span x-show="saving"
+                                    class="material-symbols-outlined text-base animate-spin">progress_activity</span>
+                                <span x-text="saving ? 'SAVING…' : 'SAVE SETTINGS'"></span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </section>
+
+            <!-- ── Kernel Lab ── -->
+            <section x-show="activeLab === 'kernel'" x-cloak
+                class="relative overflow-hidden bg-white border border-emerald-100 rounded-[2.5rem] p-8 md:p-12 shadow-[0_20px_50px_rgba(0,163,108,0.05)] space-y-8">
+                <div>
+                    <h1 class="text-4xl md:text-5xl font-bold text-slate-900 tracking-tight">
+                        Kernel<span class="script-text"> Laboratory</span>
+                    </h1>
+                    <p class="text-slate-500 text-lg max-w-xl leading-relaxed mt-3">
+                        Control Python startup injection, packages, and interpreter version for notebook sandboxes.
+                    </p>
+                </div>
+
+                <div class="space-y-3">
+                    <label class="form-label-clean">Startup Injection Script</label>
+                    <textarea class="form-input-clean font-mono text-xs min-h-[180px]" x-model="kernel.startup_code"
+                        spellcheck="false"></textarea>
+                    <p class="text-[10px] text-slate-400 font-medium px-1">This exact script runs silently when a notebook kernel wakes up.</p>
+                </div>
+
+                <div class="heavy-card p-6 space-y-5">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 bg-primary-soft rounded-xl text-primary">
+                            <span class="material-symbols-outlined text-lg">inventory_2</span>
+                        </div>
+                        <div>
+                            <h3 class="font-black text-slate-900 text-sm">Package Registry (PIP Manager)</h3>
+                            <p class="text-[11px] text-slate-400 font-medium">Search PyPI and add packages to your kernel image.</p>
+                        </div>
+                    </div>
+
+                    <!-- Search PyPI -->
+                    <div class="space-y-3">
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none">search</span>
+                            <input type="text" class="form-input-clean pl-10 pr-28" placeholder="Search PyPI (e.g. scikit-learn)"
+                                x-model="pkgSearch" @keydown.enter.prevent="searchPackage()" />
+                            <button type="button" @click="searchPackage()" :disabled="pkgSearching"
+                                class="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 bg-slate-900 text-white text-[11px] font-black rounded-lg flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-sm" :class="pkgSearching && 'animate-spin'"
+                                    x-text="pkgSearching ? 'progress_activity' : 'search'"></span>
+                                SEARCH
+                            </button>
+                        </div>
+
+                        <!-- Not found -->
+                        <div x-show="pkgSearchDone && !pkgSearchResult" x-cloak
+                            class="px-4 py-3 bg-rose-50 rounded-2xl border-2 border-rose-100 text-xs text-rose-600 font-bold flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm">sentiment_dissatisfied</span>
+                            No package named "<span x-text="pkgSearch"></span>" found on PyPI.
+                        </div>
+
+                        <!-- Search result card -->
+                        <div x-show="pkgSearchResult" x-cloak
+                            class="fade-in p-4 bg-primary-soft border-2 border-primary/20 rounded-2xl space-y-3">
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <p class="font-black text-slate-900 text-sm truncate" x-text="pkgSearchResult?.name"></p>
+                                    <span class="font-mono text-[10px] text-primary bg-white px-2 py-0.5 rounded-full border border-primary/20 shrink-0"
+                                        x-text="'v' + (pkgSearchResult?.version || '?')"></span>
+                                </div>
+                                <p class="text-[11px] text-slate-500 truncate mt-0.5" x-text="pkgSearchResult?.summary || 'No description available.'"></p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="w-36 shrink-0">
+                                    <input type="text" class="form-input-clean text-xs"
+                                        :placeholder="pkgSearchResult?.version ? ('latest (' + pkgSearchResult.version + ')') : 'version'"
+                                        x-model="pkgInstallVersion" />
+                                </div>
+                                <button type="button" @click="installSearchedPackage()"
+                                    class="shrink-0 px-5 py-2.5 bg-primary text-white text-xs font-black rounded-xl flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-sm">add</span> ADD
                                 </button>
                             </div>
                         </div>
-                    </form>
+                    </div>
+
+                    <!-- Installed packages -->
+                    <div class="pt-2 border-t border-slate-100 space-y-3">
+                        <div class="flex items-center justify-between gap-3">
+                            <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest shrink-0">
+                                Installed <span x-text="'(' + filteredPackages.length + '/' + packages.length + ')'"></span>
+                            </p>
+                            <button type="button" @click="fetchPackages()"
+                                class="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 shrink-0">
+                                <span class="material-symbols-outlined text-sm" :class="pkgLoading && 'animate-spin'">refresh</span>
+                                REFRESH
+                            </button>
+                        </div>
+
+                        <!-- Filter installed list -->
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base pointer-events-none">filter_list</span>
+                            <input type="text" class="form-input-clean pl-10 py-2 text-xs" placeholder="Filter installed packages…"
+                                x-model="pkgListSearch" />
+                        </div>
+
+                        <div x-show="pkgError" x-cloak
+                            class="px-4 py-2.5 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-700 font-semibold flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm">info</span>
+                            <span x-text="pkgError"></span>
+                        </div>
+
+                        <!-- Loading -->
+                        <div x-show="pkgLoading" class="text-xs text-slate-500 flex items-center gap-2 py-4">
+                            <span class="material-symbols-outlined text-sm animate-spin">progress_activity</span> Loading packages…
+                        </div>
+
+                        <!-- Empty state -->
+                        <div x-show="!pkgLoading && packages.length === 0" x-cloak
+                            class="text-center py-8 px-4 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                            <span class="material-symbols-outlined text-3xl text-slate-300">deployed_code</span>
+                            <p class="text-xs font-bold text-slate-400 mt-2">No packages found.</p>
+                            <p class="text-[11px] text-slate-400">Search PyPI above to add one, or rebuild the image.</p>
+                        </div>
+
+                        <!-- No filter matches -->
+                        <div x-show="!pkgLoading && packages.length > 0 && filteredPackages.length === 0" x-cloak
+                            class="text-center py-6 px-4 text-[11px] font-bold text-slate-400">
+                            No packages match "<span x-text="pkgListSearch"></span>".
+                        </div>
+
+                        <!-- Package list (height-limited, scrollable) -->
+                        <div x-show="!pkgLoading && filteredPackages.length > 0"
+                            class="max-h-72 overflow-y-auto pr-1 divide-y divide-slate-100 rounded-xl border border-slate-100">
+                            <template x-for="pkg in filteredPackages" :key="pkg.name">
+                                <div class="flex items-center gap-3 py-2.5 px-3"
+                                    :class="pkg.managed && 'bg-primary-soft/50'">
+                                    <span class="material-symbols-outlined text-base shrink-0"
+                                        :class="pkg.managed ? 'text-primary' : 'text-slate-300'">package_2</span>
+                                    <div class="flex-1 min-w-0 flex items-center gap-2">
+                                        <p class="font-bold text-slate-800 text-xs truncate" x-text="pkg.name"></p>
+                                        <span x-show="pkg.managed"
+                                            class="shrink-0 text-[8px] font-black uppercase tracking-wider text-primary bg-white border border-primary/30 rounded-full px-1.5 py-0.5">Managed</span>
+                                        <span x-show="!pkg.installed"
+                                            class="shrink-0 text-[8px] font-black uppercase tracking-wider text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-1.5 py-0.5">Pending</span>
+                                    </div>
+                                    <span class="font-mono text-[10px] text-slate-500 shrink-0"
+                                        x-text="pkg.version ? ('v' + pkg.version) : (pkg.pinned ? ('==' + pkg.pinned) : 'latest')"></span>
+                                    <button type="button" x-show="pkg.managed" @click="removePackage(pkg.name)"
+                                        class="shrink-0 text-rose-500 hover:text-rose-700 p-1.5 rounded-lg hover:bg-rose-50 transition-colors"
+                                        title="Remove from managed packages">
+                                        <span class="material-symbols-outlined text-base">delete</span>
+                                    </button>
+                                    <button type="button" x-show="!pkg.managed" @click="addInstalledToManaged(pkg)"
+                                        class="shrink-0 text-slate-400 hover:text-primary p-1.5 rounded-lg hover:bg-primary-soft transition-colors"
+                                        title="Pin as managed package">
+                                        <span class="material-symbols-outlined text-base">push_pin</span>
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="form-label-clean">Runtime Interpreter Version</label>
+                        <select class="form-input-clean cursor-pointer" x-model="kernel.python_version">
+                            <option value="3.11">Python 3.11</option>
+                            <option value="3.12">Python 3.12</option>
+                            <option value="3.13">Python 3.13</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end gap-3">
+                        <button type="button" @click="rebuildKernelImage()" :disabled="rebuilding"
+                            class="px-6 py-3 bg-slate-900 text-white text-xs font-black rounded-xl flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm" :class="rebuilding && 'animate-spin'">build</span>
+                            <span x-text="rebuilding ? 'REBUILDING…' : 'REBUILD IMAGE'"></span>
+                        </button>
+                    </div>
+                </div>
+
+                <div x-show="rebuildLogs.length" class="bg-slate-900 rounded-2xl p-4 max-h-48 overflow-y-auto font-mono text-[10px] text-emerald-300 space-y-0.5">
+                    <template x-for="(line, i) in rebuildLogs" :key="i">
+                        <div x-text="line"></div>
+                    </template>
+                </div>
+
+                <div class="flex justify-end pt-4 border-t border-slate-100">
+                    <button type="button" @click="saveKernelSettings()" :disabled="kernelSaving"
+                        class="px-10 py-4 bg-primary text-white font-black rounded-2xl shadow-tactile hover:translate-y-[-2px] transition-all">
+                        <span x-text="kernelSaving ? 'SAVING…' : 'SAVE KERNEL SETTINGS'"></span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- ── Security & Compute Lab ── -->
+            <section x-show="activeLab === 'security'" x-cloak
+                class="relative overflow-hidden bg-white border border-emerald-100 rounded-[2.5rem] p-8 md:p-12 shadow-[0_20px_50px_rgba(0,163,108,0.05)] space-y-8">
+                <div>
+                    <h1 class="text-4xl md:text-5xl font-bold text-slate-900 tracking-tight">
+                        Security<span class="script-text"> &amp; Compute</span>
+                    </h1>
+                    <p class="text-slate-500 text-lg max-w-xl leading-relaxed mt-3">
+                        Tune sandbox memory, process limits, and execution timeouts.
+                    </p>
+                </div>
+
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center px-1">
+                        <label class="form-label-clean mb-0">Memory Limit</label>
+                        <span class="font-mono text-xs font-bold text-primary" x-text="security.mem_limit_mb + ' MB'"></span>
+                    </div>
+                    <input class="custom-range" type="range" min="250" max="4096" step="50" x-model.number="security.mem_limit_mb" />
+                </div>
+
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center px-1">
+                        <label class="form-label-clean mb-0">Fork Bomb Protection (PIDS Limit)</label>
+                        <span class="font-mono text-xs font-bold text-primary" x-text="security.pids_limit"></span>
+                    </div>
+                    <input class="custom-range" type="range" min="16" max="1024" step="16" x-model.number="security.pids_limit" />
+                </div>
+
+                <div class="space-y-3">
+                    <label class="form-label-clean">Execution Timeout (seconds, 0 = disabled)</label>
+                    <input type="number" class="form-input-clean w-40" min="0" max="3600" x-model.number="security.exec_timeout" />
+                </div>
+
+                <div class="flex justify-end pt-4 border-t border-slate-100">
+                    <button type="button" @click="saveSecuritySettings()" :disabled="securitySaving"
+                        class="px-10 py-4 bg-primary text-white font-black rounded-2xl shadow-tactile hover:translate-y-[-2px] transition-all">
+                        <span x-text="securitySaving ? 'SAVING…' : 'SAVE SECURITY SETTINGS'"></span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- ── Data & Cache Lab ── -->
+            <section x-show="activeLab === 'data'" x-cloak
+                class="relative overflow-hidden bg-white border border-emerald-100 rounded-[2.5rem] p-8 md:p-12 shadow-[0_20px_50px_rgba(0,163,108,0.05)] space-y-8">
+                <div>
+                    <h1 class="text-4xl md:text-5xl font-bold text-slate-900 tracking-tight">
+                        Data<span class="script-text"> &amp; Cache</span>
+                    </h1>
+                    <p class="text-slate-500 text-lg max-w-xl leading-relaxed mt-3">
+                        Optimize DuckDB materialization, storage paths, and connection handshakes.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="form-label-clean">Data Materialization Batch Size</label>
+                        <input type="number" class="form-input-clean" min="100" max="1000000" x-model.number="data.batch_row_size" />
+                    </div>
+                    <div>
+                        <label class="form-label-clean">Global Connection Timeout (seconds)</label>
+                        <input class="custom-range mt-4" type="range" min="1" max="120" step="1" x-model.number="data.connect_timeout" />
+                        <p class="text-xs font-mono text-primary font-bold mt-2" x-text="data.connect_timeout + 's'"></p>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="form-label-clean">Storage Directory (SPORE_DATA_DIR)</label>
+                    <input type="text" class="form-input-clean font-mono text-xs" x-model="data.data_dir" />
+                </div>
+
+                <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                    <div>
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Disk Usage</p>
+                        <p class="font-black text-slate-900" x-text="dataUsage.total_size || '—'"></p>
+                        <p class="text-xs text-slate-500" x-text="(dataUsage.stream_count || 0) + ' materialized streams'"></p>
+                    </div>
+                    <button type="button" @click="refreshDataUsage()"
+                        class="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm">refresh</span> REFRESH
+                    </button>
+                </div>
+
+                <div class="flex items-center justify-between pt-4 border-t border-slate-100">
+                    <button type="button" @click="nukeCache()" :disabled="nuking"
+                        class="px-6 py-3 bg-rose-600 text-white text-xs font-black rounded-xl hover:bg-rose-700 transition-all">
+                        <span x-text="nuking ? 'CLEARING…' : 'NUKE CACHE'"></span>
+                    </button>
+                    <button type="button" @click="saveDataSettings()" :disabled="dataSaving"
+                        class="px-10 py-4 bg-primary text-white font-black rounded-2xl shadow-tactile hover:translate-y-[-2px] transition-all">
+                        <span x-text="dataSaving ? 'SAVING…' : 'SAVE DATA SETTINGS'"></span>
+                    </button>
                 </div>
             </section>
         </main>
@@ -738,6 +1025,9 @@
     <script>
         // Injected from Flask
         const INITIAL_SETTINGS = {{ settings | tojson }};
+        const KERNEL_RUNTIME = {{ kernel_runtime | tojson }};
+        const SECURITY_RUNTIME = {{ security_runtime | tojson }};
+        const DATA_RUNTIME = {{ data_runtime | tojson }};
         const PROVIDER_FIELDS = {{ provider_fields | tojson }};
         const PROVIDER_BASE_URLS = {{ provider_base_urls | tojson }};
         const URL_PROVIDERS = {{ url_providers | tojson }};
@@ -776,7 +1066,46 @@
 
         function settingsApp() {
             return {
-                // State
+                // Lab navigation
+                activeLab: 'llm',
+
+                // Kernel Lab
+                kernel: {
+                    startup_code: KERNEL_RUNTIME.startup_code || '',
+                    python_version: KERNEL_RUNTIME.python_version || '3.12',
+                },
+                packages: [],
+                pkgSearch: '',
+                pkgListSearch: '',
+                pkgInstallVersion: '',
+                pkgLoading: false,
+                pkgError: '',
+                pkgSearching: false,
+                pkgSearchDone: false,
+                pkgSearchResult: null,
+                kernelSaving: false,
+                rebuilding: false,
+                rebuildLogs: [],
+
+                // Security Lab
+                security: {
+                    mem_limit_mb: SECURITY_RUNTIME.mem_limit_mb || 1024,
+                    pids_limit: SECURITY_RUNTIME.pids_limit || 256,
+                    exec_timeout: SECURITY_RUNTIME.exec_timeout ?? 30,
+                },
+                securitySaving: false,
+
+                // Data Lab
+                data: {
+                    batch_row_size: DATA_RUNTIME.batch_row_size || 10000,
+                    connect_timeout: DATA_RUNTIME.connect_timeout || 5,
+                    data_dir: DATA_RUNTIME.data_dir || '/data',
+                },
+                dataUsage: {},
+                dataSaving: false,
+                nuking: false,
+
+                // LLM State
                 tab: 'local',
                 provider: INITIAL_SETTINGS.provider || 'ollama',
                 selectedModel: INITIAL_SETTINGS.model || '',
@@ -814,6 +1143,11 @@
                 },
                 get cloudModelPlaceholder() { return (CLOUD_HINTS[this.provider] || {}).placeholder || 'Enter model name…'; },
                 get cloudModelHint() { return (CLOUD_HINTS[this.provider] || {}).hint || ''; },
+                get filteredPackages() {
+                    const q = (this.pkgListSearch || '').toLowerCase().trim();
+                    if (!q) return this.packages;
+                    return this.packages.filter(p => (p.name || '').toLowerCase().includes(q));
+                },
 
                 // Check if current provider uses a field
                 has(field) { return (PROVIDER_FIELDS[this.provider] || []).includes(field); },
@@ -904,6 +1238,223 @@
                     }
                     this.saving = true;
                     // Let native POST submit — Flask flashes the result
+                },
+
+                // ── Kernel Lab ──
+                async onKernelLabOpen() {
+                    await this.fetchPackages();
+                },
+
+                async fetchPackages() {
+                    this.pkgLoading = true;
+                    this.pkgError = '';
+                    try {
+                        const res = await fetch('/settings/kernel/packages');
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+                        this.packages = data.packages || [];
+                        if (!data.image_available) {
+                            this.pkgError = `Kernel image "${data.image}" not built yet — versions shown are pinned values. Rebuild the image to apply.`;
+                        }
+                    } catch (e) {
+                        this.pkgError = 'Could not load packages: ' + e.message;
+                        this.packages = [];
+                    } finally {
+                        this.pkgLoading = false;
+                    }
+                },
+
+                async searchPackage() {
+                    const q = (this.pkgSearch || '').trim();
+                    if (!q) return;
+                    this.pkgSearching = true;
+                    this.pkgSearchDone = false;
+                    this.pkgSearchResult = null;
+                    this.pkgInstallVersion = '';
+                    try {
+                        const res = await fetch(`/settings/kernel/packages/search?q=${encodeURIComponent(q)}`);
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || 'Search failed');
+                        this.pkgSearchResult = data.found ? data : null;
+                    } catch (e) {
+                        alert(e.message);
+                    } finally {
+                        this.pkgSearching = false;
+                        this.pkgSearchDone = true;
+                    }
+                },
+
+                async installSearchedPackage() {
+                    if (!this.pkgSearchResult) return;
+                    const name = this.pkgSearchResult.name;
+                    const version = (this.pkgInstallVersion || '').trim();
+                    try {
+                        const res = await fetch('/settings/kernel/packages', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name, version }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || 'Add failed');
+                        this.pkgSearch = '';
+                        this.pkgInstallVersion = '';
+                        this.pkgSearchResult = null;
+                        this.pkgSearchDone = false;
+                        await this.fetchPackages();
+                    } catch (e) {
+                        alert(e.message);
+                    }
+                },
+
+                async addInstalledToManaged(pkg) {
+                    try {
+                        const res = await fetch('/settings/kernel/packages', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name: pkg.name, version: pkg.version || '' }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || 'Pin failed');
+                        await this.fetchPackages();
+                    } catch (e) {
+                        alert(e.message);
+                    }
+                },
+
+                async removePackage(name) {
+                    if (!confirm(`Remove ${name} from managed packages?`)) return;
+                    try {
+                        const res = await fetch(`/settings/kernel/packages/${encodeURIComponent(name)}`, { method: 'DELETE' });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || 'Remove failed');
+                        await this.fetchPackages();
+                    } catch (e) {
+                        alert(e.message);
+                    }
+                },
+
+                async saveKernelSettings() {
+                    this.kernelSaving = true;
+                    try {
+                        const res = await fetch('/settings/kernel', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(this.kernel),
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || 'Save failed');
+                        alert('Kernel settings saved. Restart notebook kernels to apply.');
+                    } catch (e) {
+                        alert(e.message);
+                    } finally {
+                        this.kernelSaving = false;
+                    }
+                },
+
+                async rebuildKernelImage() {
+                    if (!confirm(`Rebuild kernel image for Python ${this.kernel.python_version}? This may take a few minutes.`)) return;
+                    this.rebuilding = true;
+                    this.rebuildLogs = [];
+                    try {
+                        const url = `/settings/kernel/rebuild?python_version=${encodeURIComponent(this.kernel.python_version)}`;
+                        const res = await fetch(url);
+                        const reader = res.body.getReader();
+                        const decoder = new TextDecoder();
+                        let buffer = '';
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+                            buffer += decoder.decode(value, { stream: true });
+                            const parts = buffer.split('\n\n');
+                            buffer = parts.pop() || '';
+                            for (const part of parts) {
+                                const line = part.trim();
+                                if (!line.startsWith('data:')) continue;
+                                const payload = JSON.parse(line.slice(5).trim());
+                                if (payload.type === 'log' || payload.type === 'status') {
+                                    this.rebuildLogs.push(payload.content);
+                                } else if (payload.type === 'error') {
+                                    this.rebuildLogs.push('ERROR: ' + payload.content);
+                                } else if (payload.type === 'done') {
+                                    this.rebuildLogs.push('Build complete: ' + payload.tag);
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        this.rebuildLogs.push('ERROR: ' + e.message);
+                    } finally {
+                        this.rebuilding = false;
+                    }
+                },
+
+                // ── Security Lab ──
+                async saveSecuritySettings() {
+                    this.securitySaving = true;
+                    try {
+                        const res = await fetch('/settings/security', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(this.security),
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || 'Save failed');
+                        alert('Security settings saved. New kernels will use updated limits.');
+                    } catch (e) {
+                        alert(e.message);
+                    } finally {
+                        this.securitySaving = false;
+                    }
+                },
+
+                // ── Data Lab ──
+                async onDataLabOpen() {
+                    await this.refreshDataUsage();
+                },
+
+                async refreshDataUsage() {
+                    try {
+                        const res = await fetch('/settings/data/usage');
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error);
+                        this.dataUsage = data;
+                    } catch (e) {
+                        console.error(e);
+                    }
+                },
+
+                async saveDataSettings() {
+                    this.dataSaving = true;
+                    try {
+                        const res = await fetch('/settings/data', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(this.data),
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || 'Save failed');
+                        await this.refreshDataUsage();
+                        alert('Data settings saved.');
+                    } catch (e) {
+                        alert(e.message);
+                    } finally {
+                        this.dataSaving = false;
+                    }
+                },
+
+                async nukeCache() {
+                    if (!confirm('Delete all orphan materialized Parquet streams? Active workspace relations are preserved.')) return;
+                    this.nuking = true;
+                    try {
+                        const res = await fetch('/settings/data/nuke-cache', { method: 'POST' });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || 'Nuke failed');
+                        alert(`Removed ${data.removed_count} orphan stream(s), freed ${data.freed_size}.`);
+                        await this.refreshDataUsage();
+                    } catch (e) {
+                        alert(e.message);
+                    } finally {
+                        this.nuking = false;
+                    }
                 },
             };
         }

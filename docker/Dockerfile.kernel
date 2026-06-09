@@ -16,6 +16,9 @@ RUN pip install --no-cache-dir \
     pyarrow \
     openpyxl
 
+ARG EXTRA_PACKAGES=
+RUN if [ -n "$EXTRA_PACKAGES" ]; then pip install --no-cache-dir $EXTRA_PACKAGES; fi
+
 COPY docker/kernel-entrypoint.sh /usr/local/bin/kernel-entrypoint.sh
 RUN chmod +x /usr/local/bin/kernel-entrypoint.sh
 

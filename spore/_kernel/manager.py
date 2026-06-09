@@ -10,6 +10,7 @@ from jupyter_client.blocking import BlockingKernelClient
 from spore._config.settings import settings
 from spore._exception import CustomException
 from spore._logger import logging
+from spore._utils import kernel_runtime, security_runtime
 
 # Fixed in-container ZMQ ports; published to the DinD host for client access.
 _KERNEL_PORTS = {
@@ -21,11 +22,15 @@ _KERNEL_PORTS = {
 }
 
 
-def _docker_client():
+def get_docker_client():
     host = settings.DOCKER_HOST
     if host:
         return docker.DockerClient(base_url=host)
     return docker.from_env()
+
+
+def _docker_client():
+    return get_docker_client()
 
 
 def _new_connection_key() -> str:
@@ -52,9 +57,17 @@ def _inspect_host_ports(container) -> dict[str, int]:
 class DockerKernel:
     """Per-session Jupyter kernel running in an isolated Docker container."""
 
-    def __init__(self, kernel_name: str | None = None, startup_code: str = ""):
-        self.kernel_name = kernel_name or settings.kernel_spec_name()
-        self.user_startup_code = startup_code
+    def __init__(
+        self,
+        kernel_name: str | None = None,
+        startup_code: str = "",
+        packages: list | None = None,
+    ):
+        runtime = kernel_runtime()
+        self.kernel_name = kernel_name or runtime["kernel_spec_name"]
+        self.user_startup_code = startup_code if startup_code else runtime["startup_code"]
+        self.packages = packages if packages is not None else runtime["packages"]
+        self._security = security_runtime()
         self._key = _new_connection_key()
         self._container = None
         self.kc = BlockingKernelClient()
@@ -81,9 +94,11 @@ class DockerKernel:
                 "mode": "rw",
             }
         }
+        runtime = kernel_runtime()
+        sec = security_runtime()
         try:
             self._container = client.containers.run(
-                settings.KERNEL_IMAGE,
+                runtime["image"],
                 name=name,
                 detach=True,
                 environment=env,
@@ -91,8 +106,8 @@ class DockerKernel:
                 volumes=volumes,
                 cap_drop=["ALL"],
                 security_opt=["no-new-privileges"],
-                mem_limit=settings.KERNEL_MEM_LIMIT,
-                pids_limit=settings.KERNEL_PIDS_LIMIT,
+                mem_limit=sec["mem_limit"],
+                pids_limit=sec["pids_limit"],
                 remove=False,
             )
         except DockerException as exc:
@@ -126,25 +141,20 @@ class DockerKernel:
         self.kc.start_channels()
 
     def _inject_startup_config(self):
-        base_startup = """
-        try:
-            import sys
-            from IPython.core.display import display
-
-            def custom_displayhook(value):
-                if value is None:
-                    return
-                display(value)
-
-            sys.displayhook = custom_displayhook
-
-            import plotly.io as pio
-            pio.renderers.default = "plotly_mimetype"
-        except Exception:
-            pass
-        """
-        full_code = base_startup + "\n" + self.user_startup_code
-        for _ in self.execute(full_code):
+        pip_lines = []
+        for pkg in self.packages or []:
+            name = (pkg.get("name") or "").strip()
+            if not name:
+                continue
+            version = (pkg.get("version") or "").strip()
+            spec = f"{name}=={version}" if version else name
+            pip_lines.append(f"subprocess.run(['pip', 'install', {spec!r}], check=False)")
+        full_code = ""
+        if pip_lines:
+            full_code += "import subprocess\ntry:\n" + "\n".join(f"    {line}" for line in pip_lines) + "\nexcept Exception:\n    pass\n"
+        if self.user_startup_code:
+            full_code += "\n" + self.user_startup_code
+        for _ in self.execute(full_code, enforce_timeout=False):
             pass
 
     def _wait_for_ready(self):
@@ -169,13 +179,29 @@ class DockerKernel:
             except Exception:
                 continue
 
-    def execute(self, code):
+    def execute(self, code, enforce_timeout: bool = True):
         """Yield structured output chunks as the kernel produces them."""
         msg_id = self.kc.execute(code)
+        exec_timeout = self._security.get("exec_timeout", 30)
+        started = time.time()
+        poll_timeout = 30
 
         while True:
             try:
-                msg = self.kc.get_iopub_msg(timeout=30)
+                if enforce_timeout and exec_timeout > 0:
+                    elapsed = time.time() - started
+                    if elapsed >= exec_timeout:
+                        self.interrupt()
+                        yield {
+                            "type": "error",
+                            "ename": "KernelTimeout",
+                            "evalue": f"Execution exceeded {exec_timeout}s limit",
+                        }
+                        yield {"type": "done"}
+                        break
+                    poll_timeout = min(30, max(0.5, exec_timeout - elapsed))
+
+                msg = self.kc.get_iopub_msg(timeout=poll_timeout)
                 msg_type = msg["header"]["msg_type"]
                 content = msg["content"]
 
@@ -234,6 +260,10 @@ class DockerKernel:
 
     def restart(self):
         self.shutdown()
+        self._security = security_runtime()
+        runtime = kernel_runtime()
+        self.packages = runtime["packages"]
+        self.user_startup_code = runtime["startup_code"]
         self._key = _new_connection_key()
         self.kc = BlockingKernelClient()
         self._start_container()
@@ -263,7 +293,7 @@ class DockerKernel:
 
     @staticmethod
     def available_kernels() -> list[str]:
-        return [settings.kernel_spec_name()]
+        return [kernel_runtime()["kernel_spec_name"]]
 
 
 # Backwards-compatible alias used by store/socket events.

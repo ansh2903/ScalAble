@@ -6,6 +6,7 @@ COPY requirements.txt .
 COPY setup.py .
 COPY spore ./spore
 COPY frontend ./frontend
+COPY docker ./docker
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     unixodbc \

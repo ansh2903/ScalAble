@@ -22,11 +22,17 @@ def streams_env(tmp_path, monkeypatch):
     from spore._config import settings as settings_mod
 
     settings_mod.settings.SPORE_DATA_DIR = str(tmp_path)
-    import spore._compute.streams as streams_mod
-    import spore._compute.relations as relations_mod
+    import spore._utils as utils_mod
 
-    streams_mod.STREAMS_ROOT = streams
-    relations_mod.STREAMS_ROOT = streams
+    monkeypatch.setattr(
+        utils_mod,
+        "data_runtime",
+        lambda settings_data=None: {
+            "batch_row_size": 10_000,
+            "connect_timeout": 5,
+            "data_dir": str(tmp_path),
+        },
+    )
     yield tmp_path
 
 

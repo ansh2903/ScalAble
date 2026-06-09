@@ -90,9 +90,12 @@ class BaseSource(ABC):
     connect_timeout: int = 5
 
     def __init__(self, config: dict, use_ssh: bool, use_ssl: bool):
+        from spore._utils import data_runtime
+
         self.config = config
         self.security_config = SecurityConfig.from_dict(config, use_ssl)
         self.transport_config = TransportConfig.from_dict(config, use_ssh)
+        self.connect_timeout = data_runtime()["connect_timeout"]
 
     def _resolve_host_port(self) -> tuple[str, int | None]:
         """Resolve host/port for connection, including Docker localhost remap."""

@@ -5,8 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Spore</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link
         href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&amp;family=Manrope:wght@300;400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500&amp;family=Pacifico&amp;display=swap"
         rel="stylesheet" />
@@ -20,10 +18,10 @@
             theme: {
                 extend: {
                     colors: {
-                        "primary": "#10b981", // Emerald 500
+                        "primary": "#10b981",
                         "primary-dark": "#059669",
                         "primary-soft": "#ecfdf5",
-                        "secondary-accent": "#475569", // Slate 600
+                        "secondary-accent": "#475569",
                         "bg-main": "#f8fafc",
                         "card-border": "#e2e8f0",
                         "heavy-outline": "#cbd5e1"
@@ -51,7 +49,7 @@
     </script>
     <style type="text/tailwindcss">
         @layer base {
-            body { 
+            body {
                 @apply bg-bg-main text-slate-800 font-body antialiased;
             }
             h1, h2, h3 {
@@ -76,14 +74,12 @@
             @apply border-primary/30;
             transform: translateY(-2px);
             box-shadow: 0 16px 0 -4px rgba(16, 185, 129, 0.1);
-        }.script-text {
+        }
+        .script-text {
             @apply font-script text-primary not-italic;
             text-transform: none;
         }
     </style>
-
-</head>
-
 </head>
 
 <body class="soft-gradient-bg">
@@ -97,20 +93,12 @@
                 </div>
                 <span class="text-2xl font-black tracking-tighter text-slate-900">Spore</span>
             </div>
-            </div>
 
             <div class="flex items-center gap-3">
-                <a class="flex items-center justify-center w-10 h-10 hover:bg-slate-100 rounded-full transition-colors text-slate-600"
-                    href="/settings" title="Settings">
-                    <span class="material-symbols-outlined text-[24px] leading-none"
-                        style='font-variation-settings: "wght" 300, "opsz" 24;'>
-                        settings
-                    </span>
-                </a>
-
                 <a role="menuitem"
                     class="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-600 border border-slate-200"
-                    href="https://github.com/ansh2903/spore" target="_blank" title="GitHub Repository">
+                    href="https://github.com/ansh2903/spore" target="_blank" rel="noopener noreferrer"
+                    title="GitHub Repository">
                     <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
                         <path
                             d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.041-1.412-4.041-1.412-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z">
@@ -118,7 +106,8 @@
                     </svg>
                 </a>
 
-                <a href="/chat">
+                <a href="https://github.com/ansh2903/spore#run-with-docker-recommended" target="_blank"
+                    rel="noopener noreferrer">
                     <button
                         class="bg-primary text-white px-5 py-2 rounded-full text-sm font-bold shadow-tactile hover:translate-y-[1px] hover:shadow-tactile-hover transition-all">
                         Get Started
@@ -141,11 +130,11 @@
                     Everyone.</span> <br />
                 No SQL required.
             </h1>
-            <p class="text-xl md:text-2xl text-slate-500 max-w-2xl mb-12 leading-relaxed font-light">Bridge the gap
-                between raw data and actionable insight with AI-powered simplicity.</p>
+            <p class="text-xl md:text-2xl text-slate-500 max-w-2xl mb-12 leading-relaxed font-light">Query databases in
+                natural language, materialize results locally, and analyze them in a sandboxed Python notebook.</p>
             <div class="flex flex-col sm:flex-row gap-6">
-
-                <a href="{{ url_for('endpoints.chat') }}">
+                <a href="https://github.com/ansh2903/spore#run-with-docker-recommended" target="_blank"
+                    rel="noopener noreferrer">
                     <button
                         class="bg-primary text-white px-10 py-5 rounded-2xl font-extrabold text-xl shadow-[0_6px_0_0_#059669] hover:translate-y-[2px] hover:shadow-[0_4px_0_0_#059669] transition-all flex items-center justify-center gap-3">
                         Get Started Now
@@ -153,7 +142,8 @@
                     </button>
                 </a>
 
-                <a href="https://github.com/ansh2903/spore" target="_blank" title="GitHub Repository">
+                <a href="https://github.com/ansh2903/spore" target="_blank" rel="noopener noreferrer"
+                    title="GitHub Repository">
                     <button
                         class="bg-white border-2 border-slate-200 text-slate-700 px-10 py-5 rounded-2xl font-extrabold text-xl shadow-[0_6px_0_0_#e2e8f0] hover:translate-y-[2px] hover:shadow-[0_4px_0_0_#e2e8f0] transition-all flex items-center justify-center gap-3">
                         <span class="material-symbols-outlined text-slate-400">terminal</span>
@@ -161,121 +151,88 @@
                     </button>
                 </a>
             </div>
-            <div class="mt-24 w-full max-w-6xl relative">
+
+            <div class="mt-24 w-full max-w-3xl relative text-left">
                 <div class="absolute inset-0 bg-primary/5 blur-[120px] rounded-full scale-75 -z-10"></div>
-                <div class="bg-white border-4 border-slate-200/50 p-3 rounded-[3rem] shadow-2xl overflow-hidden">
-                    <div
-                        class="bg-slate-50 border border-slate-100 rounded-[2.2rem] p-8 md:p-12 aspect-[16/9] flex flex-col items-center justify-center relative overflow-hidden">
-                        <div class="absolute inset-0 empty-state-art opacity-30"></div>
-                        <div class="relative z-10 flex flex-col items-center max-w-md">
-                            <div class="relative mb-8">
-                                <div
-                                    class="w-32 h-32 bg-white rounded-organic border-2 border-slate-200 flex items-center justify-center rotate-3 shadow-sm">
-                                    <span class="material-symbols-outlined text-slate-300 text-6xl">database_off</span>
-                                </div>
-                                <div
-                                    class="absolute -bottom-2 -right-2 w-16 h-16 bg-primary-soft rounded-full border-2 border-primary/20 flex items-center justify-center -rotate-12 shadow-md">
-                                    <span class="material-symbols-outlined text-primary text-3xl">search</span>
-                                </div>
-                            </div>
-                            <h3 class="text-3xl font-headline font-extrabold text-slate-900 mb-4">No Data Sources Found.
-                            </h3>
-                            <p class="text-slate-500 mb-8 font-medium leading-relaxed">Your intelligence dashboard is
-                                ready. Connect your first data source to start generating insights with AI.</p>
-                            <div class="flex flex-col gap-4 w-full">
-                                <a href="/connections">
-                                    <button
-                                        class="w-full bg-primary text-white py-4 px-8 rounded-2xl font-bold text-lg shadow-tactile hover:translate-y-[1px] hover:shadow-tactile-hover transition-all flex items-center justify-center gap-2">
-                                        <span class="material-symbols-outlined">add_circle</span>
-                                        Add Your First Database
-                                    </button>
-                                </a>
-                                <div
-                                    class="flex flex-col items-center pt-8 border-t border-slate-200 mt-4 w-full opacity-0 pointer-events-none hidden">
-                                    <div class="flex items-center gap-2 text-primary font-bold mb-4">
-                                        <span class="w-2 h-2 rounded-full bg-primary animate-ping"></span>
-                                        Redis Database Active.
-                                    </div>
-                                    <button
-                                        class="text-slate-600 font-bold hover:text-primary transition-colors flex items-center gap-2 underline underline-offset-4">
-                                        Manage Connections
-                                    </button>
-                                </div>
-                            </div>
+                <div class="bg-white border-4 border-slate-200/50 p-3 rounded-[2rem] shadow-2xl overflow-hidden">
+                    <div class="bg-slate-900 rounded-[1.5rem] p-6 md:p-8">
+                        <div class="flex items-center gap-2 mb-4">
+                            <span class="w-3 h-3 rounded-full bg-red-400"></span>
+                            <span class="w-3 h-3 rounded-full bg-amber-400"></span>
+                            <span class="w-3 h-3 rounded-full bg-emerald-400"></span>
+                            <span class="ml-2 text-xs font-mono text-slate-500">quick-start</span>
                         </div>
+                        <pre class="font-mono text-sm md:text-base text-slate-300 leading-relaxed overflow-x-auto"><code><span class="text-slate-500">$</span> curl -fsSL https://raw.githubusercontent.com/ansh2903/spore/main/docker/docker-compose.hub.yml -o docker-compose.yml
+<span class="text-slate-500">$</span> docker compose up -d
+<span class="text-primary">→</span> open http://localhost:5000</code></pre>
                     </div>
                 </div>
             </div>
         </section>
-        <div class="max-w-7xl mx-auto">
-            <div class="text-center mb-24">
-                <h2 class="text-4xl md:text-6xl font-headline font-extrabold mb-6 text-slate-900">The Living Laboratory
-                </h2>
-                <p class="text-xl text-slate-500 max-w-2xl mx-auto">Confident technical precision delivered with a warm,
-                    editorial personality.</p>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-8">
-                <div class="md:col-span-8 heavy-card p-12 flex flex-col justify-between overflow-hidden relative group">
-                    <div>
-                        <div
-                            class="w-16 h-16 bg-primary-soft rounded-2xl flex items-center justify-center mb-8 border border-primary/20">
-                            <span class="material-symbols-outlined text-primary text-3xl">hub</span>
+
+        <section class="py-32 px-6">
+            <div class="max-w-7xl mx-auto">
+                <div class="text-center mb-24">
+                    <h2 class="text-4xl md:text-6xl font-headline font-extrabold mb-6 text-slate-900">The Living
+                        Laboratory</h2>
+                    <p class="text-xl text-slate-500 max-w-2xl mx-auto">Connect your data, ask questions in plain
+                        English, and explore results in a secure notebook.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-8">
+                    <div
+                        class="md:col-span-8 heavy-card p-12 flex flex-col justify-between overflow-hidden relative group">
+                        <div>
+                            <div
+                                class="w-16 h-16 bg-primary-soft rounded-2xl flex items-center justify-center mb-8 border border-primary/20">
+                                <span class="material-symbols-outlined text-primary text-3xl">hub</span>
+                            </div>
+                            <h3 class="text-3xl font-bold mb-4 text-slate-900">Universal Connect</h3>
+                            <p class="text-lg text-slate-500 leading-relaxed max-w-lg">Link any SQL or NoSQL database in
+                                seconds. We speak Postgres, MongoDB, and Snowflake so your team doesn't have to.</p>
                         </div>
-                        <h3 class="text-3xl font-bold mb-4 text-slate-900">Universal Connect</h3>
-                        <p class="text-lg text-slate-500 leading-relaxed max-w-lg">Link any SQL or NoSQL database in
-                            seconds. We speak Postgres, MongoDB, and Snowflake so your team doesn't have to.</p>
+                        <div class="mt-12 flex gap-3 flex-wrap">
+                            <span
+                                class="px-4 py-2 bg-slate-100 rounded-full text-xs font-bold text-slate-600 border border-slate-200 font-mono uppercase">PostgreSQL</span>
+                            <span
+                                class="px-4 py-2 bg-slate-100 rounded-full text-xs font-bold text-slate-600 border border-slate-200 font-mono uppercase">MongoDB</span>
+                            <span
+                                class="px-4 py-2 bg-slate-100 rounded-full text-xs font-bold text-slate-600 border border-slate-200 font-mono uppercase">Snowflake</span>
+                        </div>
                     </div>
-                    <div class="mt-12 flex gap-3 flex-wrap">
-                        <span
-                            class="px-4 py-2 bg-slate-100 rounded-full text-xs font-bold text-slate-600 border border-slate-200 font-mono uppercase">PostgreSQL</span>
-                        <span
-                            class="px-4 py-2 bg-slate-100 rounded-full text-xs font-bold text-slate-600 border border-slate-200 font-mono uppercase">MongoDB</span>
-                        <span
-                            class="px-4 py-2 bg-slate-100 rounded-full text-xs font-bold text-slate-600 border border-slate-200 font-mono uppercase">Snowflake</span>
+                    <div class="md:col-span-4 heavy-card bg-primary p-10 text-white !border-primary group">
+                        <div
+                            class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-8 backdrop-blur-sm">
+                            <span class="material-symbols-outlined text-white text-3xl">forum</span>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-4">Natural Language Queries</h3>
+                        <p class="text-white/80 leading-relaxed font-medium mb-8">Ask in English, get data results
+                            instantly via local LLMs. No technical syntax errors.</p>
+                        <div class="bg-white/10 p-4 rounded-xl border border-white/20 font-mono text-sm italic">
+                            "Who were the top performers this quarter?"
+                        </div>
                     </div>
-                </div>
-                <div class="md:col-span-4 heavy-card bg-primary p-10 text-white !border-primary group">
-                    <div
-                        class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-8 backdrop-blur-sm">
-                        <span class="material-symbols-outlined text-white text-3xl">forum</span>
+                    <div class="md:col-span-4 heavy-card p-10 group">
+                        <div
+                            class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mb-8 border border-slate-200">
+                            <span class="material-symbols-outlined text-slate-600 text-3xl">energy_savings_leaf</span>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-4 text-slate-900">No Complexity</h3>
+                        <p class="text-slate-500 leading-relaxed">Streamlined interfaces designed for humans. Ditch the
+                            legacy heavy tools for a better DX.</p>
                     </div>
-                    <h3 class="text-2xl font-bold mb-4">Natural Language Queries</h3>
-                    <p class="text-white/80 leading-relaxed font-medium mb-8">Ask in English, get data results instantly
-                        via local LLMs. No technical syntax errors.</p>
-                    <div class="bg-white/10 p-4 rounded-xl border border-white/20 font-mono text-sm italic">
-                        "Who were the top performers this quarter?"
-                    </div>
-                </div>
-                <div class="md:col-span-4 heavy-card p-10 group">
-                    <div
-                        class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mb-8 border border-slate-200">
-                        <span class="material-symbols-outlined text-slate-600 text-3xl">energy_savings_leaf</span>
-                    </div>
-                    <h3 class="text-2xl font-bold mb-4 text-slate-900">No Complexity</h3>
-                    <p class="text-slate-500 leading-relaxed">Streamlined interfaces designed for humans. Ditch the
-                        legacy heavy tools for a better DX.</p>
-                </div>
-                <div
-                    class="md:col-span-8 heavy-card p-10 flex flex-col md:flex-row gap-10 items-center overflow-hidden">
-                    <div class="flex-1">
+                    <div class="md:col-span-8 heavy-card p-10 group">
                         <div
                             class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mb-8 border border-slate-200">
                             <span class="material-symbols-outlined text-slate-600 text-3xl">analytics</span>
                         </div>
                         <h3 class="text-2xl font-bold mb-4 text-slate-900">Direct Analysis</h3>
-                        <p class="text-slate-500 leading-relaxed">Perform EDA and visualization directly. One-click
-                            charting for your data queries.</p>
-                    </div>
-                    <div
-                        class="w-full md:w-64 aspect-square bg-slate-50 rounded-3xl border-2 border-slate-100 overflow-hidden -rotate-2">
-                        <img alt="Data Analytics"
-                            class="w-full h-full object-cover grayscale opacity-50 mix-blend-multiply"
-                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDTY6rJUGu5deV_y6O6dc4GS__nL-_iyd65zClk2gu4LPJ1AA-zdIE2m03SQNbBOVToqk-ngfKGOe_Mvt3dbHpcDE-zVIkHE8HSBlIwWi1MTaBIiZQUgav9BIdRkr75KKlWX0M4VdT6EAHBLE1z2wkn-EgI5wLrok9GJiu6SJ_a71Rf0EUxdFYYs0TtrKhPdWyjvEQpBRivUrGyfH7rn5BBrnIPmTYIMxXr1BWO7M7iSy_C9aH4jrtswmQzVOCD6-XKEtGKbfAeJMln" />
+                        <p class="text-slate-500 leading-relaxed max-w-lg">Perform EDA and visualization directly in a
+                            sandboxed Python kernel. Plotly charts, Pandas tables, and DuckDB — all in one place.</p>
                     </div>
                 </div>
             </div>
-        </div>
         </section>
+
         <section class="py-32 bg-slate-50 px-6">
             <div class="max-w-7xl mx-auto">
                 <div class="flex flex-col md:flex-row justify-between items-end mb-20 gap-8">
@@ -338,6 +295,7 @@
                 </div>
             </div>
         </section>
+
         <section class="py-24 px-6 bg-white">
             <div
                 class="max-w-6xl mx-auto bg-slate-900 rounded-[3rem] p-12 md:p-24 text-center relative overflow-hidden shadow-2xl">
@@ -348,19 +306,20 @@
                         the community,<br /><span class="script-text text-5xl md:text-7xl block mt-4">for the
                             future.</span></h2>
                     <p class="text-slate-400 text-lg mb-12 max-w-2xl mx-auto font-light leading-relaxed">
-                        Spore is 100% open-source. Join our community to contribute, learn, or just say hello. We’re
-                        building the most accessible data tool together.
+                        Spore is 100% open-source. Star the repo, pull the Docker image, or contribute — we're building
+                        the most accessible data tool together.
                     </p>
                     <div class="flex flex-wrap justify-center gap-6">
                         <a class="bg-white text-slate-900 px-8 py-4 rounded-xl font-bold flex items-center gap-3 hover:bg-slate-100 transition-colors shadow-lg"
-                            href="#">
+                            href="https://github.com/ansh2903/spore" target="_blank" rel="noopener noreferrer">
                             <span class="material-symbols-outlined">code</span>
                             Star on GitHub
                         </a>
                         <a class="bg-slate-800 text-white px-8 py-4 rounded-xl font-bold flex items-center gap-3 hover:bg-slate-700 transition-colors border border-slate-700"
-                            href="#">
-                            <span class="material-symbols-outlined">chat</span>
-                            Join Discord
+                            href="https://hub.docker.com/r/anshsharma2903/spore" target="_blank"
+                            rel="noopener noreferrer">
+                            <span class="material-symbols-outlined">deployed_code</span>
+                            Docker Hub
                         </a>
                     </div>
                 </div>
@@ -370,8 +329,8 @@
 
     <footer class="bg-slate-900 border-t border-slate-800 py-16 px-6 text-slate-300">
         <div class="max-w-7xl mx-auto">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
-                <div class="md:col-span-1 space-y-6">
+            <div class="flex flex-col md:flex-row justify-between gap-12 mb-12">
+                <div class="space-y-4 max-w-sm">
                     <div class="flex items-center gap-2">
                         <div class="w-6 h-6 bg-primary rounded-md flex items-center justify-center">
                             <span class="material-symbols-outlined text-white text-[12px]"
@@ -380,57 +339,33 @@
                         <span class="text-xl font-playful font-bold text-white">Spore</span>
                     </div>
                     <p class="text-sm text-slate-400 font-mono leading-relaxed">
-                        The modern standard for collaborative data intelligence and AI-driven database analysis.
+                        A lightweight data platform for natural-language querying, local materialization, and notebook
+                        analysis.
                     </p>
-                    <div class="flex gap-4">
-                        <a class="text-slate-500 hover:text-primary transition-colors" href="#"><span
-                                class="material-symbols-outlined">alternate_email</span></a>
-                        <a class="text-slate-500 hover:text-primary transition-colors" href="#"><span
-                                class="material-symbols-outlined">share</span></a>
+                </div>
+                <div class="flex gap-16">
+                    <div class="space-y-4">
+                        <h5 class="font-mono text-xs font-bold text-slate-500 uppercase tracking-widest">Links</h5>
+                        <ul class="space-y-3 text-sm font-medium">
+                            <li><a class="hover:text-primary text-slate-400 transition-colors"
+                                    href="https://github.com/ansh2903/spore" target="_blank"
+                                    rel="noopener noreferrer">GitHub</a></li>
+                            <li><a class="hover:text-primary text-slate-400 transition-colors"
+                                    href="https://hub.docker.com/r/anshsharma2903/spore" target="_blank"
+                                    rel="noopener noreferrer">Docker Hub</a></li>
+                            <li><a class="hover:text-primary text-slate-400 transition-colors"
+                                    href="https://github.com/ansh2903/spore/tree/main/docs" target="_blank"
+                                    rel="noopener noreferrer">Documentation</a></li>
+                        </ul>
                     </div>
-                </div>
-                <div class="space-y-4">
-                    <h5 class="font-mono text-xs font-bold text-slate-500 uppercase tracking-widest">Platform</h5>
-                    <ul class="space-y-3 text-sm font-medium">
-                        <li><a class="hover:text-primary text-slate-400 transition-colors" href="#">Documentation</a>
-                        </li>
-                        <li><a class="hover:text-primary text-slate-400 transition-colors" href="#">Integrations</a>
-                        </li>
-                        <li><a class="hover:text-primary text-slate-400 transition-colors" href="#">Database Support</a>
-                        </li>
-                        <li><a class="hover:text-primary text-slate-400 transition-colors" href="#">API Reference</a>
-                        </li>
-                    </ul>
-                </div>
-                <div class="space-y-4">
-                    <h5 class="font-mono text-xs font-bold text-slate-500 uppercase tracking-widest">Community</h5>
-                    <ul class="space-y-3 text-sm font-medium">
-                        <li><a class="hover:text-primary text-slate-400 transition-colors" href="#">GitHub</a></li>
-                        <li><a class="hover:text-primary text-slate-400 transition-colors" href="#">Discord</a></li>
-                        <li><a class="hover:text-primary text-slate-400 transition-colors" href="#">Contributing</a>
-                        </li>
-                        <li><a class="hover:text-primary text-slate-400 transition-colors" href="#">Newsletter</a></li>
-                    </ul>
-                </div>
-                <div class="space-y-4">
-                    <h5 class="font-mono text-xs font-bold text-slate-500 uppercase tracking-widest">Company</h5>
-                    <ul class="space-y-3 text-sm font-medium">
-                        <li><a class="hover:text-primary text-slate-400 transition-colors" href="#">Blog</a></li>
-                        <li><a class="hover:text-primary text-slate-400 transition-colors" href="#">Privacy Policy</a>
-                        </li>
-                        <li><a class="hover:text-primary text-slate-400 transition-colors" href="#">Terms of Service</a>
-                        </li>
-                    </ul>
                 </div>
             </div>
             <div class="pt-8 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
                 <div class="text-xs font-mono text-slate-500">
-                    © 2024 Spore Open Source. v2.4.0-alpha
+                    &copy; 2026 Spore &mdash; Open Source
                 </div>
-                <div class="flex gap-6 text-xs font-mono text-slate-500">
-                    <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                        Systems Operational</span>
-                    <span class="flex items-center gap-1">Built with precision &amp; curiosity.</span>
+                <div class="text-xs font-mono text-slate-500">
+                    Built with precision &amp; curiosity.
                 </div>
             </div>
         </div>
