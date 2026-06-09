@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="spore/static/image_a0b8a9.png" alt="Spore Logo" width="350"/>
+  <img src="doc/assets/image_a0b8a9.png" alt="Spore Logo" width="350"/>
 
   # Spore
   **A Local first and Lightweight Data Platform & Intelligent Notebook Environment**
@@ -8,6 +8,34 @@
 **Spore** is a lightweight web based platform for interacting with a verity of data sources ranging from DB/warehousing to local files. Query remote databases to filter, preprocess, sample data from SQL/NoSQL sources, materialize data to local files via DuckDB using batching to counter memory bottlenecks, analyze it instantly in a rich Python notebook—all while keeping your data strictly under your control and create interactive shareable reports at the end (including full support for local LLMs).
 
 **Spore is still under development and some extra helping would be appriciated, the platform is completely open-source and free of cost**
+
+---
+
+## 📸 Screenshots
+
+<div align="center">
+
+### Workspace
+The entry point — connect to a data source and start querying.
+
+<img src="docs/assets/spore%20main.png" alt="Spore workspace" width="800"/>
+
+### Data Materialization
+Preview, filter, and materialize remote query results into local files.
+
+<img src="docs/assets/spore%20data.png" alt="Spore data materialization" width="800"/>
+
+### Notebook
+Analyze materialized data in a rich Python notebook with live Jupyter kernels.
+
+<img src="docs/assets/spore%20notebook.png" alt="Spore notebook" width="800"/>
+
+### Dashboard
+Build and share interactive reports from your analysis.
+
+<img src="docs/assets/spore%20dash.png" alt="Spore dashboard" width="800"/>
+
+</div>
 
 ---
 
