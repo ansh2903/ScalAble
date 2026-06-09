@@ -63,8 +63,17 @@ Build and share interactive reports from your analysis.
 No checkout required. Grab the run-only compose file and start the full stack
 (app + Redis + a sandboxed Python kernel), then open `http://localhost:5000`.
 
+**Linux / macOS**
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ansh2903/spore/main/docker/docker-compose.hub.yml -o docker-compose.yml
+docker compose up -d
+```
+
+**Windows (PowerShell)**
+
+```powershell
+curl.exe -fsSL https://raw.githubusercontent.com/ansh2903/spore/main/docker/docker-compose.hub.yml -o docker-compose.yml
 docker compose up -d
 ```
 
@@ -90,7 +99,8 @@ cd spore
 
 # Set up virtual environment
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate          # Linux / macOS
+# .venv\Scripts\activate           # Windows (PowerShell)
 
 # Install dependencies
 pip install -e .
