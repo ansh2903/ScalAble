@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="doc/assets/image_a0b8a9.png" alt="Spore Logo" width="350"/>
+  <img src="docs/assets/image_a0b8a9.png" alt="Spore Logo" width="350"/>
 
   # Spore
   **A Local first and Lightweight Data Platform & Intelligent Notebook Environment**
