@@ -20,7 +20,7 @@ Copy [.env.example](../.env.example) to `.env` at the repository root.
 | `SPORE_DATA_DIR` | `/data` | Directory for materialized Parquet and streams (Flask + kernel volume). |
 | `KERNEL_DATA_MOUNT` | `/data` | Path visible inside the Jupyter kernel for relations. |
 | `KERNEL_PYTHON_VERSION` | `3.12` | Python version tag for the sandbox kernel image (deploy-time). |
-| `KERNEL_IMAGE` | `spore-kernel:3.12` | Docker image used for per-session notebook kernels. |
+| `KERNEL_IMAGE` | `spore-kernel:3.12` | Docker image used for per-session notebook kernels. The app reads this at runtime (see `kernel_runtime()` in `spore/_utils.py`). If the Python version is changed in Settings, only the image **tag** is swapped; the registry/namespace from this variable is preserved. |
 | `KERNEL_HOST` | `kernel-dind` | Hostname of the DinD daemon (ZMQ client target). |
 | `KERNEL_VOLUME_BIND` | `/data` | Bind source inside DinD for the shared data volume. |
 | `DOCKER_HOST` | _(empty)_ | Docker API URL (`tcp://kernel-dind:2375` in compose). |
@@ -39,13 +39,20 @@ Defined in [`spore/_config/settings.py`](../spore/_config/settings.py).
 
 ### Docker-specific
 
-When running via [`docker/docker-compose.yml`](../docker/docker-compose.yml):
+When running via [`docker/docker-compose.yml`](../docker/docker-compose.yml) (source checkout / local build):
 
 - `REDIS_HOST=redis` (KeyDB on an internal backend network; not exposed to the host)
 - `DOCKER_HOST=tcp://kernel-dind:2375` (spawn kernels in rootless DinD)
-- `KERNEL_IMAGE=spore-kernel:3.12` (built by the `kernel-image-builder` init service)
+- `KERNEL_IMAGE=spore-kernel:3.12` (built by the `kernel-image-builder` init service into DinD)
 - `SPORE_DATA_DIR=/data` and `KERNEL_DATA_MOUNT=/data` (shared named volume `spore_volumes`)
 - `OLLAMA_BASE=http://host.docker.internal:11434` (Ollama on the host)
+
+When running via [`docker/docker-compose.hub.yml`](../docker/docker-compose.hub.yml) (prebuilt Docker Hub images, no source checkout):
+
+- `KERNEL_IMAGE=anshsharma2903/spore-kernel:3.12` (pre-pulled by the `kernel-image-puller` init service)
+- Optional: set `KERNEL_NAMESPACE` to override the Docker Hub user/org prefix (default `anshsharma2903`)
+
+The kernel image name **must match** between `KERNEL_IMAGE` (what the app spawns) and what exists inside the DinD daemon. Pull-only installs fail if the app still targets `spore-kernel:3.12` while only `anshsharma2903/spore-kernel:3.12` was pulled.
 
 Inside containers, `localhost` database hosts are rewritten to `host.docker.internal` when registering connections.
 

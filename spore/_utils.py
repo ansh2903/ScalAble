@@ -193,6 +193,23 @@ def _format_mem_limit_mb(mb: int) -> str:
     return f"{int(mb)}m"
 
 
+def _kernel_image_for_version(base_image: str, python_version: str) -> str:
+    """Return *base_image* with its tag replaced by *python_version*.
+
+    Preserves registry/namespace (e.g. ``anshsharma2903/spore-kernel``) so Docker
+    Hub and local compose flows share the same logic.
+    """
+    if not base_image:
+        return f"spore-kernel:{python_version}"
+    if ":" in base_image:
+        repo, _, remainder = base_image.partition(":")
+        if "@" in remainder:
+            digest = remainder.split("@", 1)[1]
+            return f"{repo}:{python_version}@{digest}"
+        return f"{repo}:{python_version}"
+    return f"{base_image}:{python_version}"
+
+
 DEFAULT_KERNEL_STARTUP_CODE = """try:
     import sys
     from IPython.core.display import display
@@ -221,11 +238,12 @@ def kernel_runtime(settings_data: dict | None = None) -> dict:
     packages = kernel.get("packages") or []
     if not isinstance(packages, list):
         packages = []
+    image = _kernel_image_for_version(env.KERNEL_IMAGE, python_version)
     return {
         "startup_code": kernel.get("startup_code", DEFAULT_KERNEL_STARTUP_CODE),
         "packages": packages,
         "python_version": python_version,
-        "image": f"spore-kernel:{python_version}",
+        "image": image,
         "kernel_spec_name": f"python{python_version.replace('.', '')}",
     }
 

@@ -62,6 +62,9 @@
         .soft-gradient-bg {
             background: radial-gradient(circle at 50% -20%, #ecfdf5 0%, #f8fafc 60%);
         }
+        .bg-primary-soft {
+            background-color: #ecfdf5;
+        }
         .header-glass {
             background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(12px);
@@ -121,20 +124,28 @@
 <body class="soft-gradient-bg">
     <header class="fixed top-4 inset-x-4 z-50 flex justify-center">
         <nav
-            class="header-glass w-full max-w-5xl h-16 px-6 flex items-center justify-between rounded-pill border-2 border-primary/20 shadow-header-nav">
-            <div class="flex items-center gap-2">
-                <div
-                    class="w-10 h-10 bg-primary organic-border flex items-center justify-center text-white shadow-tactile">
-                    <span class="material-symbols-outlined text-2xl">rocket_launch</span>
+            class="header-glass w-full max-w-5xl h-16 px-6 flex items-center justify-between rounded-pill border-primary/20 shadow-header-nav">
+            <div class="flex items-center gap-3 group cursor-pointer">
+                <div class="w-9 h-9 flex items-center justify-center relative">
+                    <svg class="w-full h-full" fill="none" viewbox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M16 30 C 16 20, 10 16, 13 6" fill="none" stroke="#059669" stroke-linecap="round"
+                            stroke-width="2.5"></path>
+                        <path d="M16 30 C 18 22, 24 18, 21 10" fill="none" stroke="#10b981" stroke-linecap="round"
+                            stroke-width="2"></path>
+                        <circle cx="13" cy="6" fill="#059669" r="3.5"></circle>
+                        <circle cx="21" cy="10" fill="#10b981" r="2.5"></circle>
+                        <circle cx="25" cy="18" fill="#34d399" r="1.5"></circle>
+                        <circle cx="8" cy="20" fill="#059669" r="2"></circle>
+                    </svg>
                 </div>
-                <span class="text-2xl font-black tracking-tighter text-slate-900">Spore</span>
+                <span class="text-2xl font-playful font-bold tracking-tight text-slate-900"
+                    style="font-family: 'Pacifico', cursive;">
+                    Spore
+                </span>
+                <span class="self-center transform translate-y-[1px] font-mono text-[8px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-1.5 py-0.5 rounded-md uppercase tracking-widest select-none">
+                    Beta
+                </span>
             </div>
-
-            <div class="hidden sm:flex items-center gap-6 text-sm font-semibold text-slate-600">
-                <a class="hover:text-primary transition-colors" href="#screenshots">Screenshots</a>
-                <a class="hover:text-primary transition-colors" href="#features">Features</a>
-            </div>
-
             <div class="flex items-center gap-3">
                 <a role="menuitem"
                     class="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-600 border border-slate-200"
@@ -166,34 +177,31 @@
                 <span class="text-xs font-bold tracking-widest text-primary-dark uppercase font-mono">Open Source &amp;
                     Local First</span>
             </div>
-            <h1 class="text-5xl md:text-7xl font-headline font-extrabold max-w-5xl leading-[1.1] mb-8 text-slate-900">
-                Data Intelligence <span class="script-text text-6xl md:text-8xl inline-block -rotate-2 ml-2">for
-                    Everyone.</span> <br />
-                No SQL required.
+            <h1 class="text-5xl md:text-7xl font-headline font-extrabold max-w-5xl leading-[1.1] mb-6 text-slate-900">
+                Data Environments <span class="script-text text-6xl md:text-8xl inline-block -rotate-1 ml-2">Germinated Locally.</span> <br />
+                On-device intelligence.
             </h1>
-            <p class="text-xl md:text-2xl text-slate-500 max-w-2xl mb-12 leading-relaxed font-light">Query databases in
-                natural language, materialize results locally, and analyze them in a sandboxed Python notebook.</p>
-            <div class="flex flex-col sm:flex-row gap-6">
-                <a href="https://github.com/ansh2903/spore#run-with-docker-recommended" target="_blank"
-                    rel="noopener noreferrer">
-                    <button
-                        class="bg-primary text-white px-10 py-5 rounded-2xl font-extrabold text-xl shadow-[0_6px_0_0_#059669] hover:translate-y-[2px] hover:shadow-[0_4px_0_0_#059669] transition-all flex items-center justify-center gap-3">
-                        Get Started Now
-                        <span class="material-symbols-outlined font-bold">arrow_forward</span>
-                    </button>
-                </a>
+            <p class="text-xl text-slate-500 max-w-2xl mx-auto mb-6">A simple, lightweight data platform for local environments. No accounts, No data collection, No strings attached.</p>
+<div class="flex flex-col sm:flex-row gap-6">
+    <a href="https://github.com/ansh2903/spore" target="_blank" rel="noopener noreferrer" title="GitHub Repository" class="w-full sm:w-auto">
+        <button class="w-full sm:w-auto bg-primary text-white px-10 py-5 rounded-2xl font-extrabold text-xl shadow-[0_6px_0_0_#059669] hover:translate-y-[2px] hover:shadow-[0_4px_0_0_#059669] transition-all flex items-center justify-center gap-3">
+            <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+            </svg>
+            View on GitHub
+        </button>
+    </a>
 
-                <a href="https://github.com/ansh2903/spore" target="_blank" rel="noopener noreferrer"
-                    title="GitHub Repository">
-                    <button
-                        class="bg-white border-2 border-slate-200 text-slate-700 px-10 py-5 rounded-2xl font-extrabold text-xl shadow-[0_6px_0_0_#e2e8f0] hover:translate-y-[2px] hover:shadow-[0_4px_0_0_#e2e8f0] transition-all flex items-center justify-center gap-3">
-                        <span class="material-symbols-outlined text-slate-400">terminal</span>
-                        View Source
-                    </button>
-                </a>
-            </div>
-
-            <div class="mt-24 w-full max-w-3xl relative text-left reveal">
+    <a href="https://hub.docker.com/r/anshsharma2903/spore" target="_blank" rel="noopener noreferrer" title="Docker Hub Registry" class="w-full sm:w-auto">
+        <button class="w-full sm:w-auto bg-white border-2 border-card-border text-secondary-accent px-10 py-5 rounded-2xl font-extrabold text-xl shadow-[0_6px_0_0_#e2e8f0] hover:translate-y-[2px] hover:shadow-[0_4px_0_0_#e2e8f0] transition-all flex items-center justify-center gap-3">
+            <svg class="w-6 h-6 fill-[#1D63ED]" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M13.983 11.078h2.119c.102 0 .186-.083.186-.185V8.774a.186.186 0 0 0-.186-.186h-2.119a.186.186 0 0 0-.186.186v2.119c0 .102.084.185.186.185m-2.954 0h2.118c.103 0 .187-.083.187-.185V8.774a.186.186 0 0 0-.187-.186h-2.118a.186.186 0 0 0-.186.186v2.119c0 .102.083.185.186.185m-2.954 0h2.119c.103 0 .186-.083.186-.185V8.774a.186.186 0 0 0-.186-.186H8.075a.186.186 0 0 0-.186.186v2.119c0 .102.083.185.186.185M5.12 11.078h2.118c.103 0 .187-.083.187-.185V8.774a.186.186 0 0 0-.187-.186H5.12a.186.186 0 0 0-.186.186v2.119c0 .102.083.185.186.185m2.954-2.955h2.119c.103 0 .186-.083.186-.185V5.82a.186.186 0 0 0-.186-.186H8.075a.186.186 0 0 0-.186.186v2.118c0 .103.083.187.186.187m2.954 0h2.118c.103 0 .187-.083.187-.185V5.82a.186.186 0 0 0-.187-.186h-2.118a.186.186 0 0 0-.186.186v2.118c0 .103.083.187.186.187m0-2.954h2.118c.103 0 .187-.083.187-.186V2.865a.186.186 0 0 0-.187-.186h-2.118a.186.186 0 0 0-.186.186v2.119c0 .102.083.186.186.186m2.954 5.908h2.119c.102 0 .186-.083.186-.185V8.774a.186.186 0 0 0-.186-.186h-2.119a.18-.18 0 0 0-.186.186v2.119c0 .102.084.185.186.185m-1.205 5.031c-.114-.542-.515-.974-1.246-.974-1.246 0-1.464 1.171-2.28 1.171-.318 0-.63-.122-.764-.326-.062-.112-.047-.369.176-.563.314-.216.711-.271 1.172-.271.745 0 1.253-.412 1.48-1.025.263-.709.055-1.746-1.636-1.746H1.996c-.365 0-.68.221-.791.569C.454 14.868.21 16.324.21 17.581c0 3.864 3.013 4.419 6.45 4.419 6.331 0 11.233-4.301 11.233-7.514 0-.196-.017-.384-.046-.571zm7.42-.516c-.461-.832-1.458-1.247-2.738-1.247-.454 0-.897.054-1.304.16.216.425.298.887.234 1.353-.069.499-.279.957-.597 1.334.331.066.671.099 1.011.099 1.411 0 2.65-.544 3.394-1.7z"/>
+            </svg>
+            Docker Hub
+        </button>
+    </a>
+</div>
+            <div class="mt-12 w-full max-w-3xl relative text-left reveal">
                 <div class="absolute inset-0 bg-primary/5 blur-[120px] rounded-full scale-75 -z-10"></div>
                 <div class="bg-white border-4 border-slate-200/50 p-3 rounded-[2rem] shadow-2xl overflow-hidden">
                     <div class="bg-slate-900 rounded-[1.5rem] p-6 md:p-8">
@@ -229,9 +237,9 @@
         <section id="screenshots" class="py-32 px-6 bg-white/60">
             <div class="max-w-7xl mx-auto">
                 <div class="text-center mb-20 reveal">
-                    <h2 class="text-4xl md:text-6xl font-headline font-extrabold mb-6 text-slate-900">See Spore <span
-                            class="script-text text-5xl md:text-7xl">in action</span></h2>
-                    <p class="text-xl text-slate-500 max-w-2xl mx-auto">From connecting a database to sharing an
+                    <h2 class="text-4xl md:text-6xl font-headline font-extrabold mb-6 text-slate-900">See<span
+                            class="script-text text-5xl md:text-7xl"> Spore </span>in action</h2>
+                    <p class="text-xl text-slate-500 max-w-2xl mx-auto">From connecting to a data source to sharing an
                         interactive dashboard — the full workflow in four steps.</p>
                 </div>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
@@ -420,8 +428,7 @@
                 </div>
                 <div class="relative z-10">
                     <h2 class="text-4xl md:text-6xl font-headline font-extrabold text-white mb-8 leading-tight">Built by
-                        the community,<br /><span class="script-text text-5xl md:text-7xl block mt-4">for the
-                            future.</span></h2>
+                        a homo-sapiens,<br /><span class="script-text text-5xl md:text-7xl block mt-4">for homo-sapiens.</span></h2>
                     <p class="text-slate-400 text-lg mb-12 max-w-2xl mx-auto font-light leading-relaxed">
                         Spore is 100% open-source. Star the repo, pull the Docker image, or contribute — we're building
                         the most accessible data tool together.
