@@ -3,36 +3,48 @@
 # Build and push the Spore app + kernel images to a registry namespace.
 #
 # Usage:
-#   docker/publish.sh                              # app + kernel 3.12, latest
+#   docker/publish.sh                              # app + kernel 3.12; tags version + latest
 #   NAMESPACE=myuser docker/publish.sh
-#   TAG=v0.5 docker/publish.sh
+#   VERSION=0.6 docker/publish.sh                  # override the version (default: setup.py)
+#   PUSH_LATEST=0 docker/publish.sh                # skip the moving "latest" tag
 #   KERNEL_PY_VERSIONS="3.11 3.12 3.13" docker/publish.sh   # offer multiple kernels
+#
+# The app image is published as both <namespace>/spore:<version> and
+# <namespace>/spore:latest. The version defaults to the value in setup.py.
 #
 # Each kernel version is published as <namespace>/spore-kernel:<version>, which
 # is exactly what docker-compose.hub.yml pulls when KERNEL_PYTHON_VERSION is set.
 #
 # Requires: docker login already done for the target namespace.
 
-# cd /home/ansh/Desktop/Projects/dev/ScalAble/ScalAble && docker build -f docker/Dockerfile -t anshsharma2903/spore:latest . 2>&1 | tail -4 && echo "=== verify ===" && docker run --rm --entrypoint sh anshsharma2903/spore:latest -c "echo pyc=\$(find spore frontend -name '*.pyc' | wc -l); grep -rl 'ScalAble' spore frontend 2>/dev/null || echo 'CLEAN: no ScalAble in image'"
-
-# cd /home/ansh/Desktop/Projects/dev/ScalAble/ScalAble && docker push anshsharma2903/spore:latest 2>&1 | tail -6 && echo "=== final hub check ===" && docker manifest inspect anshsharma2903/spore:latest >/dev/null 2>&1 && echo "app: ON HUB" && docker manifest inspect anshsharma2903/spore-kernel:3.12 >/dev/null 2>&1 && echo "kernel: ON HUB"
-
 set -euo pipefail
-
-NAMESPACE="${NAMESPACE:-anshsharma2903}"
-TAG="${TAG:-latest}"
-KERNEL_PY_VERSIONS="${KERNEL_PY_VERSIONS:-3.12}"
-
-APP_IMAGE="${NAMESPACE}/spore:${TAG}"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-echo ">> Building app image:    ${APP_IMAGE}"
-docker build -f docker/Dockerfile -t "${APP_IMAGE}" .
+NAMESPACE="${NAMESPACE:-anshsharma2903}"
+KERNEL_PY_VERSIONS="${KERNEL_PY_VERSIONS:-3.12}"
 
-echo ">> Pushing ${APP_IMAGE}"
-docker push "${APP_IMAGE}"
+# Version: env override, else parsed from setup.py, else "dev".
+if [[ -z "${VERSION:-}" ]]; then
+  VERSION="$(sed -n 's/.*version="\([^"]*\)".*/\1/p' setup.py | head -n1)"
+  VERSION="${VERSION:-dev}"
+fi
+
+# App tags: always the version; add "latest" unless PUSH_LATEST=0.
+APP_TAGS=("${VERSION}")
+[[ "${PUSH_LATEST:-1}" == "1" ]] && APP_TAGS+=("latest")
+
+build_args=()
+for t in "${APP_TAGS[@]}"; do build_args+=(-t "${NAMESPACE}/spore:${t}"); done
+
+echo ">> Building app image (version ${VERSION}): ${APP_TAGS[*]}"
+docker build "${build_args[@]}" -f docker/Dockerfile .
+
+for t in "${APP_TAGS[@]}"; do
+  echo ">> Pushing ${NAMESPACE}/spore:${t}"
+  docker push "${NAMESPACE}/spore:${t}"
+done
 
 for ver in ${KERNEL_PY_VERSIONS}; do
   kernel_image="${NAMESPACE}/spore-kernel:${ver}"
@@ -44,6 +56,6 @@ for ver in ${KERNEL_PY_VERSIONS}; do
 done
 
 echo ">> Done."
-echo "   App:    ${APP_IMAGE}"
+echo "   App:    ${NAMESPACE}/spore:{${APP_TAGS[*]// /,}}"
 echo "   Kernel: ${NAMESPACE}/spore-kernel:{${KERNEL_PY_VERSIONS// /,}}"
 echo "   Run with: docker compose -f docker/docker-compose.hub.yml up -d"

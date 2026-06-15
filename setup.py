@@ -17,9 +17,8 @@ def get_requirements(file_path: str) ->List[str]:
 
 setup(
     name="spore",
-    version="0.5",
+    version="0.7",
     author="Ansh Sharma",
-    author_email="anshsharma2903@gmail.com",
     packages=find_packages(),
     install_requires=get_requirements('requirements.txt'),
 )
