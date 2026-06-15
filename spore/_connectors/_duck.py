@@ -21,6 +21,7 @@ from typing import Any, Generator
 from .utils import (
     make_batch_sink,
     normalize_output_format,
+    prepare_stream_dir,
     source_filename,
     strip_query_terminator,
     wrap_count_query,
@@ -49,8 +50,7 @@ def stream_duckdb_ingest(
     """
     fmt = normalize_output_format(output_format)
     dest = destination_path or data_runtime()["data_dir"]
-    stream_dir = os.path.join(dest, "streams", stream_name)
-    os.makedirs(stream_dir, exist_ok=True)
+    stream_dir = prepare_stream_dir(os.path.join(dest, "streams", stream_name))
     source_path = os.path.join(stream_dir, source_filename(fmt))
 
     sink = None

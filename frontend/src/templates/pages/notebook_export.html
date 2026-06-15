@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ notebook_name }} — Notebook Export</title>
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charset="utf-8"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], processEscapes: true },
+      options: { enableMenu: false },
+      startup: { typeset: false }
+    };
+  </script>
+  <script async src="/static/vendor/mathjax/tex-chtml.js"></script>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --accent: #00A36C;
+      --code-bg: #f1f5f9;
+      --err-bg: #fef2f2;
+      --err-text: #dc2626;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); }
+    header {
+      padding: 1rem 1.5rem; background: var(--card); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    }
+    h1 { margin: 0; font-size: 1.1rem; font-weight: 800; }
+    .sub { margin: 0.25rem 0 0; font-size: 0.75rem; color: var(--muted); }
+    main { max-width: 960px; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+    .cell {
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      margin-bottom: 1rem; overflow: hidden; box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+    }
+    .cell-head {
+      padding: 0.45rem 0.85rem; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border);
+      background: #fafafa;
+    }
+    .cell-head.sql { color: var(--accent); }
+    .cell-head.markdown { color: #7c3aed; }
+    pre.code {
+      margin: 0; padding: 0.85rem 1rem; background: var(--code-bg);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78rem;
+      line-height: 1.5; overflow-x: auto; white-space: pre-wrap; word-break: break-word;
+    }
+    .md-body { padding: 0.85rem 1rem; line-height: 1.55; font-size: 0.9rem; }
+    .md-body p { margin: 0.35rem 0; }
+    .outputs { border-top: 1px solid var(--border); }
+    .out-block { padding: 0.75rem 1rem; border-top: 1px solid var(--border); }
+    .out-block:first-child { border-top: none; }
+    .out-stream { font-family: ui-monospace, monospace; font-size: 0.78rem; white-space: pre-wrap; margin: 0; }
+    .out-stream.stderr { color: #b45309; background: #fffbeb; }
+    .out-error { color: var(--err-text); background: var(--err-bg); font-family: ui-monospace, monospace; font-size: 0.78rem; white-space: pre-wrap; margin: 0; }
+    .out-html { overflow-x: auto; font-size: 0.82rem; }
+    .out-html table { border-collapse: collapse; width: 100%; }
+    .out-html th, .out-html td { border: 1px solid var(--border); padding: 0.35rem 0.5rem; font-size: 0.75rem; }
+    .out-img img { max-width: 100%; height: auto; border-radius: 8px; }
+    .plotly-out { min-height: 360px; }
+    .tag { display: inline-block; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); background: rgba(0,163,108,0.1); padding: 0.15rem 0.45rem; border-radius: 999px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>{{ notebook_name }}</h1>
+      <p class="sub">Exported from Spore · {{ workspace.name }}</p>
+    </div>
+    <span class="tag">HTML export</span>
+  </header>
+  <main id="notebook-root">
+    {% for cell in cells %}
+    <section class="cell" data-type="{{ cell.type }}">
+      <div class="cell-head {{ cell.type }}">{{ cell.type }}</div>
+      {% if cell.type == 'markdown' %}
+      <div class="md-body" data-markdown>{{ cell.code }}</div>
+      {% elif cell.type == 'sql' %}
+      <pre class="code">```sql
+{{ cell.code }}
+```</pre>
+      {% else %}
+      <pre class="code">{{ cell.code }}</pre>
+      {% endif %}
+      {% if cell.outputs %}
+      <div class="outputs">
+        {% for out in cell.outputs %}
+          {% if out.type == 'html_snapshot' %}
+          <div class="out-block out-html">{{ out.content | safe }}</div>
+          {% elif out.type == 'stream' %}
+          <pre class="out-block out-stream{% if out.stream == 'stderr' %} stderr{% endif %}">{{ out.content }}</pre>
+          {% elif out.type == 'error' %}
+          <pre class="out-block out-error">{{ (out.traceback or []) | join('\n') }}</pre>
+          {% elif out.type in ('display', 'result') and out.data %}
+            {% if out.data.get('image/png') %}
+            <div class="out-block out-img"><img src="data:image/png;base64,{{ out.data['image/png'] }}" alt="output" /></div>
+            {% elif out.data.get('image/svg+xml') %}
+            <div class="out-block out-img">{{ out.data['image/svg+xml'] | safe }}</div>
+            {% elif out.data.get('text/html') %}
+            <div class="out-block out-html">{{ out.data['text/html'] | safe }}</div>
+            {% elif out.data.get('text/latex') %}
+            <div class="out-block md-body" data-latex>{{ out.data['text/latex'] }}</div>
+            {% elif out.data.get('application/vnd.plotly.v1+json') %}
+            <div class="out-block plotly-out" id="plotly-{{ loop.index0 }}-{{ loop.parent.loop.index0 }}"></div>
+            <script type="application/json" class="plotly-spec" data-target="plotly-{{ loop.index0 }}-{{ loop.parent.loop.index0 }}">{{ out.data['application/vnd.plotly.v1+json'] | tojson }}</script>
+            {% elif out.data.get('text/plain') %}
+            <pre class="out-block out-stream">{{ out.data['text/plain'] }}</pre>
+            {% elif out.data.get('application/json') %}
+            <pre class="out-block out-stream">{{ out.data['application/json'] }}</pre>
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+    </section>
+    {% endfor %}
+  </main>
+  <script>
+    (function () {
+      if (window.marked) {
+        document.querySelectorAll('[data-markdown]').forEach((el) => {
+          el.innerHTML = marked.parse(el.textContent || '');
+        });
+      }
+      document.querySelectorAll('script.plotly-spec').forEach((script) => {
+        try {
+          const targetId = script.getAttribute('data-target');
+          const el = targetId ? document.getElementById(targetId) : null;
+          const spec = JSON.parse(script.textContent || '{}');
+          if (window.Plotly && el && spec) {
+            Plotly.newPlot(el, spec.data || [], spec.layout || {}, { responsive: true, displayModeBar: true });
+          }
+        } catch (e) { console.warn('plotly render failed', e); }
+      });
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        window.MathJax.typesetPromise().catch(() => {});
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -8,13 +8,13 @@ from flask import abort, jsonify, request, send_from_directory
 from werkzeug.utils import secure_filename
 
 from spore._routes.utils import generate_blueprint
-from spore._utils import file_size_fmt
+from spore._utils import file_size_fmt, ensure_kernel_writable_path, streams_dir
 from spore._logger import logging
 from spore._config.settings import settings
 
 fs_blueprint = generate_blueprint("fs")
 
-ROOT = os.path.abspath(os.path.join(settings.SPORE_DATA_DIR, "streams"))
+ROOT = str(streams_dir(settings.SPORE_DATA_DIR))
 MEMORY_THRESHOLD = 1 * 1024**3  # 1GB
 
 
@@ -113,7 +113,7 @@ def _entry_meta(abs_path: str, name: str, rel_parent: str) -> dict:
 
 @fs_blueprint.route("/api/fs/list")
 def fs_list():
-    os.makedirs(ROOT, exist_ok=True)
+    streams_dir(settings.SPORE_DATA_DIR)
     rel = _norm_rel(request.args.get("path", ""))
     abs_dir = _safe_resolve(rel)
     if not os.path.isdir(abs_dir):
@@ -157,9 +157,7 @@ def fs_mkdir():
         return jsonify({"error": "Already exists"}), 409
 
     try:
-        os.makedirs(abs_path, exist_ok=False)
-    except FileExistsError:
-        return jsonify({"error": "Already exists"}), 409
+        ensure_kernel_writable_path(abs_path, is_dir=True)
     except OSError as e:
         logging.error("fs mkdir error: %s", e)
         return jsonify({"error": str(e)}), 500

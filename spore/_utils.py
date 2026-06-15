@@ -266,17 +266,89 @@ def security_runtime(settings_data: dict | None = None) -> dict:
     }
 
 
+# Lifetime (in seconds) applied when a session is marked "completely permanent".
+# Redis cannot store a truly never-expiring session through flask-session, so we
+# approximate "permanent" with a very long TTL (~10 years).
+PERMANENT_SESSION_SECONDS = 10 * 365 * 24 * 3600
+
+
 def data_runtime(settings_data: dict | None = None) -> dict:
     """Effective data/cache config: settings.json overrides env defaults."""
     from spore._config.settings import settings as env
 
     data = settings_data if settings_data is not None else (load_settings() or {})
     data_cfg = data.get("data") or {}
+    session_permanent = bool(data_cfg.get("session_permanent", False))
+    session_lifetime_hours = int(data_cfg.get("session_lifetime_hours") or 24)
+    if session_permanent:
+        session_lifetime_seconds = PERMANENT_SESSION_SECONDS
+    else:
+        session_lifetime_seconds = session_lifetime_hours * 3600
     return {
-        "batch_row_size": int(data_cfg.get("batch_row_size", 10_000)),
-        "connect_timeout": int(data_cfg.get("connect_timeout", 5)),
+        "batch_row_size": int(data_cfg.get("batch_row_size") or 10_000),
+        "connect_timeout": int(data_cfg.get("connect_timeout") or 5),
         "data_dir": data_cfg.get("data_dir") or env.SPORE_DATA_DIR,
+        "session_permanent": session_permanent,
+        "session_lifetime_hours": session_lifetime_hours,
+        "session_lifetime_seconds": session_lifetime_seconds,
     }
+
+
+# Notebook kernel containers run as uid/gid 1000 (see docker/Dockerfile.kernel),
+# but under rootless DinD that uid is namespace-remapped to an unpredictable host
+# uid. Ownership-based permissions therefore can't be relied on across the volume
+# boundary, so the streams area is made world-writable (mode bits are evaluated
+# against whatever uid the kernel process ends up as). chown is best-effort only.
+KERNEL_UID = 1000
+KERNEL_GID = 1000
+STREAMS_DIR_MODE = 0o777
+STREAMS_FILE_MODE = 0o666
+
+
+def ensure_kernel_writable_path(path: Path | str, *, is_dir: bool = True) -> Path:
+    """Make a streams path writable by the sandbox kernel regardless of its uid."""
+    target = Path(path)
+    if is_dir:
+        target.mkdir(parents=True, exist_ok=True)
+    mode = STREAMS_DIR_MODE if is_dir else STREAMS_FILE_MODE
+    try:
+        os.chmod(target, mode)
+    except OSError:
+        pass
+    # Cosmetic: align ownership when we have the privilege (root in the app
+    # container). Failure is fine — the world-writable mode above is what counts.
+    try:
+        os.chown(target, KERNEL_UID, KERNEL_GID)
+    except (OSError, PermissionError):
+        pass
+    return target
+
+
+def streams_dir(data_dir: str | None = None) -> Path:
+    """Return ``<data_dir>/streams``, created with kernel-writable permissions."""
+    base = data_dir if data_dir is not None else data_runtime()["data_dir"]
+    return ensure_kernel_writable_path(Path(base) / "streams", is_dir=True)
+
+
+def notebooks_dir(data_dir: str | None = None) -> Path:
+    """Return ``<data_dir>/notebooks``, created with kernel-writable permissions."""
+    base = data_dir if data_dir is not None else data_runtime()["data_dir"]
+    return ensure_kernel_writable_path(Path(base) / "notebooks", is_dir=True)
+
+
+def prepare_kernel_streams_volume(data_dir: str | None = None) -> Path:
+    """Ensure the whole streams tree is writable by the kernel before launch.
+
+    Walks every directory and file so kernels can both create new files and
+    overwrite data materialized by the app (written as a different uid).
+    """
+    root = streams_dir(data_dir)
+    for current, dirnames, filenames in os.walk(root):
+        for name in dirnames:
+            ensure_kernel_writable_path(os.path.join(current, name), is_dir=True)
+        for name in filenames:
+            ensure_kernel_writable_path(os.path.join(current, name), is_dir=False)
+    return root
 
 
 def repo_root() -> Path:

@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from spore._utils import data_runtime
+from spore._utils import streams_dir
 
 SUPPORTED_READ_EXTS = frozenset({"parquet", "csv", "tsv", "json", "xlsx"})
 EXCEL_EXTS = frozenset({"xlsx"})
@@ -16,13 +16,11 @@ _excel_cache: dict[tuple[str, float, str | None], Any] = {}
 
 
 def _streams_root_path() -> Path:
-    return Path(data_runtime()["data_dir"]) / "streams"
+    return streams_dir()
 
 
 def streams_root() -> Path:
-    root = _streams_root_path()
-    root.mkdir(parents=True, exist_ok=True)
-    return root
+    return streams_dir()
 
 
 def split_sheet_ref(ref: str) -> tuple[str, str | None]:

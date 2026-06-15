@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir \
     ipykernel \
     pandas \
     numpy \
+    polars \
     plotly \
     duckdb \
     pyarrow \

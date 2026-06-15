@@ -11,11 +11,13 @@ from typing import Protocol
 
 import pyarrow as pa
 import pyarrow.csv as pa_csv
+import pyarrow.json as pa_json
 import pyarrow.parquet as pq
 
 from werkzeug.utils import secure_filename
 
 from spore._config.settings import settings
+from spore._utils import ensure_kernel_writable_path, streams_dir
 
 
 # ── connection secrets (volume-backed cert/key storage) ─────────────────────
@@ -83,11 +85,15 @@ def purge_connection_secrets(conn_id: str) -> None:
         shutil.rmtree(path, ignore_errors=True)
 
 
+def prepare_stream_dir(path: str) -> str:
+    """Create a stream directory with kernel-writable permissions."""
+    return str(ensure_kernel_writable_path(path, is_dir=True))
+
+
 def connection_stream_dir(conn_name: str, conn_id: str) -> str:
     """Return (and create) ``streams/<slug>`` for uploaded data files."""
     base = slugify_conn_name(conn_name, fallback=str(conn_id))
-    root = os.path.join(settings.SPORE_DATA_DIR, STREAMS_SUBDIR)
-    os.makedirs(root, exist_ok=True)
+    root = str(streams_dir(settings.SPORE_DATA_DIR))
 
     candidate = base
     suffix = 2
@@ -96,7 +102,7 @@ def connection_stream_dir(conn_name: str, conn_id: str) -> str:
         suffix += 1
 
     path = os.path.join(root, candidate)
-    os.makedirs(path, mode=0o755, exist_ok=True)
+    ensure_kernel_writable_path(path, is_dir=True)
     return path
 
 
@@ -362,6 +368,207 @@ def write_empty_dataset(path: str, schema: pa.Schema, output_format: str) -> Non
         sink.write_batch(empty)
     finally:
         sink.close()
+
+
+# ── file push: schema inference + DDL ───────────────────────────────────────
+
+import re as _re
+
+_PG_RESERVED = frozenset({
+    "all", "analyse", "analyze", "and", "any", "array", "as", "asc", "asymmetric",
+    "authorization", "between", "bigint", "binary", "bit", "boolean", "both", "case",
+    "cast", "char", "character", "check", "coalesce", "collate", "column", "constraint",
+    "create", "cross", "current_date", "current_role", "current_time", "current_timestamp",
+    "current_user", "date", "day", "dec", "decimal", "default", "deferrable", "desc",
+    "distinct", "do", "else", "end", "except", "exists", "false", "fetch", "float",
+    "for", "foreign", "from", "full", "grant", "group", "having", "hour", "if", "in",
+    "index", "inner", "insert", "int", "integer", "intersect", "interval", "into", "is",
+    "join", "key", "leading", "left", "like", "limit", "localtime", "localtimestamp",
+    "minute", "month", "natural", "new", "not", "null", "numeric", "of", "offset", "old",
+    "on", "only", "or", "order", "outer", "overlaps", "placing", "primary", "references",
+    "returning", "right", "row", "select", "session_user", "set", "similar", "smallint",
+    "some", "table", "then", "time", "timestamp", "to", "trailing", "true", "union",
+    "unique", "update", "user", "using", "values", "varchar", "variadic", "when", "where",
+    "window", "with", "without", "year",
+})
+
+
+def sanitize_column_name(name: str) -> str:
+    """Normalise a raw column name for safe SQL identifiers."""
+    cleaned = str(name).strip().replace(" ", "_")
+    cleaned = _re.sub(r"[^a-zA-Z0-9_]", "_", cleaned)
+    cleaned = _re.sub(r"_+", "_", cleaned).strip("_")
+    if not cleaned or cleaned[0].isdigit():
+        cleaned = f"col_{cleaned}" if cleaned else "col"
+    if cleaned.lower() in _PG_RESERVED:
+        cleaned = f"{cleaned}_col"
+    return cleaned
+
+
+def sanitize_column_names(names: list[str]) -> list[str]:
+    """Sanitize and de-duplicate a sequence of column names."""
+    seen: dict[str, int] = {}
+    out: list[str] = []
+    for raw in names:
+        base = sanitize_column_name(raw)
+        key = base.lower()
+        count = seen.get(key, 0)
+        seen[key] = count + 1
+        out.append(base if count == 0 else f"{base}_{count + 1}")
+    return out
+
+
+def _arrow_type_to_postgres(field: pa.Field) -> str:
+    """Map a PyArrow field to a PostgreSQL column type."""
+    t = field.type
+    if pa.types.is_int8(t) or pa.types.is_int16(t) or pa.types.is_int32(t):
+        return "INTEGER"
+    if pa.types.is_int64(t):
+        return "BIGINT"
+    if pa.types.is_uint8(t) or pa.types.is_uint16(t) or pa.types.is_uint32(t):
+        return "INTEGER"
+    if pa.types.is_uint64(t):
+        return "BIGINT"
+    if pa.types.is_float16(t) or pa.types.is_float32(t):
+        return "REAL"
+    if pa.types.is_float64(t):
+        return "DOUBLE PRECISION"
+    if pa.types.is_boolean(t):
+        return "BOOLEAN"
+    if pa.types.is_timestamp(t):
+        return "TIMESTAMP"
+    if pa.types.is_date(t):
+        return "DATE"
+    if pa.types.is_time(t):
+        return "TIME"
+    if pa.types.is_decimal(t):
+        return f"NUMERIC({t.precision},{t.scale})"
+    if pa.types.is_binary(t):
+        return "BYTEA"
+    return "TEXT"
+
+
+def _qi_pg(name: str) -> str:
+    """Double-quote a PostgreSQL identifier."""
+    return '"' + name.replace('"', '""') + '"'
+
+
+def build_postgres_ddl(
+    table_name: str,
+    columns: list[str],
+    arrow_types: list[str],
+    schema: str = "public",
+) -> str:
+    """Build a CREATE TABLE statement from inferred column metadata."""
+    qualified = f"{_qi_pg(schema)}.{_qi_pg(table_name)}"
+    col_defs = []
+    for col, pg_type in zip(columns, arrow_types):
+        col_defs.append(f"    {_qi_pg(col)} {pg_type}")
+    body = ",\n".join(col_defs)
+    return f"CREATE TABLE IF NOT EXISTS {qualified} (\n{body}\n);"
+
+
+def _read_file_sample(file_path: str, sample_rows: int) -> pa.Table:
+    """Read up to ``sample_rows`` from a supported file for schema inference."""
+    import pandas as pd
+
+    ext = os.path.splitext(file_path)[1].lower()
+
+    if ext in (".csv", ".tsv", ".txt"):
+        # Use the same PyArrow reader as the streaming loader so inferred
+        # column names match the ingest path exactly (pandas and PyArrow label
+        # blank/duplicate headers differently, which would desync the DDL from
+        # the COPY column list).
+        delimiter = "\t" if ext == ".tsv" else ","
+        reader = pa_csv.open_csv(
+            file_path,
+            read_options=pa_csv.ReadOptions(block_size=max(sample_rows, 1) * 1024),
+            parse_options=pa_csv.ParseOptions(delimiter=delimiter),
+        )
+        try:
+            first_batch = reader.read_next_batch()
+        except StopIteration:
+            raise ValueError("File appears to be empty")
+        table = pa.Table.from_batches([first_batch])
+        names = sanitize_column_names(table.schema.names)
+        return table.rename_columns(names).slice(0, sample_rows)
+
+    if ext in (".json", ".ndjson"):
+        try:
+            table = pa_json.read_json(file_path)
+        except Exception:
+            import pandas as pd
+            df = pd.read_json(file_path, lines=(ext == ".ndjson"), nrows=sample_rows)
+            df.columns = sanitize_column_names([str(c) for c in df.columns])
+            return pa.Table.from_pandas(df)
+        return table.slice(0, sample_rows)
+
+    if ext in (".xls", ".xlsx"):
+        import pandas as pd
+        df = pd.read_excel(file_path, engine="openpyxl", nrows=sample_rows)
+        df.columns = sanitize_column_names([str(c) for c in df.columns])
+        return pa.Table.from_pandas(df)
+
+    if ext == ".parquet":
+        pf = pq.ParquetFile(file_path)
+        return pf.read_row_group(0).slice(0, sample_rows)
+
+    raise ValueError(f"Unsupported file extension for inference: {ext}")
+
+
+def estimate_file_rows(file_path: str) -> int | None:
+    """Best-effort row count estimate without loading the full file."""
+    ext = os.path.splitext(file_path)[1].lower()
+    try:
+        if ext == ".parquet":
+            pf = pq.ParquetFile(file_path)
+            return pf.metadata.num_rows
+        if ext in (".csv", ".tsv", ".txt"):
+            # Fast line count for text files
+            count = 0
+            with open(file_path, "rb") as fh:
+                for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+                    count += chunk.count(b"\n")
+            return max(0, count - 1)  # subtract header
+    except Exception:
+        pass
+    return None
+
+
+def infer_table_schema(file_path: str, sample_rows: int = 200) -> dict:
+    """
+    Infer column names, PostgreSQL types, and sample rows from a local file.
+
+    Returns:
+        {
+            "columns": [...],
+            "types": [...],          # postgres type strings
+            "arrow_types": [...],    # arrow type strings (for reference)
+            "sample_rows": [...],    # list of dicts
+            "file_ext": ".csv",
+            "file_size": 12345,
+        }
+    """
+    if not os.path.isfile(file_path):
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    table = _read_file_sample(file_path, sample_rows)
+    columns = sanitize_column_names(table.schema.names)
+    arrow_types = [str(f.type) for f in table.schema]
+    pg_types = [_arrow_type_to_postgres(f) for f in table.schema]
+
+    # Rename columns in the table to sanitized names
+    renamed = table.rename_columns(columns)
+    sample = renamed.slice(0, min(sample_rows, renamed.num_rows)).to_pylist()
+
+    return {
+        "columns": columns,
+        "types": pg_types,
+        "arrow_types": arrow_types,
+        "sample_rows": sample,
+        "file_ext": os.path.splitext(file_path)[1].lower(),
+        "file_size": os.path.getsize(file_path),
+    }
 
 
 # ── HTTP TLS helpers (REST / GraphQL) ───────────────────────────────────────

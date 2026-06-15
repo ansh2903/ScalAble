@@ -17,6 +17,7 @@ from spore._connectors.utils import (
     make_batch_sink,
     normalize_output_format,
     normalize_preview_limit,
+    prepare_stream_dir,
     source_filename,
     write_empty_dataset,
 )
@@ -146,8 +147,7 @@ def ingest_file_batches(
     """Generic ingest loop: ``read_batches`` yields Arrow record batches."""
     fmt = normalize_output_format(output_format)
     dest = settings.SPORE_DATA_DIR
-    stream_dir = os.path.join(dest, "streams", stream_name)
-    os.makedirs(stream_dir, exist_ok=True)
+    stream_dir = prepare_stream_dir(os.path.join(dest, "streams", stream_name))
     source_path = os.path.join(stream_dir, source_filename(fmt))
 
     if copy_if_same_ext and path.lower().endswith(copy_if_same_ext.lower()):

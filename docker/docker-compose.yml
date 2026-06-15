@@ -30,6 +30,7 @@ services:
       - KERNEL_IMAGE=spore-kernel:${KERNEL_PYTHON_VERSION:-3.12}
       - KERNEL_HOST=kernel-dind
       - KERNEL_VOLUME_BIND=/data
+      - KERNEL_ALLOW_NETWORK=${KERNEL_ALLOW_NETWORK:-true}
       - DOCKER_HOST=tcp://kernel-dind:2375
       # LLM provider endpoints. Defaults target the host; override in .env (or the
       # in-app Settings UI) when your providers live elsewhere. NOTE: a host

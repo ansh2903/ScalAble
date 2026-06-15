@@ -10,7 +10,7 @@ from jupyter_client.blocking import BlockingKernelClient
 from spore._config.settings import settings
 from spore._exception import CustomException
 from spore._logger import logging
-from spore._utils import kernel_runtime, security_runtime
+from spore._utils import kernel_runtime, prepare_kernel_streams_volume, security_runtime
 
 # Fixed in-container ZMQ ports; published to the DinD host for client access.
 _KERNEL_PORTS = {
@@ -54,6 +54,27 @@ def _inspect_host_ports(container) -> dict[str, int]:
     return mapping
 
 
+def _ensure_dind_network(client, name: str) -> str:
+    """Ensure a user-defined bridge network exists inside DinD."""
+    try:
+        client.networks.get(name)
+    except NotFound:
+        client.networks.create(name, driver="bridge", check_duplicate=True)
+        logging.info("Created kernel network inside DinD: %s", name)
+    return name
+
+
+def _container_network_kwargs(client) -> dict:
+    """Network options for kernel containers (egress + optional DNS)."""
+    if not settings.KERNEL_ALLOW_NETWORK:
+        return {"network_disabled": True}
+    network = _ensure_dind_network(client, settings.KERNEL_NETWORK)
+    kwargs: dict = {"network": network}
+    if settings.KERNEL_DNS:
+        kwargs["dns"] = settings.KERNEL_DNS
+    return kwargs
+
+
 class DockerKernel:
     """Per-session Jupyter kernel running in an isolated Docker container."""
 
@@ -78,6 +99,7 @@ class DockerKernel:
         logging.info("Docker kernel started: %s (%s)", self.kernel_name, self._container.short_id)
 
     def _start_container(self) -> None:
+        prepare_kernel_streams_volume(settings.KERNEL_VOLUME_BIND)
         client = _docker_client()
         name = f"spore-kernel-{secrets.token_hex(6)}"
         env = {
@@ -96,6 +118,7 @@ class DockerKernel:
         }
         runtime = kernel_runtime()
         sec = security_runtime()
+        network_kwargs = _container_network_kwargs(client)
         try:
             self._container = client.containers.run(
                 runtime["image"],
@@ -109,6 +132,7 @@ class DockerKernel:
                 mem_limit=sec["mem_limit"],
                 pids_limit=sec["pids_limit"],
                 remove=False,
+                **network_kwargs,
             )
         except DockerException as exc:
             raise CustomException(f"Failed to start kernel container: {exc}") from exc
@@ -141,20 +165,9 @@ class DockerKernel:
         self.kc.start_channels()
 
     def _inject_startup_config(self):
-        pip_lines = []
-        for pkg in self.packages or []:
-            name = (pkg.get("name") or "").strip()
-            if not name:
-                continue
-            version = (pkg.get("version") or "").strip()
-            spec = f"{name}=={version}" if version else name
-            pip_lines.append(f"subprocess.run(['pip', 'install', {spec!r}], check=False)")
-        full_code = ""
-        if pip_lines:
-            full_code += "import subprocess\ntry:\n" + "\n".join(f"    {line}" for line in pip_lines) + "\nexcept Exception:\n    pass\n"
-        if self.user_startup_code:
-            full_code += "\n" + self.user_startup_code
-        for _ in self.execute(full_code, enforce_timeout=False):
+        if not self.user_startup_code:
+            return
+        for _ in self.execute(self.user_startup_code, enforce_timeout=False):
             pass
 
     def _wait_for_ready(self):

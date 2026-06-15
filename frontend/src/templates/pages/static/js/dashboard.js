@@ -3415,7 +3415,9 @@
       dashboardState = ensurePages(state);
     }
     const titleEl = document.getElementById('dashboard-header-name');
-    if (titleEl) titleEl.textContent = dashboardState.title || window.SPORE_WORKSPACE?.name || 'Dashboard';
+    if (titleEl) {
+      setDashboardHeaderTitle(dashboardState.title || window.SPORE_WORKSPACE?.name || 'Dashboard');
+    }
     updateHeader();
     fetchRelations().then(() => renderGrid());
     _hydrating = false;
@@ -3436,6 +3438,19 @@
     } catch (e) {
       console.warn('relation register failed', e);
     }
+  }
+
+  function setDashboardHeaderTitle(title) {
+    const titleEl = document.getElementById('dashboard-header-name');
+    if (titleEl) titleEl.value = title;
+  }
+
+  function renameDashboard(title) {
+    const trimmed = (title || '').trim();
+    const finalTitle = trimmed || window.SPORE_WORKSPACE?.name || 'Dashboard';
+    setDashboardHeaderTitle(finalTitle);
+    dashboardState.title = finalTitle;
+    scheduleSave();
   }
 
   function bindControls() {
@@ -3471,6 +3486,7 @@
     });
   }
 
+  window.renameDashboard = renameDashboard;
   window.hydrateDashboardFromWorkspace = hydrateDashboard;
   window.registerRelationAfterIngest = registerRelationAfterIngest;
   window.getDashboardState = () => dashboardState;

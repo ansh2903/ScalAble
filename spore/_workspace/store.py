@@ -12,9 +12,9 @@ from typing import Any
 from spore._config.settings import settings
 from spore._utils import generate_id
 
-DEFAULT_NOTEBOOK = {"cells": [], "cell_counter": 0}
+DEFAULT_NOTEBOOK = {"name": "", "cells": [], "cell_counter": 0}
 DEFAULT_DASHBOARD = {
-    "title": "Dashboard_Untitled_01",
+    "title": "",
     "widgets": [],
     "layout": {"columns": 12},
     "metadata": {},

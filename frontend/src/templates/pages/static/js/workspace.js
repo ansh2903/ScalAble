@@ -19,6 +19,22 @@ function getWorkspaceApiBase() {
     return `/api/workspaces/${encodeURIComponent(id)}`;
 }
 
+async function updateWorkspaceName(name) {
+    const base = getWorkspaceApiBase();
+    const trimmed = (name || '').trim();
+    if (!base || !trimmed || trimmed === SPORE_WS?.name) return;
+    try {
+        const res = await fetch(base, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: trimmed }),
+        });
+        if (res.ok && SPORE_WS) SPORE_WS.name = trimmed;
+    } catch (e) {
+        console.warn('workspace rename failed', e);
+    }
+}
+
 async function saveWorkspaceStatePatch(patch, immediate = false) {
     const base = getWorkspaceApiBase();
     if (!base) return;
@@ -695,8 +711,7 @@ function updateDataHeader(conn) {
 
     if (!nameEl || !vendorEl || !contextEl || !modeEl) return;
 
-    const wsName = SPORE_WS?.name || 'Workspace';
-    const label = conn?.display_name || conn?.name || wsName;
+    const label = conn?.display_name || conn?.name || '—';
     const kind = resolveDataKind(conn);
     const sourceType = (conn?.source_type || conn?.db_type || '').toString();
 
@@ -806,8 +821,8 @@ function bindConnectionPersistence() {
 function applyDashboardShell(dashboard) {
     if (!dashboard || typeof dashboard !== 'object') return;
     const titleEl = document.getElementById('dashboard-header-name');
-    if (titleEl && dashboard.title) {
-        titleEl.textContent = dashboard.title;
+    if (titleEl) {
+        titleEl.value = dashboard.title || SPORE_WS?.name || 'Dashboard';
     }
     const widgetCount = document.getElementById('dashboard-widget-count');
     if (widgetCount) {
@@ -840,6 +855,7 @@ function bootstrapWorkspace() {
     }
 }
 
+window.updateWorkspaceName = updateWorkspaceName;
 window.getActiveWorkspaceId = getActiveWorkspaceId;
 window.getWorkspaceApiBase = getWorkspaceApiBase;
 window.saveWorkspaceStatePatch = saveWorkspaceStatePatch;

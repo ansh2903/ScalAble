@@ -210,6 +210,13 @@ function normalizeCellType(type) {
   return 'python';
 }
 
+function getNotebookDisplayName() {
+  const el = document.getElementById('notebook-header-name');
+  const fromInput = (el?.value || '').trim();
+  if (fromInput) return fromInput;
+  return window.SPORE_WORKSPACE?.name || 'Untitled';
+}
+
 function serializeNotebookState() {
   const serialized = getOrderedCellIds().map((cellId) => {
     const cell = cells[cellId];
@@ -223,7 +230,7 @@ function serializeNotebookState() {
       relationId: cell.relationId || null,
     };
   });
-  return { cell_counter: cellCounter, cells: serialized };
+  return { name: getNotebookDisplayName(), cell_counter: cellCounter, cells: serialized };
 }
 
 function scheduleNotebookSave() {
@@ -251,6 +258,11 @@ function defaultNotebookCells() {
 window.hydrateNotebookFromWorkspace = function hydrateNotebookFromWorkspace(notebook) {
   _notebookHydrating = true;
   try {
+    const nameEl = document.getElementById('notebook-header-name');
+    if (nameEl) {
+      nameEl.value = notebook?.name || window.SPORE_WORKSPACE?.name || 'Untitled';
+    }
+
     const saved = notebook && Array.isArray(notebook.cells) ? notebook.cells : [];
     if (!saved.length) {
       defaultNotebookCells();
@@ -291,6 +303,16 @@ window.hydrateNotebookFromWorkspace = function hydrateNotebookFromWorkspace(note
 window.notebookOnLeaveView = function notebookOnLeaveView() {
   activeCellId = null;
   isCommandMode = false;
+};
+
+window.renameNotebook = function renameNotebook(name) {
+  const trimmed = (name || '').trim();
+  const finalName = trimmed || window.SPORE_WORKSPACE?.name || 'Untitled';
+  const nameEl = document.getElementById('notebook-header-name');
+  if (nameEl) nameEl.value = finalName;
+  if (typeof window.saveWorkspaceStatePatch === 'function') {
+    window.saveWorkspaceStatePatch({ notebook: { name: finalName } }, true);
+  }
 };
 
 // Initial cells are created by workspace.js via hydrateNotebookFromWorkspace().
@@ -334,6 +356,7 @@ function addCell(type = 'python', initialCode = '', opts = {}) {
     streamName: opts.streamName || null,
     relationId: opts.relationId || null,
     markdownRendered: isMarkdown && !!(initialCode || '').trim(),
+    outputs: [],
   };
 
   if (isMarkdown && cells[cellId].renderEl) {
@@ -822,6 +845,7 @@ function runCell(cellId, advance = false) {
   }
 
   cell.outputEl.innerHTML = '';
+  cell.outputs = [];
   cell.outputEl.classList.remove('hidden');
   cell.countEl.textContent = 'In [*] — Running...';
   setKernelStatus('busy');
@@ -847,6 +871,7 @@ async function runSqlCell(cellId, advance = false) {
   }
 
   cell.statusEl.textContent = 'Running preview on remote...';
+  cell.outputs = [];
   cell.outputEl.innerHTML = buildSqlResultShell(cellId);
 
   const thead = document.getElementById(`thead-${cellId}`);
@@ -910,6 +935,9 @@ async function runSqlCell(cellId, advance = false) {
       }
     }
     cell.statusEl.textContent = 'Preview (remote) — materialize to use in Python';
+    if (cell.outputEl?.innerHTML?.trim()) {
+      cell.outputs = [{ type: 'html_snapshot', content: cell.outputEl.innerHTML }];
+    }
     if (advance === 'always') {
       addCell('python', '', { insertAfter: cellId, userInitiated: true });
     } else if (advance) {
@@ -1069,12 +1097,29 @@ function renderMimeBundle(dataBundle, container) {
   available[0].render(dataBundle[available[0].mimeType], container);
 }
 
+function recordCellOutput(cell, chunk) {
+  if (!cell || !chunk?.type) return;
+  if (chunk.type === 'stream') {
+    cell.outputs.push({ type: 'stream', stream: chunk.stream, content: chunk.content });
+  } else if (chunk.type === 'display' || chunk.type === 'result') {
+    cell.outputs.push({ type: chunk.type, data: chunk.data, execution_count: chunk.execution_count });
+  } else if (chunk.type === 'error') {
+    cell.outputs.push({
+      type: 'error',
+      ename: chunk.ename,
+      evalue: chunk.evalue,
+      traceback: chunk.traceback,
+    });
+  }
+}
+
 function handleKernelOutput(chunk) {
   const cell = cells[chunk.cell_id];
   if (!cell) return;
   const out = cell.outputEl;
 
   if (chunk.type === 'stream') {
+    recordCellOutput(cell, chunk);
     let streamEl = out.querySelector(`.stream-output[data-stream="${chunk.stream}"]`);
     if (!streamEl) {
       out.insertAdjacentHTML('beforeend', `
@@ -1085,11 +1130,13 @@ function handleKernelOutput(chunk) {
     }
     streamEl.textContent += chunk.content;
   } else if (chunk.type === 'display' || chunk.type === 'result') {
+    recordCellOutput(cell, chunk);
     renderMimeBundle(chunk.data, out);
     if (chunk.type === 'result') {
       cell.countEl.textContent = `Out [${chunk.execution_count}]`;
     }
   } else if (chunk.type === 'error') {
+    recordCellOutput(cell, chunk);
     const clean = chunk.traceback.join('\n').replace(/\x1b\[[0-9;]*m/g, '');
     out.insertAdjacentHTML('beforeend', `
       <pre class="font-mono text-[11px] p-3 text-red-500 bg-red-50 border-t border-red-100 whitespace-pre-wrap m-0">${clean}</pre>`);
@@ -1441,3 +1488,159 @@ window.renderMarkdownCell = renderMarkdownCell;
 window.enterMarkdownEdit = enterMarkdownEdit;
 window.convertCell = convertCell;
 window.undoDeleteCell = undoDeleteCell;
+
+// ── Notebook export (.ipynb + HTML) ─────────────────────────────────────────
+
+function sourceToLines(code) {
+  const text = code == null ? '' : String(code);
+  if (!text) return [];
+  const lines = text.split('\n');
+  if (text.endsWith('\n')) lines.push('');
+  return lines;
+}
+
+function safeDownloadFilename(name, ext) {
+  const base = (name || 'notebook').replace(/[^\w\-]+/g, '_').slice(0, 64) || 'notebook';
+  return `${base}.${ext}`;
+}
+
+function buildIpynb() {
+  const nbCells = getOrderedCellIds().map((cellId) => {
+    const cell = cells[cellId];
+    const code = cell.editor ? cell.editor.getValue() : '';
+    if (cell.type === 'python') {
+      return {
+        cell_type: 'code',
+        execution_count: null,
+        metadata: {},
+        outputs: [],
+        source: sourceToLines(code),
+      };
+    }
+    if (cell.type === 'markdown') {
+      return {
+        cell_type: 'markdown',
+        metadata: {},
+        source: sourceToLines(code),
+      };
+    }
+    // SQL and other types -> markdown fenced sql block
+    return {
+      cell_type: 'markdown',
+      metadata: { spore: { type: 'sql' } },
+      source: sourceToLines(`\`\`\`sql\n${code}\n\`\`\``),
+    };
+  });
+
+  return {
+    nbformat: 4,
+    nbformat_minor: 5,
+    metadata: {
+      kernelspec: {
+        display_name: 'Python 3',
+        language: 'python',
+        name: 'python3',
+      },
+      language_info: {
+        name: 'python',
+        pygments_lexer: 'ipython3',
+      },
+    },
+    cells: nbCells,
+  };
+}
+
+function downloadIpynb() {
+  const nb = buildIpynb();
+  const name = safeDownloadFilename(getNotebookDisplayName(), 'ipynb');
+  const blob = new Blob([JSON.stringify(nb, null, 1)], { type: 'application/x-ipynb+json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function gatherCellsForHtmlExport() {
+  return getOrderedCellIds().map((cellId) => {
+    const cell = cells[cellId];
+    return {
+      type: cell.type,
+      code: cell.editor ? cell.editor.getValue() : '',
+      outputs: Array.isArray(cell.outputs) ? cell.outputs : [],
+    };
+  });
+}
+
+async function exportNotebookHtml() {
+  const wsId = typeof window.getActiveWorkspaceId === 'function' ? window.getActiveWorkspaceId() : null;
+  if (!wsId) {
+    alert('No active workspace');
+    return;
+  }
+  const payload = {
+    name: getNotebookDisplayName(),
+    cells: gatherCellsForHtmlExport(),
+  };
+  try {
+    const res = await fetch(`/api/workspaces/${encodeURIComponent(wsId)}/notebook/export-html`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `Export failed (${res.status})`);
+    }
+    const blob = await res.blob();
+    const name = safeDownloadFilename(payload.name, 'html');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    console.warn('notebook HTML export failed', e);
+    alert('Notebook HTML export failed: ' + (e.message || e));
+  }
+}
+
+function toggleNotebookExportDropdown(force) {
+  const menu = document.getElementById('notebook-export-dropdown');
+  if (!menu) return;
+  const open = force !== undefined ? force : menu.classList.contains('hidden');
+  menu.classList.toggle('hidden', !open);
+}
+
+function initNotebookExportControls() {
+  document.getElementById('notebook-export-toggle')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleNotebookExportDropdown();
+  });
+  document.getElementById('export-notebook-ipynb')?.addEventListener('click', () => {
+    toggleNotebookExportDropdown(false);
+    downloadIpynb();
+  });
+  document.getElementById('export-notebook-html')?.addEventListener('click', () => {
+    toggleNotebookExportDropdown(false);
+    exportNotebookHtml();
+  });
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#notebook-export-menu')) toggleNotebookExportDropdown(false);
+  });
+}
+
+window.buildIpynb = buildIpynb;
+window.downloadIpynb = downloadIpynb;
+window.exportNotebookHtml = exportNotebookHtml;
+window.gatherCellsForHtmlExport = gatherCellsForHtmlExport;
+window.serializeNotebookState = serializeNotebookState;
+window.getNotebookDisplayName = getNotebookDisplayName;
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initNotebookExportControls);
+} else {
+  initNotebookExportControls();
+}

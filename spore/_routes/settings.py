@@ -370,11 +370,15 @@ def save_security_settings():
 def save_data_settings():
     try:
         body = request.get_json(silent=True) or {}
-        batch_row_size = int(body.get("batch_row_size", 10_000))
-        connect_timeout = int(body.get("connect_timeout", 5))
+        batch_row_size = int(body.get("batch_row_size") or 10_000)
+        connect_timeout = int(body.get("connect_timeout") or 5)
         data_dir = (body.get("data_dir") or "").strip()
+        session_permanent = bool(body.get("session_permanent", False))
+        session_lifetime_hours = int(body.get("session_lifetime_hours") or 24)
         batch_row_size = max(100, min(1_000_000, batch_row_size))
         connect_timeout = max(1, min(120, connect_timeout))
+        # 1 hour .. 1 year; ignored when session_permanent is set.
+        session_lifetime_hours = max(1, min(8760, session_lifetime_hours))
         if not data_dir:
             return jsonify({"error": "data_dir required"}), 400
 
@@ -382,6 +386,8 @@ def save_data_settings():
             "batch_row_size": batch_row_size,
             "connect_timeout": connect_timeout,
             "data_dir": data_dir,
+            "session_permanent": session_permanent,
+            "session_lifetime_hours": session_lifetime_hours,
         })
         return jsonify({"status": "ok", "data": data_runtime()})
     except Exception as e:

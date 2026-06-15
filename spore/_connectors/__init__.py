@@ -68,10 +68,30 @@ class SourceConnector:
             logging.error(f"[{self.source_type}] ingest failed: {e}")
             yield {"type": "error", "content": str(e)}
 
-    def file_to_db(self, file_path: str, table_name: str) -> dict:
+    def file_to_db(self, file_path: str, table_name: str, **kwargs):
         if not hasattr(self._connector, "file_to_db"):
-            return {
-                "ok":    False,
-                "error": f"{self.source_type} does not support file upload."
+            yield {
+                "type": "error",
+                "content": f"{self.source_type} does not support file push.",
             }
-        return self._connector.file_to_db(file_path=file_path, table_name=table_name)
+            return
+        try:
+            result = self._connector.file_to_db(
+                file_path=file_path,
+                table_name=table_name,
+                **kwargs,
+            )
+            if hasattr(result, "__iter__") and not isinstance(result, (dict, tuple, str)):
+                yield from result
+            elif isinstance(result, dict) and result.get("ok") is False:
+                yield {"type": "error", "content": result.get("error", "file_to_db failed")}
+            elif isinstance(result, dict):
+                yield {
+                    "type": "done",
+                    "table_name": table_name,
+                    "total_rows": result.get("rows_inserted"),
+                    "total_bytes": None,
+                }
+        except Exception as e:
+            logging.error(f"[{self.source_type}] file_to_db failed: {e}")
+            yield {"type": "error", "content": str(e)}

@@ -39,9 +39,14 @@ def create_app() -> Flask:
 def configure_extensions(app: Flask) -> None:
     try:
         """Handle Redis, Sessions and other extensions."""
+        from spore._utils import data_runtime
+
         app.config["SESSION_TYPE"] = "redis"
         app.config["SESSION_PERMANENT"] = True
-        app.config['PERMANENT_SESSION_LIFETIME'] = 3600 * 24
+        # Session lifetime is configurable from the Data & Cache lab. When the
+        # user sets it to "completely permanent" we fall back to a ~10 year TTL
+        # (Redis cannot store a never-expiring session via flask-session).
+        app.config['PERMANENT_SESSION_LIFETIME'] = data_runtime()["session_lifetime_seconds"]
         app.config["SESSION_USE_SIGNER"] = True
         app.config["SESSION_KEY_PREFIX"] = "spore_session:"
         app.config["SESSION_REDIS"] = redis.StrictRedis(
@@ -62,6 +67,7 @@ def register_blueprints(app: Flask) -> None:
     from spore._routes.settings import settings_blueprint
     from spore._routes.data import data_blueprint
     from spore._routes.fs import fs_blueprint
+    from spore._routes.notebooks import notebooks_blueprint
     from spore._routes.api_proxy import api_proxy_blueprint
     from spore._routes.dashboard import dashboard_blueprint
 
@@ -71,6 +77,7 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(settings_blueprint, name='settings')
     app.register_blueprint(data_blueprint, name='data')
     app.register_blueprint(fs_blueprint, name='fs')
+    app.register_blueprint(notebooks_blueprint, name='notebooks')
     app.register_blueprint(api_proxy_blueprint, name='api_proxy')
     app.register_blueprint(dashboard_blueprint, name='dashboard')
 

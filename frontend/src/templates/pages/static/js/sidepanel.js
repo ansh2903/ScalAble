@@ -31,6 +31,7 @@ function openSidePanel(name) {
     activeSidePanel = name;
 
     if (name === 'files') loadFs();
+    if (name === 'notebook' && typeof window.loadNotebooks === 'function') loadNotebooks();
 }
 
 function closeSidePanel() {

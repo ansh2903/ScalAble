@@ -34,7 +34,9 @@ from ..base import BaseSource, SourceKind, SourceCapabilities
 from ..utils import (
     QueryKind,
     classify_query,
+    estimate_file_rows,
     normalize_preview_limit,
+    sanitize_column_names,
     status_row,
     strip_query_terminator,
     wrap_count_query,
@@ -432,47 +434,183 @@ class PostgreSQLSource(BaseSource):
 
     # ── file_to_db ────────────────────────────────────────────────────────────
 
-    def file_to_db(self, file_path: str, table_name: str) -> dict:
+    def _rename_batch_columns(self, batch: pa.RecordBatch) -> pa.RecordBatch:
+        """Sanitize column names to match DDL / ingest expectations."""
+        names = sanitize_column_names(batch.schema.names)
+        if names == list(batch.schema.names):
+            return batch
+        return batch.rename_columns(names)
+
+    def _table_columns(self, cur: Any, schema: str, table_name: str) -> list[str]:
+        """Return destination columns from information_schema."""
+        cur.execute(f"""
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_schema = {_qs(schema)}
+              AND table_name = {_qs(table_name)}
+            ORDER BY ordinal_position
+        """)
+        return [r[0] for r in cur.fetchall()]
+
+    def _validate_destination_columns(
+        self,
+        cur: Any,
+        schema: str,
+        table_name: str,
+        file_columns: list[str],
+    ) -> None:
+        """Fail before COPY if an existing table does not match the file columns."""
+        table_columns = self._table_columns(cur, schema, table_name)
+        if not table_columns:
+            raise ValueError(
+                f"Destination table {schema}.{table_name} does not exist. "
+                "Review and execute the generated CREATE TABLE statement before pushing."
+            )
+
+        missing = [c for c in file_columns if c not in table_columns]
+        if missing:
+            raise ValueError(
+                f"Destination table {schema}.{table_name} is missing columns required by the file: "
+                f"{', '.join(missing)}. The table may already exist with an older schema. "
+                "Use a new table name, drop/recreate the existing table, or edit the DDL so it matches the file."
+            )
+
+    def _iter_file_batches(
+        self,
+        file_path: str,
+        batch_row_size: int,
+    ) -> Generator[pa.RecordBatch, None, None]:
+        """Yield RecordBatches from a local file without loading it entirely."""
+        ext = os.path.splitext(file_path)[1].lower()
+
+        if ext in (".csv", ".tsv", ".txt"):
+            delimiter = "\t" if ext == ".tsv" else ","
+            reader = pa_csv.open_csv(
+                file_path,
+                read_options=pa_csv.ReadOptions(
+                    block_size=batch_row_size * 1024,
+                ),
+                parse_options=pa_csv.ParseOptions(delimiter=delimiter),
+            )
+            for batch in reader:
+                yield self._rename_batch_columns(batch)
+            return
+
+        if ext == ".parquet":
+            pf = pq.ParquetFile(file_path)
+            for rg_idx in range(pf.num_row_groups):
+                table = pf.read_row_group(rg_idx)
+                for offset in range(0, table.num_rows, batch_row_size):
+                    chunk = table.slice(offset, min(batch_row_size, table.num_rows - offset))
+                    if chunk.num_rows == 0:
+                        continue
+                    yield self._rename_batch_columns(chunk.to_batches()[0])
+            return
+
+        # JSON / Excel — load whole file (acceptable for smaller files).
+        if ext in (".json", ".ndjson"):
+            try:
+                arrow_table = pa_json.read_json(file_path)
+            except Exception:
+                df = pd.read_json(file_path, lines=(ext == ".ndjson"))
+                df.columns = sanitize_column_names([str(c) for c in df.columns])
+                arrow_table = pa.Table.from_pandas(df)
+        elif ext in (".xls", ".xlsx"):
+            df = pd.read_excel(file_path, engine="openpyxl")
+            df.columns = sanitize_column_names([str(c) for c in df.columns])
+            arrow_table = pa.Table.from_pandas(df)
+        else:
+            raise ValueError(f"Unsupported file type: {ext}")
+
+        for batch in arrow_table.to_batches(max_chunksize=batch_row_size):
+            yield batch
+
+    def file_to_db(
+        self,
+        file_path: str,
+        table_name: str,
+        batch_row_size: int = 10000,
+    ) -> Generator[dict, None, None]:
         """
-        Upload a local file into an existing Postgres table.
-        Reads file → Arrow, then bulk-inserts via ADBC adbc_ingest().
+        Stream a local file into an existing Postgres table via batched adbc_ingest.
+
+        Yields SSE-style chunks: start → progress (per batch) → done | error.
+        Table must already exist (DDL is run by the route before calling this).
         Supported: .csv .tsv .txt .json .ndjson .xls .xlsx .parquet
         """
-        schema = self.config.get("schema") or "public"
-        ext    = os.path.splitext(file_path)[1].lower()
-
-        try:
-            if ext in (".csv", ".tsv", ".txt"):
-                arrow_table = pa_csv.read_csv(
-                    file_path,
-                    parse_options=pa_csv.ParseOptions(
-                        delimiter="\t" if ext == ".tsv" else ","
-                    ),
-                )
-            elif ext in (".json", ".ndjson"):
-                try:
-                    arrow_table = pa_json.read_json(file_path)
-                except Exception:
-                    df = pd.read_json(file_path)
-                    df.columns = [str(c).strip().replace(" ", "_") for c in df.columns]
-                    arrow_table = pa.Table.from_pandas(df)
-            elif ext in (".xls", ".xlsx"):
-                df = pd.read_excel(file_path, engine="openpyxl")
-                df.columns = [str(c).strip().replace(" ", "_") for c in df.columns]
-                arrow_table = pa.Table.from_pandas(df)
-            elif ext == ".parquet":
-                arrow_table = pq.read_table(file_path)
-            else:
-                return {"ok": False, "error": f"Unsupported file type: {ext}"}
-
-        except Exception as e:
-            return {"ok": False, "error": f"Failed to read file: {e}"}
+        pg_schema = self.config.get("schema") or "public"
+        qualified = f"{pg_schema}.{table_name}"
+        batch_rows = max(int(batch_row_size or 10000), 1)
+        est_total_rows = estimate_file_rows(file_path)
+        t0 = time.monotonic()
+        rows_so_far = 0
+        bytes_so_far = 0
+        batch_index = 0
+        start_sent = False
 
         try:
             with self.connection_context() as conn:
-                conn.adbc_ingest(f"{schema}.{table_name}", arrow_table, mode="append")
+                cur = conn.cursor()
+                schema_name = self.config.get("schema")
+                if schema_name:
+                    cur.execute(f"SET search_path TO {schema_name};")
+
+                for batch in self._iter_file_batches(file_path, batch_rows):
+                    if not start_sent:
+                        self._validate_destination_columns(
+                            cur=cur,
+                            schema=pg_schema,
+                            table_name=table_name,
+                            file_columns=batch.schema.names,
+                        )
+
+                    table_chunk = pa.Table.from_batches([batch])
+                    # adbc_ingest is a Cursor method; schema is passed separately.
+                    cur.adbc_ingest(
+                        table_name,
+                        table_chunk,
+                        mode="append",
+                        db_schema_name=pg_schema,
+                    )
+                    rows_so_far += batch.num_rows
+                    bytes_so_far += batch.nbytes
+                    batch_index += 1
+
+                    if not start_sent:
+                        yield {
+                            "type": "start",
+                            "table_name": table_name,
+                            "est_total_rows": est_total_rows,
+                        }
+                        start_sent = True
+
+                    yield {
+                        "type": "progress",
+                        "rows_so_far": rows_so_far,
+                        "bytes_so_far": bytes_so_far,
+                        "batch_index": batch_index,
+                    }
+
                 conn.commit()
-                return {"ok": True, "rows_inserted": len(arrow_table)}
+
+            if not start_sent:
+                yield {
+                    "type": "start",
+                    "table_name": table_name,
+                    "est_total_rows": est_total_rows,
+                }
+
+            logging.info(
+                f"[postgresql] file_to_db ingested {rows_so_far} rows → {qualified}"
+            )
+            yield {
+                "type": "done",
+                "table_name": table_name,
+                "total_rows": rows_so_far,
+                "total_bytes": bytes_so_far,
+                "elapsed_ms": int((time.monotonic() - t0) * 1000),
+            }
+
         except Exception as e:
             logging.error(f"[postgresql] file_to_db failed: {e}")
-            return {"ok": False, "error": str(e)}
+            yield {"type": "error", "content": str(e)}

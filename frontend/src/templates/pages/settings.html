@@ -764,8 +764,8 @@
                             <span class="material-symbols-outlined text-lg">inventory_2</span>
                         </div>
                         <div>
-                            <h3 class="font-black text-slate-900 text-sm">Package Registry (PIP Manager)</h3>
-                            <p class="text-[11px] text-slate-400 font-medium">Search PyPI and add packages to your kernel image.</p>
+                            <h3 class="font-black text-slate-900 text-sm">Package Registry (Image Builder)</h3>
+                            <p class="text-[11px] text-slate-400 font-medium">Search PyPI and pin packages for reproducible kernel images (rebuild + restart). For quick local experiments, run <code class="font-mono">%pip install &lt;package&gt;</code> in a notebook cell — kernels have outbound network by default.</p>
                         </div>
                     </div>
 
@@ -851,7 +851,7 @@
                             class="text-center py-8 px-4 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
                             <span class="material-symbols-outlined text-3xl text-slate-300">deployed_code</span>
                             <p class="text-xs font-bold text-slate-400 mt-2">No packages found.</p>
-                            <p class="text-[11px] text-slate-400">Search PyPI above to add one, or rebuild the image.</p>
+                            <p class="text-[11px] text-slate-400">Search PyPI above to pin a package, or use <code class="font-mono">%pip install</code> in a notebook for one-off installs.</p>
                         </div>
 
                         <!-- No filter matches -->
@@ -995,6 +995,42 @@
                     <input type="text" class="form-input-clean font-mono text-xs" x-model="data.data_dir" />
                 </div>
 
+                <!-- Redis session lifetime -->
+                <div class="rounded-2xl border-2 border-slate-100 p-5 space-y-4">
+                    <div class="flex items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2 bg-primary-soft rounded-xl text-primary">
+                                <span class="material-symbols-outlined text-lg">schedule</span>
+                            </div>
+                            <div>
+                                <h3 class="font-black text-slate-900 text-sm">Redis Session Lifetime</h3>
+                                <p class="text-[11px] text-slate-400 font-medium">How long connections &amp; relations persist in Redis before expiring.</p>
+                            </div>
+                        </div>
+                        <span class="px-3 py-1 text-[10px] font-black rounded-pill uppercase tracking-widest"
+                            :class="data.session_permanent ? 'bg-primary/10 text-primary-dark' : 'bg-slate-100 text-slate-500'"
+                            x-text="data.session_permanent ? 'Permanent' : data.session_lifetime_hours + 'h'"></span>
+                    </div>
+
+                    <!-- Permanent toggle -->
+                    <label class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer">
+                        <input type="checkbox" x-model="data.session_permanent"
+                            class="rounded border-slate-300 text-primary focus:ring-primary w-4 h-4" />
+                        <span class="text-xs font-bold text-slate-700">
+                            Completely permanent
+                            <span class="text-slate-400 font-normal ml-1">Sessions never expire (uses a ~10 year TTL).</span>
+                        </span>
+                    </label>
+
+                    <!-- Lifetime hours (hidden when permanent) -->
+                    <div x-show="!data.session_permanent" x-cloak class="fade-in">
+                        <label class="form-label-clean">Session Lifetime (hours)</label>
+                        <input type="number" class="form-input-clean w-40" min="1" max="8760"
+                            x-model.number="data.session_lifetime_hours" />
+                        <p class="text-[10px] text-slate-400 font-medium mt-2 px-1">Between 1 hour and 1 year (8760h). Applies on next app start.</p>
+                    </div>
+                </div>
+
                 <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
                     <div>
                         <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Disk Usage</p>
@@ -1100,6 +1136,8 @@
                     batch_row_size: DATA_RUNTIME.batch_row_size || 10000,
                     connect_timeout: DATA_RUNTIME.connect_timeout || 5,
                     data_dir: DATA_RUNTIME.data_dir || '/data',
+                    session_permanent: DATA_RUNTIME.session_permanent || false,
+                    session_lifetime_hours: DATA_RUNTIME.session_lifetime_hours || 24,
                 },
                 dataUsage: {},
                 dataSaving: false,
@@ -1433,7 +1471,7 @@
                         const data = await res.json();
                         if (!res.ok) throw new Error(data.error || 'Save failed');
                         await this.refreshDataUsage();
-                        alert('Data settings saved.');
+                        alert('Data settings saved. Session lifetime changes apply on next app start.');
                     } catch (e) {
                         alert(e.message);
                     } finally {

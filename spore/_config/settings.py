@@ -36,6 +36,11 @@ class Settings:
     KERNEL_HOST = os.getenv("KERNEL_HOST", "kernel-dind")
     KERNEL_VOLUME_BIND = os.getenv("KERNEL_VOLUME_BIND", "/data")
     KERNEL_NETWORK = os.getenv("KERNEL_NETWORK", "kernel_net")
+    KERNEL_ALLOW_NETWORK = os.getenv("KERNEL_ALLOW_NETWORK", "true").strip().lower() in (
+        "1", "true", "yes", "on",
+    )
+    _kernel_dns_raw = os.getenv("KERNEL_DNS", "")
+    KERNEL_DNS = [s.strip() for s in _kernel_dns_raw.split(",") if s.strip()]
     KERNEL_VOLUME = os.getenv("KERNEL_VOLUME", "spore_volumes")
     DOCKER_HOST = os.getenv("DOCKER_HOST", "")
     KERNEL_MEM_LIMIT = os.getenv("KERNEL_MEM_LIMIT", "1g")
