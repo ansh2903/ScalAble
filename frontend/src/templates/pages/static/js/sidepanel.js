@@ -117,9 +117,16 @@ async function updateSchemaPanel(dbId) {
 
     try {
         // Fetch fresh metadata from your Flask backend
-        const response = await fetch(`/api/metadata/${dbId}`);
+        const response = await fetch(`/api/metadata/${encodeURIComponent(dbId)}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
         const actualMetadata = Array.isArray(data.metadata) ? data.metadata[1] : data.metadata;
+        const conns = _getConnections();
+        const idx = conns.findIndex(c => String(c.id) === String(dbId));
+        if (idx >= 0 && actualMetadata) {
+            conns[idx].metadata = actualMetadata;
+            window.SPORE_CONNECTIONS = conns;
+        }
         renderMetadata(actualMetadata);
     } catch (err) {
         treeContainer.innerHTML = `<div class="text-[9px] text-red-400 text-center py-8 font-bold">Failed to load metadata</div>`;

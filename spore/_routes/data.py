@@ -24,6 +24,7 @@ import pandas as pd
 import traceback
 import json
 import os
+import shutil
 
 from spore._exception import CustomException
 from spore._logger import logging
@@ -31,6 +32,7 @@ from spore._logger import logging
 data_blueprint = generate_blueprint('data')
 
 STAGING_ROOT = os.path.join(FS_ROOT, "_staging")
+PUSH_STAGING_TTL_SECONDS = 1800
 
 
 def _sse_chunk(chunk: dict) -> str:
@@ -149,9 +151,77 @@ def _push_staging() -> dict:
     return session.setdefault("push_staging", {})
 
 
+def _entry_staged_at(entry: dict) -> float:
+    staged_at = entry.get("staged_at")
+    if staged_at is not None:
+        return float(staged_at)
+    path = entry.get("path")
+    if path and os.path.isfile(path):
+        try:
+            return os.path.getmtime(path)
+        except OSError:
+            pass
+    return time.time()
+
+
+def _delete_ephemeral_artifacts(entry: dict) -> None:
+    if not entry.get("ephemeral"):
+        return
+    path = entry.get("path")
+    if not path:
+        return
+    token_dir = os.path.dirname(path)
+    staging_root = os.path.abspath(STAGING_ROOT)
+    abs_token_dir = os.path.abspath(token_dir)
+    if abs_token_dir == staging_root or abs_token_dir.startswith(staging_root + os.sep):
+        shutil.rmtree(abs_token_dir, ignore_errors=True)
+
+
+def _release_staged(token: str, *, delete_file: bool = False) -> None:
+    staging = _push_staging()
+    entry = staging.pop(token, None)
+    if entry is None:
+        return
+    session["push_staging"] = staging
+    session.modified = True
+    if delete_file and entry.get("ephemeral"):
+        _delete_ephemeral_artifacts(entry)
+
+
+def _sweep_expired_staging(ttl_seconds: int = PUSH_STAGING_TTL_SECONDS) -> None:
+    now = time.time()
+    staging = _push_staging()
+    for token in list(staging.keys()):
+        entry = staging.get(token) or {}
+        if now - _entry_staged_at(entry) <= ttl_seconds:
+            continue
+        if entry.get("ephemeral"):
+            _delete_ephemeral_artifacts(entry)
+        staging.pop(token, None)
+    session["push_staging"] = staging
+    session.modified = True
+
+    if not os.path.isdir(STAGING_ROOT):
+        return
+    active_tokens = set(staging.keys())
+    for name in os.listdir(STAGING_ROOT):
+        token_dir = os.path.join(STAGING_ROOT, name)
+        if not os.path.isdir(token_dir) or name in active_tokens:
+            continue
+        try:
+            dir_age = now - os.path.getmtime(token_dir)
+        except OSError:
+            continue
+        if dir_age > ttl_seconds:
+            shutil.rmtree(token_dir, ignore_errors=True)
+
+
 def _get_staged_path(token: str) -> str | None:
+    _sweep_expired_staging()
     entry = _push_staging().get(token)
     if not entry:
+        return None
+    if time.time() - _entry_staged_at(entry) > PUSH_STAGING_TTL_SECONDS:
         return None
     path = entry.get("path")
     if path and os.path.isfile(path):
@@ -185,9 +255,12 @@ def push_stage():
     if blocked:
         return blocked
 
+    _sweep_expired_staging()
+
     try:
         token = uuid.uuid4().hex
         staging = _push_staging()
+        now = time.time()
 
         uploaded = request.files.get("file")
         if uploaded and uploaded.filename:
@@ -201,6 +274,8 @@ def push_stage():
                 "path": dest_path,
                 "filename": name,
                 "size": os.path.getsize(dest_path),
+                "staged_at": now,
+                "ephemeral": True,
             }
             session["push_staging"] = staging
             return jsonify({
@@ -223,6 +298,8 @@ def push_stage():
             "path": abs_path,
             "filename": os.path.basename(abs_path),
             "size": os.path.getsize(abs_path),
+            "staged_at": now,
+            "ephemeral": False,
         }
         session["push_staging"] = staging
         return jsonify({
@@ -242,6 +319,8 @@ def push_inspect():
     blocked = _reject_agent_execution()
     if blocked:
         return blocked
+
+    _sweep_expired_staging()
 
     data = request.get_json(silent=True) or {}
     token = (data.get("token") or "").strip()
@@ -294,6 +373,8 @@ def push_suggest_ddl():
     blocked = _reject_agent_execution()
     if blocked:
         return blocked
+
+    _sweep_expired_staging()
 
     data = request.get_json(silent=True) or {}
     token = (data.get("token") or "").strip()
@@ -358,6 +439,8 @@ def push_execute():
     if blocked:
         return blocked
 
+    _sweep_expired_staging()
+
     data = request.get_json(silent=True) or {}
     token = (data.get("token") or "").strip()
     table_name = (data.get("table_name") or "").strip()
@@ -382,6 +465,7 @@ def push_execute():
     manager = _connector_for_conn(raw_data)
 
     def generate_stream():
+        released = False
         try:
             if ddl:
                 for chunk in manager.preview(query=ddl, limit=1):
@@ -406,8 +490,15 @@ def push_execute():
 
                 yield _sse_chunk(chunk)
 
+                if chunk.get("type") == "done":
+                    _release_staged(token, delete_file=True)
+                    released = True
+
         except Exception as e:
             logging.error(f"push/execute stream error: {e}", exc_info=True)
             yield _sse_chunk({"type": "error", "content": str(e)})
+        finally:
+            if released:
+                session.modified = True
 
     return Response(stream_with_context(generate_stream()), mimetype="text/event-stream")

@@ -6,7 +6,7 @@ import time
 from spore._connectors import SourceConnector
 from spore._engine.model_manager import get_engine
 from spore._engine.query_executor import run_query
-from spore._utils import file_size_fmt, decrypt_creds, downloadable_json, downloadable_excel, downloadable_csv, load_settings, context_limit_info
+from spore._utils import file_size_fmt, decrypt_creds, downloadable_json, downloadable_excel, downloadable_csv, load_settings, context_limit_info, get_connection_by_id
 from spore._routes.utils import generate_blueprint
 from spore._workspace.store import get_workspace_store
 from spore._compute.query import query_stream
@@ -45,6 +45,16 @@ def _resolve_workspace(workspace_id: str | None):
     ws = store.ensure_default_workspace()
     store.touch_workspace(ws["id"])
     return ws, store.get_state(ws["id"])
+
+
+def _connector_for_conn(raw_data: dict) -> SourceConnector:
+    return SourceConnector(
+        kind=raw_data.get("kind"),
+        source_type=raw_data.get("source_type"),
+        creds=raw_data.get("credentials"),
+        use_ssh=raw_data.get("use_ssh"),
+        use_ssl=raw_data.get("use_ssl"),
+    )
 
 
 @workspace_blueprint.route('/chat', methods=['GET', 'POST'])
@@ -142,13 +152,24 @@ def system_metrics():
 
 @workspace_blueprint.route('/api/metadata/<string:db_id>')
 def get_db_metadata(db_id):
-    connections = session.get('connections', [])
-    selected_conn = next((c for c in connections if str(c['id']) == str(db_id)), None)
-    
+    selected_conn = get_connection_by_id(db_id)
     if not selected_conn:
         return jsonify({"error": "Not found"}), 404
-        
-    return jsonify({"metadata": selected_conn.get('metadata', {})})
+
+    connector = _connector_for_conn(selected_conn)
+    ok, metadata = connector.fetch_metadata()
+    if not ok:
+        logging.error(f"metadata refresh failed for connection {db_id}")
+        return jsonify({"error": "Failed to fetch metadata"}), 502
+
+    connections = session.get("connections", [])
+    for c in connections:
+        if str(c.get("id")) == str(db_id):
+            c["metadata"] = metadata
+    session["connections"] = connections
+    session.modified = True
+
+    return jsonify({"metadata": metadata})
 
 
 # ── Workspace management API ────────────────────────────────────────────────

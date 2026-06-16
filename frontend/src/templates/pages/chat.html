@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>Spore Studio | AI Chat &amp; Analysis</title>
+    <title>Spore Workspace</title>
     <script src="{{ url_for('static', filename='vendor/plotly-2.32.0.min.js') }}" charset="utf-8"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='js/vendor/gridstack.min.css') }}" />
     <script src="{{ url_for('static', filename='js/vendor/echarts.min.js') }}"></script>
@@ -453,6 +453,9 @@
                                         </button>
                                         <span id="push-file-meta" class="text-[9px] font-mono text-slate-400 ml-auto">No file staged</span>
                                     </div>
+                                    <p class="text-[9px] text-slate-400 shrink-0 -mt-1">
+                                        Upload copies temporarily (removed after push). Volume path uses the file in /data with no copy — prefer for large files.
+                                    </p>
 
                                     <!-- Volume picker dropdown -->
                                     <div id="push-volume-picker" class="hidden shrink-0 rounded-xl border border-slate-200 bg-white shadow-lg max-h-40 overflow-auto">

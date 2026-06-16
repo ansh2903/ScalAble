@@ -86,6 +86,20 @@ The container should run `python -m spore._app`. Rebuild after pulling Dockerfil
 
 Run compose from the repo root with `context: ..` (see [`docker/docker-compose.yml`](../docker/docker-compose.yml)).
 
+## Push large files to PostgreSQL
+
+- **Under ~few hundred MB:** Use **Upload** in the Data → Push panel. The file is copied into `_staging` under `/data`, then removed after a successful push (or after 30 minutes if abandoned).
+- **Multi-GB files:** Avoid Upload (browser transfer + full copy). Place the file inside the data volume and use **Browse** or **Volume path** — push reads the file in place with no copy.
+- **Host files in Docker:** Optionally bind-mount a host folder into the container, e.g. in `docker-compose.yml`:
+
+```yaml
+volumes:
+  - spore_volumes:/data
+  - ${SPORE_HOST_IMPORTS:-./imports}:/data/imports:ro
+```
+
+Then pick `imports/yourfile.csv` via Volume path or Browse.
+
 ## Settings file not found
 
 LLM settings are loaded from `spore/_config/settings.json`. If you use a custom path, create `config/settings.json` as a fallback or symlink to the primary file.

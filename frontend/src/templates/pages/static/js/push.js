@@ -56,6 +56,14 @@
         else el.classList.add('text-slate-500');
     }
 
+    function clearStagedFile() {
+        stagedToken = null;
+        inspectData = null;
+        setFileMeta('No file staged');
+        const pathInput = document.getElementById('push-volume-path');
+        if (pathInput) pathInput.value = '';
+    }
+
     function setFileMeta(text) {
         const el = document.getElementById('push-file-meta');
         if (el) el.textContent = text;
@@ -128,7 +136,7 @@
         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
         stagedToken = data.token;
-        setFileMeta(`${data.filename} · ${data.size_pretty || formatBytes(data.size)}`);
+        setFileMeta(`${data.filename} · ${data.size_pretty || formatBytes(data.size)} · temp copy`);
         inspectData = null;
         return data;
     }
@@ -143,7 +151,7 @@
         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
         stagedToken = data.token;
-        setFileMeta(`${data.filename} · ${data.size_pretty || formatBytes(data.size)}`);
+        setFileMeta(`${data.filename} · ${data.size_pretty || formatBytes(data.size)} · no copy`);
         inspectData = null;
         return data;
     }
@@ -575,6 +583,7 @@
                         `Pushed ${Number(data.total_rows ?? 0).toLocaleString()} rows → ${tableName}`,
                         'idle',
                     );
+                    clearStagedFile();
                     refreshConnectionMetadata(conn.id);
                     hidePushProgress(2000);
                 } else if (data.type === 'error') {
