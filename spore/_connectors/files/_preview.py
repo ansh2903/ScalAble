@@ -14,9 +14,12 @@ import pyarrow.parquet as pq
 
 from spore._config.settings import settings
 from spore._connectors.utils import (
+    dataframe_to_arrow_table,
     make_batch_sink,
+    normalize_arrow_table,
     normalize_output_format,
     normalize_preview_limit,
+    normalize_rows,
     prepare_stream_dir,
     source_filename,
     write_empty_dataset,
@@ -29,7 +32,7 @@ def _table_to_chunks(table: pa.Table, limit: int) -> Generator[dict, None, None]
     if table.num_rows > limit:
         table = table.slice(0, limit)
 
-    rows = table.to_pylist()
+    rows = normalize_rows(table.to_pylist())
     sample_bytes = len(str(rows).encode("utf-8")) if rows else 0
 
     yield {"type": "columns", "content": table.schema.names}
@@ -98,7 +101,7 @@ def preview_parquet(config: dict, query: str, limit: int) -> Generator[dict, Non
         else:
             table = pa.Table.from_batches([batch])
         total = pf.metadata.num_rows if pf.metadata else table.num_rows
-        rows = table.to_pylist()
+        rows = normalize_rows(table.to_pylist())
         sample_bytes = int(table.nbytes)
 
         yield {"type": "columns", "content": table.schema.names}
@@ -128,7 +131,7 @@ def preview_excel(config: dict, query: str, limit: int) -> Generator[dict, None,
         import pandas as pd
 
         df = pd.read_excel(path, sheet_name=sheet, nrows=preview_limit, engine="openpyxl")
-        table = pa.Table.from_pandas(df, preserve_index=False)
+        table = dataframe_to_arrow_table(df)
         yield from _table_to_chunks(table, preview_limit)
     except Exception as e:
         logging.error(f"[excel_file] preview failed: {e}")
@@ -308,7 +311,7 @@ def ingest_excel(config: dict, stream_name: str, query: str, output_format: str,
         import pandas as pd
 
         df = pd.read_excel(path, sheet_name=sheet, engine="openpyxl")
-        table = pa.Table.from_pandas(df, preserve_index=False)
+        table = dataframe_to_arrow_table(df)
         for offset in range(0, table.num_rows, batch_row_size):
             end = min(offset + batch_row_size, table.num_rows)
             yield table.slice(offset, end - offset).to_batches()[0]

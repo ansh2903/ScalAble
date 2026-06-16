@@ -1,0 +1,223 @@
+@layer components {
+  .page-chat .sidebar-tip {
+    @apply absolute left-12 bg-slate-900 text-white text-[9px] font-black px-2 py-1 rounded-lg
+      opacity-0 group-hover/tip:opacity-100 pointer-events-none whitespace-nowrap
+      transition-opacity duration-150 uppercase tracking-widest;
+  }
+  .page-chat .sidebar-tab.active { @apply text-primary bg-primary-soft; }
+  .page-chat .stream-card-inner { @apply border border-slate-100 rounded-xl overflow-hidden; }
+  .page-chat .stream-file-row {
+    @apply flex items-center gap-2 px-2.5 py-2 hover:bg-slate-50 rounded-lg transition-colors;
+  }
+  .page-chat .file-action-btn {
+    @apply w-6 h-6 flex items-center justify-center rounded-md text-slate-300 hover:text-primary hover:bg-primary-soft transition-all;
+  }
+  .page-chat .file-action-btn.danger { @apply hover:text-red-400 hover:bg-red-50; }
+
+  @keyframes morph {
+    0% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+    50% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
+    100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+  }
+  .page-chat .organic-border {
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+    animation: morph 8s ease-in-out infinite;
+  }
+
+  .page-chat .animate-float {
+    animation: float 4s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+  .page-chat .script-text {
+    @apply font-script;
+  }
+
+  .page-chat .heavy-card {
+    @apply bg-white border border-slate-200 rounded-[1.25rem] transition-all duration-300;
+    box-shadow: 0 4px 0 -1px theme('colors.slate.100');
+  }
+  .page-chat .heavy-card:hover {
+    transform: none;
+    box-shadow: 0 4px 0 -1px theme('colors.slate.100');
+    @apply border-slate-200;
+  }
+
+  .page-chat .glass-panel {
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .page-chat .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+  }
+  .page-chat .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-slate-200 rounded-full;
+  }
+
+  .page-chat #deck-viz select,
+  .page-chat #deck-data select {
+    -webkit-appearance: none;
+    appearance: none;
+    padding-right: 1.75rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 12px;
+  }
+
+  .page-chat #storage-used {
+    font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
+    letter-spacing: -0.05em;
+  }
+
+  .page-chat #fs-tree .fs-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: default;
+    user-select: none;
+  }
+  .page-chat #fs-tree .fs-row:hover {
+    background: rgb(240, 250, 245);
+  }
+  .page-chat #fs-tree .fs-row.is-selected {
+    background: rgb(236 253 245);
+  }
+  .page-chat #fs-tree .fs-row.is-drop-target {
+    background: rgb(236 253 245);
+    outline: 1px dashed rgb(16 185 129 / 0.5);
+  }
+  .page-chat #fs-tree .fs-row[draggable="true"] {
+    cursor: pointer;
+  }
+  .page-chat #fs-tree .fs-row[draggable="true"]:active {
+    cursor: default !important;
+  }
+  .page-chat #fs-tree .fs-chevron {
+    width: 14px;
+    flex-shrink: 0;
+    transition: transform 0.15s ease;
+  }
+  .page-chat #fs-tree .fs-chevron.expanded {
+    transform: rotate(90deg);
+  }
+  .page-chat #fs-tree .fs-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgb(71 85 105);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .page-chat #fs-tree .fs-size {
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    color: rgb(100 116 139);
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .page-chat #fs-tree .fs-row:hover .fs-size {
+    opacity: 1;
+  }
+  .page-chat #fs-tree .fs-more-btn {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    color: rgb(148 163 184);
+    opacity: 0;
+    flex-shrink: 0;
+    margin-left: 2px;
+    transition: opacity 0.15s, background-color 0.15s, color 0.15s;
+  }
+  .page-chat #fs-tree .fs-row:hover .fs-more-btn,
+  .page-chat #fs-tree .fs-row.is-selected .fs-more-btn {
+    opacity: 1;
+  }
+  .page-chat #fs-tree .fs-more-btn:hover {
+    background: rgb(241 245 249);
+    color: rgb(15 23 42);
+  }
+  .page-chat #fs-tree .fs-badge-stream {
+    font-size: 7px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    padding: 1px 4px;
+    border-radius: 4px;
+    background: rgb(241 245 249);
+    color: rgb(100 116 139);
+    flex-shrink: 0;
+  }
+  .page-chat #fs-context-menu {
+    position: fixed;
+    z-index: 9999;
+    min-width: 140px;
+    background: white;
+    border: 1px solid rgb(226 232 240);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px -4px rgba(0,0,0,0.12);
+    padding: 4px 0;
+  }
+  .page-chat #fs-context-menu button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 12px;
+    font-size: 10px;
+    font-weight: 600;
+    color: rgb(71 85 105);
+    text-align: left;
+  }
+  .page-chat #fs-context-menu button:hover {
+    background: rgb(248 250 252);
+    color: rgb(16 185 129);
+  }
+  .page-chat #fs-context-menu button.danger:hover {
+    color: rgb(239 68 68);
+  }
+
+  .page-chat .border-l {
+    border-color: rgba(226, 232, 240, 0.6);
+  }
+
+  .page-chat .drop-zone-active {
+    @apply border-primary/40 bg-primary-soft/20;
+  }
+  .page-chat .mode-btn {
+    @apply text-slate-400 hover:text-slate-600;
+  }
+  .page-chat .mode-btn.active {
+    @apply bg-white text-slate-800 shadow-sm;
+  }
+
+  .page-chat .data-component table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .page-chat .data-component th {
+    @apply sticky top-0 bg-white text-[10px] font-black text-slate-400 uppercase p-3 border-b border-slate-100 text-left;
+    z-index: 10;
+  }
+  .page-chat .data-component td {
+    @apply p-3 text-[11px] text-slate-600 border-b border-slate-50 font-medium whitespace-nowrap;
+  }
+  .page-chat .data-component tr:hover td {
+    @apply bg-slate-50/80 text-slate-900;
+  }
+}

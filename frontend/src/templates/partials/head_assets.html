@@ -1,0 +1,16 @@
+{# Core offline styles #}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/spore.css') }}">
+{% if head_chat_layout | default(false) %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/chat-layout.css') }}">
+{% endif %}
+{% if head_highlight | default(false) %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/highlight.github.min.css') }}">
+<script src="{{ url_for('static', filename='vendor/highlight.min.js') }}"></script>
+{% endif %}
+{% if head_htmx | default(false) %}
+<script src="{{ url_for('static', filename='vendor/htmx.min.js') }}"></script>
+{% endif %}
+{% if head_alpine | default(false) %}
+<script defer src="{{ url_for('static', filename='vendor/alpine.min.js') }}"></script>
+{% endif %}

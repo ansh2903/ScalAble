@@ -7,7 +7,7 @@ import os
 import re
 import shutil
 from enum import Enum
-from typing import Protocol
+from typing import Any, Callable, Generator, Protocol
 
 import pyarrow as pa
 import pyarrow.csv as pa_csv
@@ -373,6 +373,210 @@ def write_empty_dataset(path: str, schema: pa.Schema, output_format: str) -> Non
 # ── file push: schema inference + DDL ───────────────────────────────────────
 
 import re as _re
+import base64
+import datetime as _dt
+import decimal as _decimal
+from fractions import Fraction
+
+
+def _coerce_bytes(raw: bytes) -> Any:
+    """Convert raw bytes into a JSON- and DB-friendly scalar when possible."""
+    if not raw:
+        return None
+
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        text = None
+
+    if text is not None:
+        stripped = text.strip()
+        if stripped == "":
+            return None
+        if stripped.lstrip("-").isdigit():
+            return int(stripped)
+        try:
+            if any(ch in stripped for ch in (".", "e", "E")):
+                num = float(stripped)
+                return int(num) if num.is_integer() else num
+        except ValueError:
+            pass
+        if stripped.isprintable():
+            return text
+
+    # Single-byte binary integers (non-text Excel encodings).
+    if len(raw) == 1:
+        return raw[0]
+
+    # Compact integer encodings (little-endian), common in binary Excel quirks.
+    if len(raw) <= 8:
+        try:
+            return int.from_bytes(raw, byteorder="little", signed=False)
+        except OverflowError:
+            pass
+
+    return base64.b64encode(raw).decode("ascii")
+
+
+def normalize_scalar(value: Any) -> Any:
+    """Normalize a single cell value for JSON and connector ingest."""
+    if value is None:
+        return None
+
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        return _coerce_bytes(bytes(value))
+
+    if isinstance(value, bool):
+        return value
+
+    # numpy / pandas scalars without importing pandas at module import time.
+    type_name = type(value).__name__
+    module_name = getattr(type(value), "__module__", "")
+    if module_name.startswith("numpy"):
+        if type_name in {"bool_", "bool8"}:
+            return bool(value)
+        if "int" in type_name:
+            return int(value)
+        if "float" in type_name:
+            return float(value)
+        if type_name == "datetime64":
+            return str(value)
+        return value.item() if hasattr(value, "item") else str(value)
+
+    if isinstance(value, (_dt.datetime, _dt.date, _dt.time)):
+        return value.isoformat()
+    if isinstance(value, _decimal.Decimal):
+        return float(value) if value % 1 else int(value)
+    if isinstance(value, Fraction):
+        return float(value) if value.denominator != 1 else value.numerator
+
+    return value
+
+
+def normalize_row(row: dict[str, Any]) -> dict[str, Any]:
+    return {key: normalize_scalar(val) for key, val in row.items()}
+
+
+def normalize_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [normalize_row(row) for row in rows]
+
+
+def make_json_safe(value: Any) -> Any:
+    """Recursively convert nested preview/push payloads into JSON-safe values."""
+    if isinstance(value, dict):
+        return {k: make_json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [make_json_safe(v) for v in value]
+    return normalize_scalar(value)
+
+
+def normalize_dataframe(df: Any) -> Any:
+    """Normalize pandas DataFrame cells before Arrow conversion."""
+    import pandas as pd
+
+    out = df.copy()
+    for col in out.columns:
+        out[col] = out[col].map(normalize_scalar)
+    return out
+
+
+def dataframe_to_arrow_table(df: Any) -> pa.Table:
+    """Convert a pandas DataFrame to Arrow with normalized scalar values."""
+    import pandas as pd
+
+    normalized = normalize_dataframe(df)
+    return pa.Table.from_pandas(normalized, preserve_index=False)
+
+
+def normalize_arrow_table(table: pa.Table) -> pa.Table:
+    """Normalize Arrow table values that may contain bytes/object scalars."""
+    if table.num_rows == 0:
+        return table
+    import pandas as pd
+
+    df = table.to_pandas(types_mapper=pd.ArrowDtype)
+    return dataframe_to_arrow_table(df)
+
+
+def read_pandas_file(
+    file_path: str,
+    *,
+    nrows: int | None = None,
+    lines: bool = False,
+) -> Any:
+    """Read JSON or Excel via pandas with normalized columns."""
+    import pandas as pd
+
+    ext = os.path.splitext(file_path)[1].lower()
+    if ext in (".xls", ".xlsx"):
+        df = pd.read_excel(
+            file_path,
+            engine="openpyxl",
+            nrows=nrows,
+        )
+    elif ext in (".json", ".ndjson"):
+        df = pd.read_json(file_path, lines=lines, nrows=nrows)
+    else:
+        raise ValueError(f"Unsupported pandas file extension: {ext}")
+
+    df.columns = sanitize_column_names([str(c) for c in df.columns])
+    return normalize_dataframe(df)
+
+
+def iter_file_batches(
+    file_path: str,
+    batch_row_size: int,
+    *,
+    batch_transform: Callable[[pa.RecordBatch], pa.RecordBatch] | None = None,
+) -> Generator[pa.RecordBatch, None, None]:
+    """Yield normalized RecordBatches from a supported local file."""
+    ext = os.path.splitext(file_path)[1].lower()
+    batch_rows = max(int(batch_row_size or 1), 1)
+
+    def _emit(batch: pa.RecordBatch) -> pa.RecordBatch:
+        normalized = normalize_arrow_table(pa.Table.from_batches([batch])).to_batches()[0]
+        if batch_transform is not None:
+            return batch_transform(normalized)
+        return normalized
+
+    if ext in (".csv", ".tsv", ".txt"):
+        delimiter = "\t" if ext == ".tsv" else ","
+        reader = pa_csv.open_csv(
+            file_path,
+            read_options=pa_csv.ReadOptions(block_size=batch_rows * 1024),
+            parse_options=pa_csv.ParseOptions(delimiter=delimiter),
+        )
+        for batch in reader:
+            yield _emit(batch)
+        return
+
+    if ext == ".parquet":
+        pf = pq.ParquetFile(file_path)
+        for rg_idx in range(pf.num_row_groups):
+            table = pf.read_row_group(rg_idx)
+            for offset in range(0, table.num_rows, batch_rows):
+                chunk = table.slice(offset, min(batch_rows, table.num_rows - offset))
+                if chunk.num_rows == 0:
+                    continue
+                yield _emit(chunk.to_batches()[0])
+        return
+
+    if ext in (".json", ".ndjson"):
+        try:
+            arrow_table = pa_json.read_json(file_path)
+            arrow_table = normalize_arrow_table(arrow_table)
+        except Exception:
+            df = read_pandas_file(file_path, lines=(ext == ".ndjson"))
+            arrow_table = dataframe_to_arrow_table(df)
+    elif ext in (".xls", ".xlsx"):
+        df = read_pandas_file(file_path)
+        arrow_table = dataframe_to_arrow_table(df)
+    else:
+        raise ValueError(f"Unsupported file type: {ext}")
+
+    for batch in arrow_table.to_batches(max_chunksize=batch_rows):
+        yield _emit(batch)
+
 
 _PG_RESERVED = frozenset({
     "all", "analyse", "analyze", "and", "any", "array", "as", "asc", "asymmetric",
@@ -495,23 +699,19 @@ def _read_file_sample(file_path: str, sample_rows: int) -> pa.Table:
 
     if ext in (".json", ".ndjson"):
         try:
-            table = pa_json.read_json(file_path)
+            table = normalize_arrow_table(pa_json.read_json(file_path))
         except Exception:
-            import pandas as pd
-            df = pd.read_json(file_path, lines=(ext == ".ndjson"), nrows=sample_rows)
-            df.columns = sanitize_column_names([str(c) for c in df.columns])
-            return pa.Table.from_pandas(df)
+            df = read_pandas_file(file_path, nrows=sample_rows, lines=(ext == ".ndjson"))
+            table = dataframe_to_arrow_table(df)
         return table.slice(0, sample_rows)
 
     if ext in (".xls", ".xlsx"):
-        import pandas as pd
-        df = pd.read_excel(file_path, engine="openpyxl", nrows=sample_rows)
-        df.columns = sanitize_column_names([str(c) for c in df.columns])
-        return pa.Table.from_pandas(df)
+        df = read_pandas_file(file_path, nrows=sample_rows)
+        return dataframe_to_arrow_table(df)
 
     if ext == ".parquet":
         pf = pq.ParquetFile(file_path)
-        return pf.read_row_group(0).slice(0, sample_rows)
+        return normalize_arrow_table(pf.read_row_group(0).slice(0, sample_rows))
 
     raise ValueError(f"Unsupported file extension for inference: {ext}")
 
@@ -553,13 +753,16 @@ def infer_table_schema(file_path: str, sample_rows: int = 200) -> dict:
         raise FileNotFoundError(f"File not found: {file_path}")
 
     table = _read_file_sample(file_path, sample_rows)
+    table = normalize_arrow_table(table)
     columns = sanitize_column_names(table.schema.names)
     arrow_types = [str(f.type) for f in table.schema]
     pg_types = [_arrow_type_to_postgres(f) for f in table.schema]
 
     # Rename columns in the table to sanitized names
     renamed = table.rename_columns(columns)
-    sample = renamed.slice(0, min(sample_rows, renamed.num_rows)).to_pylist()
+    sample = normalize_rows(
+        renamed.slice(0, min(sample_rows, renamed.num_rows)).to_pylist()
+    )
 
     return {
         "columns": columns,

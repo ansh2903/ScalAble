@@ -34,6 +34,9 @@ Copy [.env.example](../.env.example) to `.env` at the repository root.
 | `ANTHROPIC_API_KEY` | — | Anthropic API key. |
 | `GOOGLE_API_KEY` | — | Google Gemini API key. |
 | `SQLALCHEMY_URI` | — | Reserved for future persistent app database. |
+| `SPORE_HOST_METRICS_URL` | _(empty)_ | Optional HTTP URL for true host CPU/RAM metrics (see [Host metrics bridge](#host-metrics-bridge)). |
+| `SPORE_HOST_METRICS_TOKEN` | _(empty)_ | Optional bearer token shared with the host bridge. |
+| `SPORE_METRICS_TIMEOUT` | `2.0` | Seconds to wait for the host bridge before falling back to container metrics. |
 
 Defined in [`spore/_config/settings.py`](../spore/_config/settings.py).
 
@@ -55,6 +58,27 @@ When running via [`docker/docker-compose.hub.yml`](../docker/docker-compose.hub.
 The kernel image name **must match** between `KERNEL_IMAGE` (what the app spawns) and what exists inside the DinD daemon. Pull-only installs fail if the app still targets `spore-kernel:3.12` while only `anshsharma2903/spore-kernel:3.12` was pulled.
 
 Inside containers, `localhost` database hosts are rewritten to `host.docker.internal` when registering connections.
+
+### Host metrics bridge
+
+On **native Linux**, the workspace resource monitor reads host CPU/RAM via `psutil` and labels metrics as **HOST**.
+
+On **Docker Desktop (Windows/macOS)**, the Spore container only sees the Linux VM layer (`/proc` inside the utility VM), not the physical host. Metrics are labeled **DOCKER** so the UI does not imply full-machine utilization.
+
+To show true Windows/macOS host metrics, run the optional bridge on the **host** (outside Docker):
+
+```bash
+python scripts/spore_host_metrics.py --port 8765
+```
+
+Then configure the Spore container:
+
+```env
+SPORE_HOST_METRICS_URL=http://host.docker.internal:8765/metrics
+SPORE_HOST_METRICS_TOKEN=optional-shared-secret
+```
+
+When the bridge is reachable, the UI switches to **HOST CPU** / **HOST RAM**. If the bridge is down or unset, Spore falls back to container-visible metrics with an honest **DOCKER** scope label.
 
 ## LLM settings JSON
 

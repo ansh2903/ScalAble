@@ -1,0 +1,17 @@
+@layer components {
+  .page-settings .heavy-card {
+    @apply bg-white rounded-3xl transition-all duration-300;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+    border: none;
+  }
+  .page-settings .heavy-card:hover {
+    transform: none;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+    @apply border-transparent;
+  }
+
+  .page-settings .script-text {
+    @apply text-emerald-600 font-script not-italic;
+    text-transform: none;
+  }
+}

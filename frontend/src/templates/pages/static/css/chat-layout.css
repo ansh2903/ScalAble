@@ -1,0 +1,49 @@
+/* --- Chat view states (landing / chat / split) --- */
+[data-view="landing"] #chat-panel {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  border: none;
+  background: transparent;
+}
+
+[data-view="landing"] #notebook-panel,
+[data-view="landing"] #resizer,
+[data-view="landing"] #chat-messages-container {
+  display: none;
+}
+
+[data-view="chat"] #chat-panel {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  border: none;
+  background: transparent;
+}
+
+[data-view="chat"] #landing-hero,
+[data-view="chat"] #notebook-panel,
+[data-view="chat"] #resizer {
+  display: none;
+}
+
+[data-view="chat"] #chat-messages-container {
+  display: block;
+}
+
+[data-view="split"] #chat-panel {
+  width: 400px;
+  border-left: 1px solid #e2e8f0;
+}
+
+[data-view="split"] #landing-hero {
+  display: none;
+}
+
+[data-view="split"] #notebook-panel {
+  display: flex;
+}
+
+[data-view="split"] #resizer {
+  display: block;
+}

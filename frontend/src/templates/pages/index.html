@@ -6,136 +6,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Spore</title>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Fredoka:wght@400;600;700&family=Pacifico&display=swap"
-        rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
-        rel="stylesheet" />
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <script id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "primary": "#00A36C",
-                        "primary-dark": "#065f46",
-                        "primary-soft": "#ecfdf5",
-                        "secondary-accent": "#475569",
-                        "bg-main": "#f8fafc",
-                        "card-border": "#e2e8f0",
-                        "heavy-outline": "#cbd5e1"
-                    },
-                    fontFamily: {
-                        "sans": ["Plus Jakarta Sans", "sans-serif"],
-                        "headline": ["Plus Jakarta Sans", "sans-serif"],
-                        "body": ["Plus Jakarta Sans", "sans-serif"],
-                        "playful": ["Fredoka", "sans-serif"],
-                        "mono": ["JetBrains Mono", "monospace"],
-                        "script": ["Pacifico", "cursive"]
-                    },
-                    borderRadius: {
-                        "organic": "2.5rem",
-                        "pill": "9999px"
-                    },
-                    boxShadow: {
-                        "tactile": "0 6px 0 0 rgba(0, 163, 108, 0.2)",
-                        "tactile-hover": "0 3px 0 0 rgba(0, 163, 108, 0.3)",
-                        "data-card": "0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04)",
-                        "header-nav": "0 10px 15px -3px rgba(0, 163, 108, 0.05)"
-                    }
-                },
-            },
-        }
-    </script>
-    <style type="text/tailwindcss">
-        @layer base {
-            body {
-                @apply bg-bg-main text-slate-800 font-body antialiased;
-            }
-            h1, h2, h3 {
-                @apply font-headline font-extrabold tracking-tight;
-            }
-        }
-        .header-glass {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid rgba(0, 163, 108, 0.1);
-        }
-        .organic-border {
-            border-radius: 60% 40% 70% 30% / 30% 60% 40% 70%;
-        }
-        .custom-range {
-            @apply h-2 w-full bg-slate-200 rounded-full appearance-none cursor-pointer;
-        }
-        .custom-range::-webkit-slider-thumb {
-            @apply appearance-none w-6 h-6 bg-primary rounded-full border-4 border-white shadow-lg transition-transform hover:scale-125 active:scale-95;
-        }
-        .soft-gradient-bg {
-            background: radial-gradient(circle at 50% -20%, #ecfdf5 0%, #f8fafc 60%);
-        }
-        .nav-link {
-            @apply relative px-3 py-2 text-slate-600 font-semibold transition-colors hover:text-primary;
-        }
-        .nav-link-active {
-            @apply text-white font-bold;
-        }
-        .nav-link-active::after {
-            content: '';
-            @apply absolute bottom-0 left-3 right-3 h-1 bg-primary rounded-full;
-        }
-        .script-text {
-            @apply font-script text-primary not-italic;
-            text-transform: none;
-        }
-        .form-input-clean {
-            @apply w-full bg-white border-2 border-slate-200 rounded-2xl px-4 py-2.5 text-sm font-medium focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all outline-none;
-        }
-        .form-label-clean {
-            @apply text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-2 px-1;
-        }
-        .fade-in {
-            animation: fadeIn 0.2s ease-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(6px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-        [x-cloak] { display: none !important; }
-
-        /* Scrollable list areas with a slim, themed scrollbar */
-        .scroll-area {
-            overflow-y: auto;
-            scrollbar-width: thin;
-            scrollbar-color: theme('colors.slate.300') transparent;
-        }
-        .scroll-area::-webkit-scrollbar {
-            width: 8px;
-        }
-        .scroll-area::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        .scroll-area::-webkit-scrollbar-thumb {
-            background-color: theme('colors.slate.200');
-            border-radius: 9999px;
-            border: 2px solid transparent;
-            background-clip: content-box;
-        }
-        .scroll-area:hover::-webkit-scrollbar-thumb {
-            background-color: theme('colors.slate.300');
-        }
-
-        /* Flash messages */
-        .flash-success { @apply bg-primary/10 border border-primary/30 text-primary-dark rounded-2xl px-5 py-3 text-sm font-bold flex items-center gap-2; }
-        .flash-error   { @apply bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl px-5 py-3 text-sm font-bold flex items-center gap-2; }
-
-        /* API key input eye toggle */
-        .api-key-wrap { @apply relative; }
-        .api-key-wrap input { @apply pr-12; }
-        .api-key-wrap button { @apply absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors; }
-
-    </style>
+    {% set head_alpine = true %}
+    {% include 'partials/head_assets.html' %}
 </head>
 
 <body class="soft-gradient-bg min-h-screen">
@@ -341,7 +213,9 @@
                                 {% if icon_file %}
                                 <img src="{{ url_for('static', filename=icon_file) }}"
                                     alt="{{ connection.source_type }}"
-                                    class="w-7 h-7 object-contain" />
+                                    class="w-7 h-7 object-contain"
+                                    onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'" />
+                                <span class="material-symbols-outlined text-[24px] text-slate-500 hidden">table_chart</span>
                                 {% else %}
                                 <span class="material-symbols-outlined text-[24px] text-slate-500">database</span>
                                 {% endif %}
@@ -364,7 +238,7 @@
                     {% endfor %}
                 </div>
                 <a href="/connections"
-                    class="block text-center text-xs font-bold text-primary hover:text-[#008c5c] transition-colors py-2">
+                    class="block text-center text-xs font-bold text-primary hover:text-[#008c5c] transition-colors py-2 mt-2">
                     Manage all connections →
                 </a>
                 {% else %}

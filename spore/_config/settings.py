@@ -46,6 +46,11 @@ class Settings:
     KERNEL_MEM_LIMIT = os.getenv("KERNEL_MEM_LIMIT", "1g")
     KERNEL_PIDS_LIMIT = int(os.getenv("KERNEL_PIDS_LIMIT", "256"))
 
+    # Optional host metrics bridge for Docker Desktop (Windows/macOS) deployments.
+    SPORE_HOST_METRICS_URL = os.getenv("SPORE_HOST_METRICS_URL", "")
+    SPORE_HOST_METRICS_TOKEN = os.getenv("SPORE_HOST_METRICS_TOKEN", "")
+    SPORE_METRICS_TIMEOUT = float(os.getenv("SPORE_METRICS_TIMEOUT", "2.0"))
+
     @classmethod
     def kernel_spec_name(cls) -> str:
         version = cls.KERNEL_PYTHON_VERSION.replace(".", "")

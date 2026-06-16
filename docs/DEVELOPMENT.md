@@ -112,6 +112,34 @@ Static files are served from `frontend/src/templates/pages/static/` at URL `/sta
 
 Templates live under `frontend/src/templates/`. Page templates use the `pages/` prefix (e.g. `render_template("pages/chat.html")`).
 
+### Offline CSS (Tailwind)
+
+App pages use a pre-built stylesheet (`static/css/spore.css`) instead of the Tailwind Play CDN. Source files live under `frontend/src/css/`; the theme is in `frontend/tailwind.config.js`.
+
+After editing templates or CSS sources, rebuild and commit the output:
+
+```bash
+cd frontend
+npm ci          # first time only
+npm run build:css
+```
+
+**Important:** Custom CSS `@import`s in `frontend/src/css/input.css` must come **before** the `@tailwind` directives so component classes (`.header-glass`, `.heavy-card`, etc.) are included in the build.
+
+Runtime (`pip install -e .`, Docker) does **not** require Node — the built `spore.css` is committed.
+
+### Vendored JS and fonts
+
+Third-party scripts and fonts are vendored under `static/vendor/` and `static/fonts/`. To refresh pinned versions:
+
+```bash
+bash scripts/vendor_frontend_deps.sh
+```
+
+Shared head tags (fonts, `spore.css`, Alpine, htmx, highlight) are in `frontend/src/templates/partials/head_assets.html`.
+
+The marketing landing page (`frontend/web_page/index.html`) and HTML export templates still use CDN assets by design.
+
 ## Testing
 
 Minimal scripts exist under `test/`:

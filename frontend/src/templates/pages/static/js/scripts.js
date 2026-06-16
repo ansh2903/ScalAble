@@ -353,12 +353,25 @@ function clearFile() {
 }
 
 // Only open the metrics stream on pages that actually display it (e.g. chat).
-if (document.getElementById("cpu-stat") || document.getElementById("ram-stat")) {
+if (document.getElementById("cpu-stat") || document.getElementById("ram-stat") || document.getElementById("scope-prefix")) {
+    const SCOPE_LABELS = {
+        host: "HOST",
+        docker: "DOCKER",
+        container: "CONTAINER",
+    };
+
+    function scopePrefix(scope) {
+        return SCOPE_LABELS[scope] || SCOPE_LABELS.container;
+    }
+
     const eventSource = new EventSource("/system-metrics");
     eventSource.onmessage = function (event) {
         const stats = JSON.parse(event.data);
         const cpu = document.getElementById("cpu-stat");
         const ram = document.getElementById("ram-stat");
+        const scopeEl = document.getElementById("scope-prefix");
+        const label = scopePrefix(stats.scope);
+        if (scopeEl) scopeEl.innerText = label;
         if (cpu) cpu.innerText = `CPU: ${stats.cpu}`;
         if (ram) ram.innerText = `RAM: ${stats.ram}`;
     };

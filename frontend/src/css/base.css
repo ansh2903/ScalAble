@@ -1,0 +1,11 @@
+@layer base {
+  body {
+    @apply bg-bg-main text-slate-800 font-body antialiased;
+  }
+  h1, h2, h3 {
+    @apply font-headline font-extrabold tracking-tight;
+  }
+  body.page-chat {
+    @apply overflow-hidden;
+  }
+}

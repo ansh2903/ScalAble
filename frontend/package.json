@@ -1,0 +1,13 @@
+{
+  "name": "spore-frontend",
+  "private": true,
+  "scripts": {
+    "build:css": "tailwindcss -i ./src/css/input.css -o ./src/templates/pages/static/css/spore.css --minify",
+    "watch:css": "tailwindcss -i ./src/css/input.css -o ./src/templates/pages/static/css/spore.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/container-queries": "^0.1.1",
+    "@tailwindcss/forms": "^0.5.10",
+    "tailwindcss": "^3.4.17"
+  }
+}

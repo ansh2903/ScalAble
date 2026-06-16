@@ -1,0 +1,11 @@
+@import './base.css';
+@import './components.css';
+@import './pages/chat.css';
+@import './pages/connections.css';
+@import './pages/connections-new.css';
+@import './pages/settings.css';
+@import './pages/error.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

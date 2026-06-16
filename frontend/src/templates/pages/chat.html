@@ -5,372 +5,29 @@
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <title>Spore Studio | AI Chat &amp; Analysis</title>
-    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charset="utf-8"></script>
+    <script src="{{ url_for('static', filename='vendor/plotly-2.32.0.min.js') }}" charset="utf-8"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='js/vendor/gridstack.min.css') }}" />
     <script src="{{ url_for('static', filename='js/vendor/echarts.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/vendor/gridstack-all.min.js') }}"></script>
-    <script src="https://unpkg.com/@tanstack/table-core@8.11.2/build/umd/index.production.js"></script>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+    <script src="{{ url_for('static', filename='vendor/tanstack-table-core.umd.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendor/socket.io.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendor/marked.min.js') }}"></script>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+    <script src="{{ url_for('static', filename='vendor/monaco-editor/loader.min.js') }}"></script>
     <script>
-        // Configure AMD loader to point to the Monaco CDN
-        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
+        require.config({ paths: { 'vs': '{{ url_for("static", filename="vendor/monaco-editor/vs") }}' } });
 
-        // Global reference so we know when it's ready
         window.monacoReady = new Promise(resolve => {
             require(['vs/editor/editor.main'], function () {
                 resolve(window.monaco);
             });
         });
     </script>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500&amp;family=Fredoka:wght@400;600;700&amp;family=Pacifico&amp;display=swap"
-        rel="stylesheet" />
-    <link
-        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
-        rel="stylesheet" />
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <script id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "primary": "#00A36C", // Emerald Green
-                        "primary-dark": "#065f46",
-                        "primary-soft": "#ecfdf5",
-                        "secondary-accent": "#475569",
-                        "bg-main": "#f8fafc",
-                        "card-border": "#e2e8f0",
-                        "heavy-outline": "#cbd5e1",
-                        "on-surface": "#1c1b1b",
-                        "surface": "#fcf9f8"
-                    },
-                    fontFamily: {
-                        "sans": ["Plus Jakarta Sans", "sans-serif"],
-                        "headline": ["Plus Jakarta Sans", "sans-serif"],
-                        "body": ["Plus Jakarta Sans", "sans-serif"],
-                        "playful": ["Fredoka", "sans-serif"],
-                        "mono": ["JetBrains Mono", "monospace"],
-                        "script": ["Pacifico", "cursive"]
-                    },
-                    borderRadius: {
-                        "organic": "1.25rem",
-                        "pill": "9999px",
-                        "huge": "2rem"
-                    },
-                    boxShadow: {
-                        "tactile": "0 4px 0 0 rgba(0, 163, 108, 0.2)",
-                        "tactile-hover": "0 2px 0 0 rgba(0, 163, 108, 0.3)",
-                        "data-card": "0 4px 15px -5px rgba(0, 0, 0, 0.04), 0 4px 6px -6px rgba(0, 0, 0, 0.04)",
-                        "header-nav": "0 10px 15px -3px rgba(0, 163, 108, 0.05)"
-                    }
-                },
-            },
-        }
-    </script>
-    <style type="text/tailwindcss">
-        @layer base {
-            body { 
-                @apply bg-bg-main text-slate-800 font-body antialiased overflow-hidden;
-            }
-            h1, h2, h3 {
-                @apply font-headline font-extrabold tracking-tight;
-            }
-        }
-        .sidebar-tip {
-            @apply absolute left-12 bg-slate-900 text-white text-[9px] font-black px-2 py-1 rounded-lg 
-                opacity-0 group-hover/tip:opacity-100 pointer-events-none whitespace-nowrap 
-                transition-opacity duration-150 uppercase tracking-widest;
-        }
-        .sidebar-tab.active { @apply text-primary bg-primary-soft; }
-        .stream-card-inner { @apply border border-slate-100 rounded-xl overflow-hidden; }
-        .stream-file-row { @apply flex items-center gap-2 px-2.5 py-2 hover:bg-slate-50 rounded-lg transition-colors; }
-        .file-action-btn { @apply w-6 h-6 flex items-center justify-center rounded-md text-slate-300 hover:text-primary hover:bg-primary-soft transition-all; }
-        .file-action-btn.danger { @apply hover:text-red-400 hover:bg-red-50; }
-        .header-glass {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid rgba(0, 163, 108, 0.1);
-        }
-        @keyframes morph {
-            0% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
-            50% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
-            100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
-        }
-        .organic-border {
-            border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
-            animation: morph 8s ease-in-out infinite;
-        }
-        .animate-float {
-            animation: float 4s ease-in-out infinite;
-        }
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-        .script-text {
-            @apply font-script;
-        }
-        .heavy-card {
-            @apply bg-white border border-slate-200 rounded-organic transition-all duration-300;
-            box-shadow: 0 4px 0 -1px theme('colors.slate.100');
-        }
-        .nav-link {
-            @apply relative px-3 py-2 text-slate-600 font-semibold transition-colors hover:text-primary;
-        }
-        .nav-link-active {
-            @apply text-white font-bold;
-        }
-        .nav-link-active::after {
-            content: '';
-            @apply absolute bottom-0 left-3 right-3 h-1 bg-primary rounded-full;
-        }
-        .glass-panel { backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
-        .soft-gradient-bg {
-            background: radial-gradient(circle at 50% -20%, #ecfdf5 0%, #f8fafc 60%);
-        }
-        .scrollbar-thin::-webkit-scrollbar {
-            width: 4px;
-        }
-        .scrollbar-thin::-webkit-scrollbar-thumb {
-            @apply bg-slate-200 rounded-full;
-        }
-        /* Dashboard panel selects: custom chevron + ellipsis (native arrow clips pill text) */
-        #deck-viz select,
-        #deck-data select {
-            -webkit-appearance: none;
-            appearance: none;
-            padding-right: 1.75rem;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            overflow: hidden;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 0.5rem center;
-            background-size: 12px;
-        }
-        /* Sidebar Typography */
-        #storage-used {
-            font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
-            letter-spacing: -0.05em;
-        }
-
-        /* File manager tree */
-        #fs-tree .fs-row {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 8px;
-            border-radius: 6px;
-            cursor: default;
-            user-select: none;
-        }
-        #fs-tree .fs-row:hover {
-            background:  rgb(240, 250, 245);
-        }
-        #fs-tree .fs-row.is-selected {
-            background: rgb(236 253 245);
-        }
-        #fs-tree .fs-row.is-drop-target {
-            background: rgb(236 253 245);
-            outline: 1px dashed rgb(16 185 129 / 0.5);
-        }
-        #fs-tree .fs-row[draggable="true"] {
-            cursor: pointer;
-        }
-        #fs-tree .fs-row[draggable="true"]:active {
-            cursor: default !important;
-        }
-        #fs-tree .fs-chevron {
-            width: 14px;
-            flex-shrink: 0;
-            transition: transform 0.15s ease;
-        }
-        #fs-tree .fs-chevron.expanded {
-            transform: rotate(90deg);
-        }
-        #fs-tree .fs-name {
-            font-size: 11px;
-            font-weight: 600;
-            color: rgb(71 85 105);
-            flex: 1;
-            min-width: 0;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        #fs-tree .fs-size {
-            font-size: 10px;
-            font-family: 'JetBrains Mono', monospace;
-            color: rgb(100 116 139);
-            opacity: 0;
-            transition: opacity 0.15s;
-        }
-        #fs-tree .fs-row:hover .fs-size {
-            opacity: 1;
-        }
-        #fs-tree .fs-more-btn {
-            width: 20px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 4px;
-            color: rgb(148 163 184);
-            opacity: 0;
-            flex-shrink: 0;
-            margin-left: 2px;
-            transition: opacity 0.15s, background-color 0.15s, color 0.15s;
-        }
-        #fs-tree .fs-row:hover .fs-more-btn,
-        #fs-tree .fs-row.is-selected .fs-more-btn {
-            opacity: 1;
-        }
-        #fs-tree .fs-more-btn:hover {
-            background: rgb(241 245 249);
-            color: rgb(15 23 42);
-        }
-        #fs-tree .fs-badge-stream {
-            font-size: 7px;
-            font-weight: 800;
-            letter-spacing: 0.05em;
-            padding: 1px 4px;
-            border-radius: 4px;
-            background: rgb(241 245 249);
-            color: rgb(100 116 139);
-            flex-shrink: 0;
-        }
-        #fs-context-menu {
-            position: fixed;
-            z-index: 9999;
-            min-width: 140px;
-            background: white;
-            border: 1px solid rgb(226 232 240);
-            border-radius: 8px;
-            box-shadow: 0 8px 24px -4px rgba(0,0,0,0.12);
-            padding: 4px 0;
-        }
-        #fs-context-menu button {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            width: 100%;
-            padding: 6px 12px;
-            font-size: 10px;
-            font-weight: 600;
-            color: rgb(71 85 105);
-            text-align: left;
-        }
-        #fs-context-menu button:hover {
-            background: rgb(248 250 252);
-            color: rgb(16 185 129);
-        }
-        #fs-context-menu button.danger:hover {
-            color: rgb(239 68 68);
-        }
-
-        /* Subtle Indent */
-        .border-l {
-            border-color: rgba(226, 232, 240, 0.6);
-        }
-
-        /* File management drop zone animation */
-        .drop-zone-active {
-            @apply border-primary/40 bg-primary-soft/20;
-        }
-        .mode-btn {
-            @apply text-slate-400 hover:text-slate-600;
-        }
-        .mode-btn.active {
-            @apply bg-white text-slate-800 shadow-sm;
-        }
-        /* Spore Modern Table Theme */
-        .data-component table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            font-variant-numeric: tabular-nums;
-        }
-
-        .data-component th {
-            @apply sticky top-0 bg-white text-[10px] font-black text-slate-400 uppercase p-3 border-b border-slate-100 text-left;
-            z-index: 10;
-        }
-
-        .data-component td {
-            @apply p-3 text-[11px] text-slate-600 border-b border-slate-50 font-medium whitespace-nowrap;
-        }
-
-        .data-component tr:hover td {
-            @apply bg-slate-50/80 text-slate-900;
-        }
-        
-    </style>
-    <style>
-        /* --- 1. LANDING STATE (Centered) --- */
-        [data-view="landing"] #chat-panel {
-            width: 100%;
-            max-width: 800px;
-            margin: 0 auto;
-            border: none;
-            background: transparent;
-        }
-
-        [data-view="landing"] #notebook-panel,
-        [data-view="landing"] #resizer,
-        [data-view="landing"] #chat-messages-container {
-            display: none;
-        }
-
-
-        /* --- 2. CHAT STATE (Input slides down) --- */
-        [data-view="chat"] #chat-panel {
-            width: 100%;
-            max-width: 800px;
-            margin: 0 auto;
-            border: none;
-            background: transparent;
-        }
-
-        [data-view="chat"] #landing-hero,
-        [data-view="chat"] #notebook-panel,
-        [data-view="chat"] #resizer {
-            display: none;
-        }
-
-        [data-view="chat"] #chat-messages-container {
-            display: block;
-            /* Reveals messages, pushing input down */
-        }
-
-        /* --- 3. SPLIT STATE (Notebook slides in) --- */
-        [data-view="split"] #chat-panel {
-            width: 400px;
-            /* Locks chat to the right */
-            border-left: 1px solid #e2e8f0;
-        }
-
-        [data-view="split"] #landing-hero {
-            display: none;
-        }
-
-        [data-view="split"] #notebook-panel {
-            display: flex;
-            /* Reveals notebook on the left */
-        }
-
-        [data-view="split"] #resizer {
-            display: block;
-        }
-
-        /* Prevent vertical resizing of the monaco container */
-    </style>
+    {% set head_chat_layout = true %}
+    {% include 'partials/head_assets.html' %}
 </head>
 
-<body class="soft-gradient-bg h-screen">
+<body class="page-chat soft-gradient-bg h-screen">
     <header class="header-glass fixed top-0 w-full z-50 h-16 flex items-center justify-between px-8">
         <div class="flex items-center gap-12">
             <div class="flex items-center gap-3 group cursor-pointer">
@@ -403,6 +60,7 @@
             </div>
         </div>
         <div class="flex items-center gap-4">
+            <div id="scope-prefix" class="text-[10px] font-bold text-slate-600 uppercase tracking-tight">HOST</div>
             <div class="flex items-center gap-3 bg-white border border-slate-200 px-3 py-1 rounded-lg mr-2">
                 <div class="flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-[14px] text-slate-400">memory</span>
@@ -413,7 +71,7 @@
                 <div class="flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-[14px] text-slate-400">database</span>
                     <span id="ram-stat" class="text-[10px] font-bold text-slate-600 uppercase tracking-tight">RAM:
-                        0GB</span>
+                        0 GB</span>
                 </div>
             </div>
         </div>

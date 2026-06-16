@@ -18,8 +18,6 @@ from spore._compute.relations import (
 )
 from spore._compute.streams import duckdb_read_source, resolve_source
 
-import psutil
-import time
 import pandas as pd
 import traceback
 import json
@@ -32,6 +30,7 @@ import decimal as _decimal
 
 from spore._exception import CustomException
 from spore._logger import logging
+from spore._monitoring.system_metrics import get_system_metrics
 
 workspace_blueprint = generate_blueprint('workspace')
 
@@ -131,11 +130,7 @@ def system_metrics():
     def generate():
         try:
             while True:
-                data = {
-                    "cpu": f"{psutil.cpu_percent(interval=1)}%",
-                    "ram": f"{psutil.virtual_memory().used / (1024 ** 3):.2f} GB"
-                }
-
+                data = get_system_metrics(cpu_interval=1.0)
                 yield f"data: {json.dumps(data)}\n\n"
                 time.sleep(1)
 

@@ -10,6 +10,7 @@ from spore._connectors.utils import (
     build_postgres_ddl,
     estimate_file_rows,
     infer_table_schema,
+    make_json_safe,
 )
 from spore._engine.model_manager import get_engine
 from spore._engine.query_executor import run_query
@@ -30,6 +31,10 @@ from spore._logger import logging
 data_blueprint = generate_blueprint('data')
 
 STAGING_ROOT = os.path.join(FS_ROOT, "_staging")
+
+
+def _sse_chunk(chunk: dict) -> str:
+    return f"data: {json.dumps(make_json_safe(chunk))}\n\n"
 
 
 def _reject_agent_execution():
@@ -69,13 +74,12 @@ def preview():
                 try:
                     # This loop actually triggers the execution in DuckDB
                     for chunk in manager.preview(query=query, limit=limit):
-                        # IN FUTURE MAKE SURE TO FIND ANOTHER WAY OTHER THAN default=str THING
-                        yield f"data: {json.dumps(chunk, default=str)}\n\n"
+                        yield _sse_chunk(chunk)
                         
                 except Exception as e:
                     logging.error(f"Stream error: {str(e)}")
                     err_chunk = {"type": "error", "content": str(e)}
-                    yield f"data: {json.dumps(err_chunk)}\n\n"
+                    yield _sse_chunk(err_chunk)
 
         # 2. Return the stream directly to the frontend
             return Response(stream_with_context(generate_stream()), mimetype='text/event-stream')
@@ -125,11 +129,11 @@ def ingest():
                     batch_row_size=batch_row_size,
                     output_format=output_format,
                 ):
-                    yield f"data: {json.dumps(chunk, default=str)}\n\n"
+                    yield _sse_chunk(chunk)
             except Exception as e:
                 logging.error(f"ingest stream error: {str(e)}", exc_info=True)
                 err_chunk = {"type": "error", "content": str(e)}
-                yield f"data: {json.dumps(err_chunk)}\n\n"
+                yield _sse_chunk(err_chunk)
 
         return Response(stream_with_context(generate_stream()), mimetype='text/event-stream')
 
@@ -269,7 +273,7 @@ def push_inspect():
         )
         est_rows = estimate_file_rows(file_path)
 
-        return jsonify({
+        return jsonify(make_json_safe({
             "columns": schema_info["columns"],
             "types": schema_info["types"],
             "sample_rows": schema_info["sample_rows"][:20],
@@ -278,7 +282,7 @@ def push_inspect():
             "file_size": schema_info["file_size"],
             "file_size_pretty": file_size_fmt(schema_info["file_size"]),
             "filename": _push_staging().get(token, {}).get("filename"),
-        })
+        }))
 
     except Exception as e:
         logging.error(f"push/inspect error: {e}", exc_info=True)
@@ -312,7 +316,7 @@ def push_suggest_ddl():
 
     try:
         schema_info = infer_table_schema(file_path, sample_rows=50)
-        sample_json = json.dumps(schema_info["sample_rows"][:10], default=str)
+        sample_json = json.dumps(make_json_safe(schema_info["sample_rows"][:10]))
         prompt = (
             f"The user wants to push a file into PostgreSQL as table `{table_name}`.\n\n"
             f"Columns and inferred types from sample data:\n"
@@ -382,7 +386,7 @@ def push_execute():
             if ddl:
                 for chunk in manager.preview(query=ddl, limit=1):
                     if chunk.get("type") == "error":
-                        yield f"data: {json.dumps(chunk, default=str)}\n\n"
+                        yield _sse_chunk(chunk)
                         return
 
             for chunk in manager.file_to_db(
@@ -400,10 +404,10 @@ def push_execute():
                         session["connections"] = connections
                         chunk["metadata_refreshed"] = True
 
-                yield f"data: {json.dumps(chunk, default=str)}\n\n"
+                yield _sse_chunk(chunk)
 
         except Exception as e:
             logging.error(f"push/execute stream error: {e}", exc_info=True)
-            yield f"data: {json.dumps({'type': 'error', 'content': str(e)}, default=str)}\n\n"
+            yield _sse_chunk({"type": "error", "content": str(e)})
 
     return Response(stream_with_context(generate_stream()), mimetype="text/event-stream")

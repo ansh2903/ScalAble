@@ -24,10 +24,6 @@ import duckdb
 from typing import Any, Generator
 
 import pyarrow as pa
-import pyarrow.parquet as pq
-import pyarrow.csv as pa_csv
-import pyarrow.json as pa_json
-import pandas as pd
 import adbc_driver_postgresql.dbapi as pg
 
 from ..base import BaseSource, SourceKind, SourceCapabilities
@@ -35,6 +31,7 @@ from ..utils import (
     QueryKind,
     classify_query,
     estimate_file_rows,
+    iter_file_batches,
     normalize_preview_limit,
     sanitize_column_names,
     status_row,
@@ -481,49 +478,11 @@ class PostgreSQLSource(BaseSource):
         batch_row_size: int,
     ) -> Generator[pa.RecordBatch, None, None]:
         """Yield RecordBatches from a local file without loading it entirely."""
-        ext = os.path.splitext(file_path)[1].lower()
-
-        if ext in (".csv", ".tsv", ".txt"):
-            delimiter = "\t" if ext == ".tsv" else ","
-            reader = pa_csv.open_csv(
-                file_path,
-                read_options=pa_csv.ReadOptions(
-                    block_size=batch_row_size * 1024,
-                ),
-                parse_options=pa_csv.ParseOptions(delimiter=delimiter),
-            )
-            for batch in reader:
-                yield self._rename_batch_columns(batch)
-            return
-
-        if ext == ".parquet":
-            pf = pq.ParquetFile(file_path)
-            for rg_idx in range(pf.num_row_groups):
-                table = pf.read_row_group(rg_idx)
-                for offset in range(0, table.num_rows, batch_row_size):
-                    chunk = table.slice(offset, min(batch_row_size, table.num_rows - offset))
-                    if chunk.num_rows == 0:
-                        continue
-                    yield self._rename_batch_columns(chunk.to_batches()[0])
-            return
-
-        # JSON / Excel — load whole file (acceptable for smaller files).
-        if ext in (".json", ".ndjson"):
-            try:
-                arrow_table = pa_json.read_json(file_path)
-            except Exception:
-                df = pd.read_json(file_path, lines=(ext == ".ndjson"))
-                df.columns = sanitize_column_names([str(c) for c in df.columns])
-                arrow_table = pa.Table.from_pandas(df)
-        elif ext in (".xls", ".xlsx"):
-            df = pd.read_excel(file_path, engine="openpyxl")
-            df.columns = sanitize_column_names([str(c) for c in df.columns])
-            arrow_table = pa.Table.from_pandas(df)
-        else:
-            raise ValueError(f"Unsupported file type: {ext}")
-
-        for batch in arrow_table.to_batches(max_chunksize=batch_row_size):
-            yield batch
+        yield from iter_file_batches(
+            file_path,
+            batch_row_size,
+            batch_transform=self._rename_batch_columns,
+        )
 
     def file_to_db(
         self,

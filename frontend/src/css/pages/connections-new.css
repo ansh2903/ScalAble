@@ -1,0 +1,74 @@
+@layer components {
+  .page-connections-new .heavy-card {
+    @apply bg-white border border-slate-200 rounded-[2rem] transition-all duration-300;
+    box-shadow: 0 20px 50px rgba(0, 163, 108, 0.05);
+  }
+  .page-connections-new .heavy-card:hover {
+    transform: none;
+    @apply border-slate-200;
+    box-shadow: 0 20px 50px rgba(0, 163, 108, 0.05);
+  }
+
+  .page-connections-new .source-card {
+    @apply bg-white border border-slate-200 rounded-3xl transition-all duration-300;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  }
+
+  .page-connections-new .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .page-connections-new .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .page-connections-new .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-slate-200 rounded-full;
+  }
+  .page-connections-new .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-primary/30;
+  }
+
+  .page-connections-new .f-label {
+    display: block;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #64748b;
+    margin-bottom: 7px;
+  }
+  .page-connections-new .f-input {
+    width: 100%;
+    background: white;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 10px 13px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'JetBrains Mono', monospace;
+    color: #1e293b;
+    outline: none;
+    transition: all 0.15s;
+  }
+  .page-connections-new .f-input:hover { border-color: #cbd5e1; }
+  .page-connections-new .f-input:focus {
+    border-color: #00A36C;
+    box-shadow: 0 0 0 4px rgba(0, 163, 108, 0.08);
+  }
+  .page-connections-new .f-input::placeholder {
+    color: #cbd5e1;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 400;
+  }
+  .page-connections-new .f-input:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .page-connections-new .fade-up {
+    animation: fadeUp 220ms ease-out forwards;
+  }
+}

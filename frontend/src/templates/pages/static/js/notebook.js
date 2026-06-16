@@ -1178,6 +1178,23 @@ function buildDataShell(componentId) {
     </div>`;
 }
 
+function pandasHasIndexColumn(sourceTable) {
+  const sourceHeaders = Array.from(sourceTable.querySelectorAll('thead th'));
+  if (sourceHeaders.length === 0) return false;
+
+  const firstHeaderBlank = sourceHeaders[0].innerText.trim() === '';
+  if (!firstHeaderBlank) return false;
+
+  const sourceRows = Array.from(sourceTable.querySelectorAll('tbody tr'));
+  if (sourceRows.length === 0) return true;
+
+  // Pandas renders the DataFrame index as row-header <th> cells, not data <td>.
+  return sourceRows.some((tr) => {
+    const first = tr.querySelector('th, td');
+    return first && first.tagName === 'TH';
+  });
+}
+
 function initializeSmartTable(rawHtml, componentId) {
   // 1. Parse the ugly pandas HTML silently in memory
   const parser = new DOMParser();
@@ -1189,14 +1206,16 @@ function initializeSmartTable(rawHtml, componentId) {
     return;
   }
 
+  const skipIndexColumn = pandasHasIndexColumn(sourceTable);
+
   // 2. Extract Headers
   const thead = document.getElementById(`${componentId}-thead`);
   const sourceHeaders = Array.from(sourceTable.querySelectorAll('thead th'));
+  const dataHeaders = skipIndexColumn ? sourceHeaders.slice(1) : sourceHeaders;
 
   let headerHtml = '<tr>';
-  sourceHeaders.forEach((th, index) => {
-    // Pandas usually leaves the top-left index header blank. Let's name it 'idx'
-    const colName = th.innerText.trim() || (index === 0 ? 'idx' : `col_${index}`);
+  dataHeaders.forEach((th, index) => {
+    const colName = th.innerText.trim() || `col_${index}`;
     headerHtml += `
             <th class="px-4 py-2 text-[10px] font-black text-slate-500 tracking-wider whitespace-nowrap border-b border-slate-200">
                 ${colName}
@@ -1215,9 +1234,12 @@ function initializeSmartTable(rawHtml, componentId) {
   let bodyHtml = '';
   sourceRows.forEach((tr, rowIndex) => {
     const cells = Array.from(tr.querySelectorAll('th, td'));
+    const dataCells = skipIndexColumn
+      ? cells.filter((cell, cellIndex) => !(cellIndex === 0 && cell.tagName === 'TH'))
+      : cells;
 
     bodyHtml += `<tr class="hover:bg-green-50/50 transition-colors group">`;
-    cells.forEach((cell, cellIndex) => {
+    dataCells.forEach((cell) => {
       const val = cell.innerText.trim();
       // Style numbers slightly differently for that Kaggle data-science feel
       const isNumber = !isNaN(val) && val !== '';

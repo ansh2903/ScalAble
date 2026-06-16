@@ -43,6 +43,10 @@ services:
       - OLLAMA_ENDPOINT=${OLLAMA_ENDPOINT:-http://host.docker.internal:11434/api/generate}
       - LMSTUDIO_BASE=${LMSTUDIO_BASE:-http://host.docker.internal:1234}
       - OPENAI_BASE=${OPENAI_BASE:-https://api.openai.com/v1}
+      # Optional host metrics bridge (run scripts/spore_host_metrics.py on the host).
+      - SPORE_HOST_METRICS_URL=${SPORE_HOST_METRICS_URL:-}
+      - SPORE_HOST_METRICS_TOKEN=${SPORE_HOST_METRICS_TOKEN:-}
+      - SPORE_METRICS_TIMEOUT=${SPORE_METRICS_TIMEOUT:-2.0}
     volumes:
       - spore_volumes:/data
     networks:
