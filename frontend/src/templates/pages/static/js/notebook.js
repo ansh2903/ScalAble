@@ -109,6 +109,44 @@ function focusCellEditor(cellId) {
   setTimeout(tryFocus, 0);
 }
 
+function enterCellEditMode(cellId) {
+  const cell = cells[cellId];
+  if (!cell) return;
+
+  if (cell.type === 'markdown') {
+    enterMarkdownEdit(cellId);
+    return;
+  }
+
+  activeCellId = cellId;
+  isCommandMode = false;
+  highlightActiveCell();
+
+  const focusEditor = () => {
+    if (!cells[cellId]?.editor) return false;
+    window.monacoReady?.then((monaco) => monaco.editor.setTheme('spore-theme'));
+    cells[cellId].editor.focus();
+    return true;
+  };
+
+  if (!focusEditor()) {
+    let attempts = 0;
+    const tryFocus = () => {
+      if (!cells[cellId]) return;
+      if (focusEditor()) return;
+      if (++attempts < 40) setTimeout(tryFocus, 50);
+    };
+    setTimeout(tryFocus, 0);
+  }
+}
+
+function exitCellEditMode() {
+  if (!activeCellId) return;
+  isCommandMode = true;
+  highlightActiveCell();
+  document.getElementById(activeCellId)?.focus();
+}
+
 function focusOrCreateBelow(cellId) {
   const ids = getOrderedCellIds();
   let idx = ids.indexOf(cellId);
@@ -467,17 +505,12 @@ function mountMonacoEditor(monaco, cellId, cellType, initialCode, opts) {
   wireNotebookEditorRunKeys(monaco, editor);
 
   editor.addCommand(monaco.KeyCode.Escape, () => {
-    const id = resolveCellIdForEditor(editor);
-    document.activeElement?.blur();
-    isCommandMode = true;
-    activeCellId = id;
-    highlightActiveCell();
-    document.getElementById(id)?.focus();
+    exitCellEditMode();
   });
 
   editor.onDidFocusEditorText(() => {
     monaco.editor.setTheme('spore-theme');
-    activeCellId = resolveCellIdForEditor(editor);
+    activeCellId = cellId;
     isCommandMode = false;
     highlightActiveCell();
   });
@@ -707,11 +740,8 @@ function renderMarkdownCell(cellId, advance = false) {
   } else if (advance) {
     focusOrCreateBelow(cellId);
   } else {
-    document.activeElement?.blur();
-    isCommandMode = true;
     activeCellId = cellId;
-    highlightActiveCell();
-    document.getElementById(cellId)?.focus();
+    exitCellEditMode();
   }
 }
 
@@ -1326,13 +1356,7 @@ function handleNotebookCommandKeydown(e) {
 
     case 'Enter':
       e.preventDefault();
-      if (activeCell?.type === 'markdown') {
-        enterMarkdownEdit(activeCellId);
-      } else if (activeCell?.editor) {
-        isCommandMode = false;
-        window.monacoReady.then((monaco) => monaco.editor.setTheme('spore-theme'));
-        activeCell.editor.focus();
-      }
+      enterCellEditMode(activeCellId);
       break;
 
     case 'a':
