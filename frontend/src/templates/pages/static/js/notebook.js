@@ -8,6 +8,9 @@ let _notebookHydrating = false;
 let _notebookSaveTimer = null;
 let _recentlyDeleted = null;
 let _dragCellId = null;
+const executingCells = new Set();
+let kernelPendingCount = 0;
+let runAllInProgress = false;
 
 function getOrderedCellIds() {
   const container = document.getElementById('notebook-cells');
@@ -192,6 +195,45 @@ function setKernelStatus(state) {
   }
 }
 
+function bumpKernelPending(delta) {
+  kernelPendingCount = Math.max(0, kernelPendingCount + delta);
+  if (kernelPendingCount > 0 || runAllInProgress) {
+    setKernelStatus('busy');
+  } else {
+    setKernelStatus('idle');
+  }
+}
+
+function setCellExecuting(cellId, executing) {
+  if (executing) executingCells.add(cellId);
+  else executingCells.delete(cellId);
+
+  const btn = document.getElementById(`${cellId}-run-btn`);
+  if (btn) {
+    btn.disabled = executing;
+    btn.classList.toggle('opacity-50', executing);
+    btn.classList.toggle('pointer-events-none', executing);
+  }
+
+  const cell = cells[cellId];
+  if (cell?.editor) {
+    cell.editor.updateOptions({ readOnly: executing });
+  }
+}
+
+function waitForKernelCell(cellId) {
+  return new Promise((resolve) => {
+    function handler(chunk) {
+      if (chunk.cell_id !== cellId) return;
+      if (chunk.type === 'done' || chunk.type === 'error') {
+        socket.off('kernel_output', handler);
+        resolve(chunk.type);
+      }
+    }
+    socket.on('kernel_output', handler);
+  });
+}
+
 function stopRestartSpinner() {
   const icon = document.getElementById('restart-kernel-icon');
   if (icon) icon.classList.remove('animate-spin');
@@ -222,7 +264,7 @@ socket.on('kernel_status', (data) => {
       setKernelStatus('busy');
       break;
     case 'idle':
-      setKernelStatus('idle');
+      if (!runAllInProgress && kernelPendingCount === 0) setKernelStatus('idle');
       break;
     default:
       if (data && data.status) setKernelStatus(data.status);
@@ -606,7 +648,7 @@ function buildPythonCellHtml(cellId, initialCode, opts) {
                 In [ ] — Python (local)
             </span>
             <div class="flex items-center gap-1 ml-auto">
-                <button onclick="runCell('${cellId}', false)"
+                <button id="${cellId}-run-btn" onclick="runCell('${cellId}', false)"
                     class="flex items-center gap-1 px-2 py-1 bg-primary text-white text-[9px] font-black rounded hover:opacity-90 transition-all">
                     <span class="material-symbols-outlined text-[11px]" style="font-variation-settings:'FILL' 1">play_arrow</span>
                     RUN
@@ -861,24 +903,27 @@ function undoDeleteCell() {
 
 function runCell(cellId, advance = false) {
   const cell = cells[cellId];
-  if (!cell || cell.type !== 'python' || !cell.editor) return;
+  if (!cell || cell.type !== 'python' || !cell.editor) return false;
 
   const code = cell.editor.getValue().trim();
   if (!code) {
     if (advance) focusOrCreateBelow(cellId);
-    return;
+    return false;
   }
+
+  if (executingCells.has(cellId)) return false;
 
   if (code.includes('Materialize a SQL cell first')) {
     alert('Materialize a SQL query first, then add a Python cell from the SQL cell.');
-    return;
+    return false;
   }
 
   cell.outputEl.innerHTML = '';
   cell.outputs = [];
   cell.outputEl.classList.remove('hidden');
   cell.countEl.textContent = 'In [*] — Running...';
-  setKernelStatus('busy');
+  setCellExecuting(cellId, true);
+  bumpKernelPending(1);
 
   socket.emit('kernel_execute', { cell_id: cellId, code });
 
@@ -886,6 +931,49 @@ function runCell(cellId, advance = false) {
     addCell('python', '', { insertAfter: cellId, userInitiated: true });
   } else if (advance) {
     focusOrCreateBelow(cellId);
+  }
+  return true;
+}
+
+async function runAllCells() {
+  if (runAllInProgress) return;
+  runAllInProgress = true;
+  setKernelStatus('busy');
+
+  const runAllBtn = document.getElementById('run-all-cells');
+  if (runAllBtn) {
+    runAllBtn.disabled = true;
+    runAllBtn.classList.add('opacity-50', 'pointer-events-none');
+  }
+
+  try {
+    for (const cellId of getOrderedCellIds()) {
+      const cell = cells[cellId];
+      if (!cell) continue;
+
+      if (cell.type === 'python') {
+        const code = cell.editor?.getValue().trim();
+        if (!code || code.includes('Materialize a SQL cell first') || executingCells.has(cellId)) continue;
+        const waitPromise = waitForKernelCell(cellId);
+        runCell(cellId, false);
+        await waitPromise;
+      } else if (cell.type === 'sql') {
+        const sql = cell.editor?.getValue().trim();
+        const dbId = cell.connEl?.value;
+        if (!sql || !dbId) continue;
+        await runSqlCell(cellId, false);
+      } else if (cell.type === 'markdown') {
+        if (!(cell.editor?.getValue().trim())) continue;
+        renderMarkdownCell(cellId, false);
+      }
+    }
+  } finally {
+    runAllInProgress = false;
+    if (runAllBtn) {
+      runAllBtn.disabled = false;
+      runAllBtn.classList.remove('opacity-50', 'pointer-events-none');
+    }
+    if (kernelPendingCount === 0) setKernelStatus('idle');
   }
 }
 
@@ -1139,6 +1227,7 @@ function recordCellOutput(cell, chunk) {
       ename: chunk.ename,
       evalue: chunk.evalue,
       traceback: chunk.traceback,
+      content: chunk.content,
     });
   }
 }
@@ -1150,13 +1239,12 @@ function handleKernelOutput(chunk) {
 
   if (chunk.type === 'stream') {
     recordCellOutput(cell, chunk);
-    let streamEl = out.querySelector(`.stream-output[data-stream="${chunk.stream}"]`);
+    let streamEl = out.querySelector(`.nb-cell-stream[data-stream="${chunk.stream}"]`);
     if (!streamEl) {
-      out.insertAdjacentHTML('beforeend', `
-        <pre class="stream-output font-mono text-[11px] p-3 leading-relaxed whitespace-pre-wrap m-0
-             ${chunk.stream === 'stderr' ? 'text-amber-600 bg-amber-50' : 'text-slate-700'}"
-             data-stream="${chunk.stream}"></pre>`);
-      streamEl = out.querySelector(`.stream-output[data-stream="${chunk.stream}"]`);
+      streamEl = document.createElement('pre');
+      streamEl.className = 'nb-cell-stream';
+      streamEl.dataset.stream = chunk.stream;
+      out.appendChild(streamEl);
     }
     streamEl.textContent += chunk.content;
   } else if (chunk.type === 'display' || chunk.type === 'result') {
@@ -1167,16 +1255,23 @@ function handleKernelOutput(chunk) {
     }
   } else if (chunk.type === 'error') {
     recordCellOutput(cell, chunk);
-    const clean = chunk.traceback.join('\n').replace(/\x1b\[[0-9;]*m/g, '');
-    out.insertAdjacentHTML('beforeend', `
-      <pre class="font-mono text-[11px] p-3 text-red-500 bg-red-50 border-t border-red-100 whitespace-pre-wrap m-0">${clean}</pre>`);
+    const lines = Array.isArray(chunk.traceback) ? chunk.traceback : [];
+    const fallback = `${chunk.ename || 'Error'}: ${chunk.evalue || ''}`;
+    const clean = (chunk.content || lines.join('\n') || fallback)
+      .replace(/\x1b\[[0-9;]*(?:;[0-9]*)*[mGKH]/g, '');
+    const errPre = document.createElement('pre');
+    errPre.className = 'nb-cell-error';
+    errPre.textContent = clean;
+    out.appendChild(errPre);
     cell.countEl.textContent = 'In [!] — Error';
-    setKernelStatus('idle');
+    setCellExecuting(chunk.cell_id, false);
+    bumpKernelPending(-1);
   } else if (chunk.type === 'done') {
     if (cell.countEl.textContent.includes('*')) {
       cell.countEl.textContent = 'In [✓] — Complete';
     }
-    setKernelStatus('idle');
+    setCellExecuting(chunk.cell_id, false);
+    bumpKernelPending(-1);
   }
 }
 
@@ -1531,6 +1626,7 @@ function setupMonacoPython(monaco) {
 }
 
 window.renderMarkdownCell = renderMarkdownCell;
+window.runAllCells = runAllCells;
 window.enterMarkdownEdit = enterMarkdownEdit;
 window.convertCell = convertCell;
 window.undoDeleteCell = undoDeleteCell;

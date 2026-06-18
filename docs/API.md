@@ -128,7 +128,7 @@ Registered in [`spore/_kernel/socket_events.py`](../spore/_kernel/socket_events.
 
 | Event | Payload | When |
 |-------|---------|------|
-| `kernel_status` | `{ status, session_id? }` | Connect, interrupt, restart |
+| `kernel_status` | `{ status, session_id? }` | Connect, interrupt, restart; `busy` / `idle` reflect per-session execution queue state |
 | `kernel_output` | Chunk with `cell_id`, stream content | During `kernel_execute` |
 | `kernel_list` | `{ kernels: [...] }` | Response to `kernel_list` |
 
@@ -136,10 +136,12 @@ Registered in [`spore/_kernel/socket_events.py`](../spore/_kernel/socket_events.
 
 | Event | Payload | Description |
 |-------|---------|-------------|
-| `kernel_execute` | `{ code, cell_id }` | Run Python in session kernel |
+| `kernel_execute` | `{ code, cell_id }` | Run Python in session kernel (serialized per Socket.IO session via an internal FIFO queue) |
 | `kernel_interrupt` | — | Interrupt running kernel |
 | `kernel_restart` | `{ kernel_name?: "python3" }` | Destroy and recreate kernel |
 | `kernel_list` | — | List available Jupyter kernelspecs |
+
+`kernel_execute` requests for a given Socket.IO session are processed **one at a time** in FIFO order. Duplicate pending submissions for the same `cell_id` are coalesced (latest code wins). The server emits `kernel_status` `busy` when execution starts and `idle` when the queue is empty.
 
 ### `kernel_output` chunk types
 

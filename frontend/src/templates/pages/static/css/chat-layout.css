@@ -47,3 +47,33 @@
 [data-view="split"] #resizer {
   display: block;
 }
+
+/* Notebook cell output — plain CSS so Docker/cached spore.css cannot hide errors */
+.page-chat .nb-cell-error {
+  margin: 0;
+  padding: 0.75rem;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.625;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #ef4444;
+  background-color: #fef2f2;
+  border-top: 1px solid #fee2e2;
+}
+
+.page-chat .nb-cell-stream {
+  margin: 0;
+  padding: 0.75rem;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.625;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #334155;
+}
+
+.page-chat .nb-cell-stream[data-stream="stderr"] {
+  color: #d97706;
+  background-color: #fffbeb;
+}

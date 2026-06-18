@@ -17,7 +17,7 @@ services:
       redis:
         condition: service_started
       kernel-dind:
-        condition: service_started
+        condition: service_healthy
       kernel-image-puller:
         condition: service_completed_successfully
     environment:
@@ -64,7 +64,7 @@ services:
     restart: unless-stopped
 
   kernel-dind:
-    image: docker:27-dind-rootless
+    image: docker:27-dind
     container_name: spore-kernel-dind
     privileged: true
     environment:
@@ -73,6 +73,12 @@ services:
       - spore_volumes:/data
     networks:
       - kernel_net
+    healthcheck:
+      test: ["CMD", "docker", "info"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
     restart: unless-stopped
 
   # Pre-pull the kernel image into the DinD daemon so the first notebook kernel

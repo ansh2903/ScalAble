@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import secrets
 import time
 
@@ -12,6 +13,36 @@ from spore._exception import CustomException
 from spore._logger import logging
 from spore._utils import kernel_runtime, prepare_kernel_streams_volume, security_runtime
 
+# ipykernel tracebacks include ANSI color codes (and occasionally HTML spans).
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*(?:;[0-9]*)*[mGKH]")
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def _plain_traceback_line(line: str) -> str:
+    text = _ANSI_RE.sub("", line)
+    if "<" in text and ">" in text:
+        text = _HTML_TAG_RE.sub("", text)
+    return text
+
+
+def format_kernel_error(
+    ename: str,
+    evalue: str,
+    traceback: list | None = None,
+) -> dict:
+    """Normalize kernel error payloads for the notebook UI."""
+    lines = [_plain_traceback_line(line) for line in (traceback or []) if line]
+    if not lines:
+        lines = [f"{ename}: {evalue}"]
+    return {
+        "type": "error",
+        "ename": ename,
+        "evalue": evalue,
+        "traceback": lines,
+        "content": "\n".join(lines),
+    }
+
+
 # Fixed in-container ZMQ ports; published to the DinD host for client access.
 _KERNEL_PORTS = {
     "shell": 50000,
@@ -22,11 +53,25 @@ _KERNEL_PORTS = {
 }
 
 
-def get_docker_client():
-    host = settings.DOCKER_HOST
-    if host:
-        return docker.DockerClient(base_url=host)
-    return docker.from_env()
+def get_docker_client(retries: int = 5, delay: float = 2.0):
+    last_err = None
+    for attempt in range(retries):
+        try:
+            host = settings.DOCKER_HOST
+            client = docker.DockerClient(base_url=host) if host else docker.from_env()
+            client.ping()
+            return client
+        except (DockerException, OSError) as exc:
+            last_err = exc if isinstance(exc, DockerException) else DockerException(str(exc))
+            if attempt < retries - 1:
+                logging.warning(
+                    "Docker API not ready (attempt %s/%s): %s",
+                    attempt + 1,
+                    retries,
+                    exc,
+                )
+                time.sleep(delay)
+    raise last_err
 
 
 def _docker_client():
@@ -205,11 +250,10 @@ class DockerKernel:
                     elapsed = time.time() - started
                     if elapsed >= exec_timeout:
                         self.interrupt()
-                        yield {
-                            "type": "error",
-                            "ename": "KernelTimeout",
-                            "evalue": f"Execution exceeded {exec_timeout}s limit",
-                        }
+                        yield format_kernel_error(
+                            "KernelTimeout",
+                            f"Execution exceeded {exec_timeout}s limit",
+                        )
                         yield {"type": "done"}
                         break
                     poll_timeout = min(30, max(0.5, exec_timeout - elapsed))
@@ -242,12 +286,11 @@ class DockerKernel:
                     }
 
                 elif msg_type == "error":
-                    yield {
-                        "type": "error",
-                        "ename": content["ename"],
-                        "evalue": content["evalue"],
-                        "traceback": content["traceback"],
-                    }
+                    yield format_kernel_error(
+                        content["ename"],
+                        content["evalue"],
+                        content.get("traceback"),
+                    )
 
                 elif msg_type == "status":
                     if content["execution_state"] == "idle":
@@ -255,11 +298,7 @@ class DockerKernel:
                         break
 
             except Exception as e:
-                yield {
-                    "type": "error",
-                    "ename": "KernelTimeout",
-                    "evalue": str(e),
-                }
+                yield format_kernel_error("KernelError", str(e))
                 break
 
     def interrupt(self):

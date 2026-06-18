@@ -220,4 +220,14 @@
   .page-chat .data-component tr:hover td {
     @apply bg-slate-50/80 text-slate-900;
   }
+
+  .page-chat .nb-cell-error {
+    @apply font-mono text-[11px] p-3 text-red-500 bg-red-50 border-t border-red-100 whitespace-pre-wrap m-0;
+  }
+  .page-chat .nb-cell-stream {
+    @apply font-mono text-[11px] p-3 leading-relaxed whitespace-pre-wrap m-0 text-slate-700;
+  }
+  .page-chat .nb-cell-stream[data-stream="stderr"] {
+    @apply text-amber-600 bg-amber-50;
+  }
 }

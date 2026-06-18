@@ -75,6 +75,7 @@ Only sources registered in [`spore/_connectors/registry.py`](../spore/_connector
 - Ensure `kernel-image-builder` completed and `spore-kernel:3.12` exists inside DinD (`docker exec spore-kernel-dind docker images`).
 - Check browser console for Socket.IO connection errors.
 - Verify `ALLOWED_ORIGINS` includes your browser URL.
+- If `kernel-dind` is restarting, cell execution may fail with a `DockerException` in the cell output until DinD recovers (`docker compose -f docker/docker-compose.yml logs kernel-dind`). After a crash loop, recreate DinD: `docker compose -f docker/docker-compose.yml up -d --force-recreate kernel-dind spore`.
 
 ## Docker build / run
 

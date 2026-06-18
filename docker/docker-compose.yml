@@ -13,7 +13,7 @@ services:
       redis:
         condition: service_started
       kernel-dind:
-        condition: service_started
+        condition: service_healthy
       kernel-image-builder:
         condition: service_completed_successfully
     environment:
@@ -60,7 +60,7 @@ services:
     restart: unless-stopped
 
   kernel-dind:
-    image: docker:27-dind-rootless
+    image: docker:27-dind
     container_name: spore-kernel-dind
     privileged: true
     environment:
@@ -69,6 +69,12 @@ services:
       - spore_volumes:/data
     networks:
       - kernel_net
+    healthcheck:
+      test: ["CMD", "docker", "info"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
     restart: unless-stopped
 
   kernel-image-builder:
@@ -80,8 +86,12 @@ services:
       - ..:/build:ro
     command: >
       sh -c "until docker info >/dev/null 2>&1; do sleep 1; done &&
-      docker build --build-arg KERNEL_BASE_IMAGE=python:${KERNEL_PYTHON_VERSION:-3.12}-slim
-      -f /build/docker/Dockerfile.kernel -t spore-kernel:${KERNEL_PYTHON_VERSION:-3.12} /build"
+      if docker image inspect spore-kernel:${KERNEL_PYTHON_VERSION:-3.12} >/dev/null 2>&1; then
+        echo 'spore-kernel:${KERNEL_PYTHON_VERSION:-3.12} already present — skipping build';
+      else
+        docker build --build-arg KERNEL_BASE_IMAGE=python:${KERNEL_PYTHON_VERSION:-3.12}-slim
+        -f /build/docker/Dockerfile.kernel -t spore-kernel:${KERNEL_PYTHON_VERSION:-3.12} /build;
+      fi"
     depends_on:
       - kernel-dind
     networks:

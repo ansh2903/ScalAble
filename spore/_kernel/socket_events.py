@@ -1,6 +1,7 @@
 from flask_socketio import emit
 from flask import request, session, copy_current_request_context
 from spore._kernel.store import get_kernel, destroy_kernel
+from spore._kernel.execution_queue import clear_queue, submit_execution
 from spore._logger import logging
 from spore._engine.agent import WorkspaceAgent
 from spore._engine.agent_history import clear_agent_history
@@ -10,6 +11,15 @@ from spore._engine.agent_pending import (
     register_interrupt,
     trigger_interrupt,
 )
+
+
+def _safe_get_kernel(session_id):
+    try:
+        return get_kernel(session_id)
+    except Exception as exc:
+        logging.error("Failed to get kernel for %s: %s", session_id, exc)
+        return None
+
 
 def register_kernel_events(socketio):
 
@@ -24,6 +34,7 @@ def register_kernel_events(socketio):
         session_id = request.sid
         trigger_interrupt(session_id)
         clear_interrupt(session_id)
+        clear_queue(session_id)
         destroy_kernel(session_id)
         logging.info(f"Client disconnected, kernel destroyed: {session_id}")
 
@@ -32,23 +43,22 @@ def register_kernel_events(socketio):
         session_id = request.sid
         code = data.get('code', '')
         cell_id = data.get('cell_id')
-        kernel = get_kernel(session_id)
-
-        socketio.start_background_task(
-            _run_execution, socketio, session_id, cell_id, code
-        )
+        submit_execution(socketio, session_id, cell_id, code, _run_execution)
 
     @socketio.on('kernel_interrupt')
     def on_interrupt():
         session_id = request.sid
-        get_kernel(session_id).interrupt()
+        kernel = _safe_get_kernel(session_id)
+        if kernel:
+            kernel.interrupt()
         emit('kernel_status', {'status': 'interrupted'})
 
     @socketio.on('kernel_restart')
     def on_restart(data):
         session_id = request.sid
+        clear_queue(session_id)
         destroy_kernel(session_id)
-        get_kernel(session_id)
+        _safe_get_kernel(session_id)
         emit('kernel_status', {'status': 'restarted'})
 
     @socketio.on('kernel_list')
@@ -141,5 +151,4 @@ def _run_execution(socketio, session_id, cell_id, code):
     kernel = get_kernel(session_id)
     for chunk in kernel.execute(code):
         chunk['cell_id'] = cell_id
-        print(chunk)
         socketio.emit('kernel_output', chunk, to=session_id)

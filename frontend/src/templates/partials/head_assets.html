@@ -1,8 +1,9 @@
 {# Core offline styles #}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/spore.css') }}">
+{% set _asset_v = asset_version | default(1) %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}?v={{ _asset_v }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/spore.css') }}?v={{ _asset_v }}">
 {% if head_chat_layout | default(false) %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/chat-layout.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/chat-layout.css') }}?v={{ _asset_v }}">
 {% endif %}
 {% if head_highlight | default(false) %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/highlight.github.min.css') }}">
