@@ -82,16 +82,20 @@ services:
     container_name: spore-kernel-image-builder
     environment:
       - DOCKER_HOST=tcp://kernel-dind:2375
+      - KERNEL_PYTHON_VERSION=${KERNEL_PYTHON_VERSION:-3.12}
     volumes:
       - ..:/build:ro
-    command: >
-      sh -c "until docker info >/dev/null 2>&1; do sleep 1; done &&
-      if docker image inspect spore-kernel:${KERNEL_PYTHON_VERSION:-3.12} >/dev/null 2>&1; then
-        echo 'spore-kernel:${KERNEL_PYTHON_VERSION:-3.12} already present — skipping build';
-      else
-        docker build --build-arg KERNEL_BASE_IMAGE=python:${KERNEL_PYTHON_VERSION:-3.12}-slim
-        -f /build/docker/Dockerfile.kernel -t spore-kernel:${KERNEL_PYTHON_VERSION:-3.12} /build;
-      fi"
+    command:
+      - sh
+      - -c
+      - |
+        until docker info >/dev/null 2>&1; do sleep 1; done
+        if docker image inspect spore-kernel:$${KERNEL_PYTHON_VERSION} >/dev/null 2>&1; then
+          echo "spore-kernel:$${KERNEL_PYTHON_VERSION} already present — skipping build"
+        else
+          docker build --build-arg KERNEL_BASE_IMAGE=python:$${KERNEL_PYTHON_VERSION}-slim -f /build/docker/Dockerfile.kernel -t spore-kernel:$${KERNEL_PYTHON_VERSION} /build
+          docker image prune -f --filter dangling=true >/dev/null 2>&1 || true
+        fi
     depends_on:
       - kernel-dind
     networks:

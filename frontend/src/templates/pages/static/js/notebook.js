@@ -172,36 +172,88 @@ function cellDragHandleHtml(cellId) {
 }
 
 const SPORE_CONNECTIONS = window.SPORE_CONNECTIONS || [];
-const socket = window.sporeSocket || (window.sporeSocket = io());
+const socket = window.sporeSocket || (window.sporeSocket = io({ reconnection: true }));
 
 const KERNEL_STATUS_CONFIG = {
   connecting:   { label: 'Connecting',   dot: 'bg-amber-400 animate-pulse', text: 'text-amber-600' },
   idle:         { label: 'Idle',         dot: 'bg-primary',                 text: 'text-primary-dark' },
-  busy:         { label: 'Busy',         dot: 'bg-amber-500 animate-pulse',  text: 'text-amber-600' },
+  busy:         { label: 'Busy',         dot: 'bg-amber-500 animate-pulse', text: 'text-amber-600' },
   restarting:   { label: 'Restarting',   dot: 'bg-amber-500 animate-pulse', text: 'text-amber-600' },
   interrupted:  { label: 'Interrupted',  dot: 'bg-red-500',                 text: 'text-red-500' },
   disconnected: { label: 'Disconnected', dot: 'bg-slate-400',               text: 'text-slate-400' },
   error:        { label: 'Error',        dot: 'bg-red-500',                 text: 'text-red-500' },
 };
 
-function setKernelStatus(state) {
+const kernelStatusState = {
+  socketConnected: false,
+  kernelReady: false,
+  error: false,
+  errorDetail: '',
+  restarting: false,
+  interruptedUntil: 0,
+};
+
+function applyKernelStatusPill(state, tooltip) {
   const cfg = KERNEL_STATUS_CONFIG[state] || KERNEL_STATUS_CONFIG.disconnected;
   const dot = document.getElementById('kernel-status-dot');
   const text = document.getElementById('kernel-status-text');
+  const pill = document.getElementById('kernel-status-pill');
   if (dot) dot.className = `w-1.5 h-1.5 rounded-pill ${cfg.dot}`;
   if (text) {
     text.textContent = cfg.label;
     text.className = `font-mono ${cfg.text}`;
   }
+  if (pill) pill.title = tooltip || cfg.label;
+}
+
+function refreshKernelStatus() {
+  const now = Date.now();
+  if (!kernelStatusState.socketConnected) {
+    applyKernelStatusPill('disconnected');
+    return;
+  }
+  if (kernelStatusState.error) {
+    const detail = kernelStatusState.errorDetail;
+    applyKernelStatusPill('error', detail || 'Kernel error');
+    return;
+  }
+  if (kernelStatusState.restarting) {
+    applyKernelStatusPill('restarting');
+    return;
+  }
+  if (kernelStatusState.interruptedUntil > now) {
+    applyKernelStatusPill('interrupted');
+    return;
+  }
+  if (!kernelStatusState.kernelReady) {
+    applyKernelStatusPill('connecting');
+    return;
+  }
+  if (kernelPendingCount > 0 || runAllInProgress) {
+    applyKernelStatusPill('busy');
+    return;
+  }
+  applyKernelStatusPill('idle');
+}
+
+function setKernelStatus(state) {
+  applyKernelStatusPill(state);
+}
+
+function clearKernelError() {
+  kernelStatusState.error = false;
+  kernelStatusState.errorDetail = '';
+}
+
+function setKernelError(detail) {
+  kernelStatusState.error = true;
+  kernelStatusState.errorDetail = (detail || '').trim();
+  refreshKernelStatus();
 }
 
 function bumpKernelPending(delta) {
   kernelPendingCount = Math.max(0, kernelPendingCount + delta);
-  if (kernelPendingCount > 0 || runAllInProgress) {
-    setKernelStatus('busy');
-  } else {
-    setKernelStatus('idle');
-  }
+  refreshKernelStatus();
 }
 
 function setCellExecuting(cellId, executing) {
@@ -239,47 +291,142 @@ function stopRestartSpinner() {
   if (icon) icon.classList.remove('animate-spin');
 }
 
-setKernelStatus('connecting');
+function ensureSocketConnected() {
+  if (socket.connected) return Promise.resolve();
+  return new Promise((resolve) => {
+    function onConnect() {
+      socket.off('connect', onConnect);
+      resolve();
+    }
+    socket.once('connect', onConnect);
+    if (!socket.active) socket.connect();
+  });
+}
+
+function syncKernelGeneration(generation) {
+  if (generation == null) return;
+  const key = 'spore_kernel_generation';
+  const prev = sessionStorage.getItem(key);
+  if (prev !== null && String(prev) !== String(generation)) {
+    resetKernelExecutionState('Kernel configuration changed');
+  }
+  sessionStorage.setItem(key, String(generation));
+}
+
+function resetKernelExecutionState() {
+  for (const cellId of [...executingCells]) {
+    const cell = cells[cellId];
+    if (cell?.countEl?.textContent?.includes('*')) {
+      cell.countEl.textContent = 'In [!] — Error';
+    }
+    setCellExecuting(cellId, false);
+  }
+  kernelPendingCount = 0;
+  runAllInProgress = false;
+  stopRestartSpinner();
+  kernelStatusState.restarting = false;
+  clearKernelError();
+  refreshKernelStatus();
+}
+
+kernelStatusState.socketConnected = false;
+kernelStatusState.kernelReady = false;
+if (socket.connected) {
+  kernelStatusState.socketConnected = true;
+}
+refreshKernelStatus();
+
+window.addEventListener('pagehide', () => {
+  if (socket.connected) socket.disconnect();
+});
+window.addEventListener('pageshow', () => {
+  if (!socket.connected) socket.connect();
+});
 
 socket.on('connect', () => {
   console.log('Kernel socket connected');
-  setKernelStatus('idle');
+  kernelStatusState.socketConnected = true;
+  kernelStatusState.kernelReady = false;
+  refreshKernelStatus();
 });
 socket.on('disconnect', () => {
   stopRestartSpinner();
-  setKernelStatus('disconnected');
+  kernelStatusState.socketConnected = false;
+  kernelStatusState.kernelReady = false;
+  kernelStatusState.restarting = false;
+  refreshKernelStatus();
 });
 socket.on('kernel_status', (data) => {
   switch (data && data.status) {
     case 'connected':
-    case 'restarted':
+      if (data.kernel_generation != null) syncKernelGeneration(data.kernel_generation);
       stopRestartSpinner();
-      setKernelStatus('idle');
+      kernelStatusState.kernelReady = true;
+      kernelStatusState.restarting = false;
+      clearKernelError();
+      refreshKernelStatus();
+      break;
+    case 'restarted':
+      if (data.kernel_generation != null) syncKernelGeneration(data.kernel_generation);
+      stopRestartSpinner();
+      kernelStatusState.kernelReady = true;
+      kernelStatusState.restarting = false;
+      clearKernelError();
+      refreshKernelStatus();
+      break;
+    case 'restarting':
+      kernelStatusState.restarting = true;
+      refreshKernelStatus();
+      break;
+    case 'invalidated':
+      if (data.kernel_generation != null) {
+        sessionStorage.setItem('spore_kernel_generation', String(data.kernel_generation));
+      }
+      resetKernelExecutionState();
       break;
     case 'interrupted':
-      setKernelStatus('interrupted');
-      setTimeout(() => setKernelStatus('idle'), 1200);
+      kernelStatusState.interruptedUntil = Date.now() + 1200;
+      refreshKernelStatus();
+      setTimeout(() => {
+        kernelStatusState.interruptedUntil = 0;
+        refreshKernelStatus();
+      }, 1200);
       break;
     case 'busy':
-      setKernelStatus('busy');
+      refreshKernelStatus();
       break;
     case 'idle':
-      if (!runAllInProgress && kernelPendingCount === 0) setKernelStatus('idle');
+      refreshKernelStatus();
+      break;
+    case 'error':
+      stopRestartSpinner();
+      kernelStatusState.restarting = false;
+      setKernelError(data.content || 'Kernel error');
       break;
     default:
-      if (data && data.status) setKernelStatus(data.status);
+      if (data && data.status === 'connected') {
+        kernelStatusState.kernelReady = true;
+        refreshKernelStatus();
+      }
   }
 });
 socket.on('kernel_output', (chunk) => handleKernelOutput(chunk));
 
 function interruptKernel() {
   socket.emit('kernel_interrupt');
-  setKernelStatus('interrupted');
+  kernelStatusState.interruptedUntil = Date.now() + 1200;
+  refreshKernelStatus();
+  setTimeout(() => {
+    kernelStatusState.interruptedUntil = 0;
+    refreshKernelStatus();
+  }, 1200);
 }
 
 function restartKernel(kernelName = 'python3') {
   socket.emit('kernel_restart', { kernel_name: kernelName });
-  setKernelStatus('restarting');
+  kernelStatusState.restarting = true;
+  clearKernelError();
+  refreshKernelStatus();
   const icon = document.getElementById('restart-kernel-icon');
   if (icon) icon.classList.add('animate-spin');
 }
@@ -671,13 +818,17 @@ const MARKDOWN_EDIT_WRAPPER =
 const MARKDOWN_RENDER_WRAPPER =
   'notebook-cell markdown-cell px-2 py-3 border-l-4 border-l-transparent hover:border-l-violet-200/70 transition-colors';
 
+function renderMarkdownHtml(raw) {
+  if (!raw || !String(raw).trim()) return '';
+  if (typeof marked === 'undefined') return '';
+  return marked.parse(raw);
+}
+
 function buildMarkdownCellHtml(cellId, initialCode, opts) {
   const hasContent = !!(initialCode || '').trim();
   const startRendered = hasContent;
   const placeholder = '<em class="text-slate-300 not-italic">Double-click to edit…</em>';
-  const initialRender = hasContent && typeof marked !== 'undefined'
-    ? marked.parse(initialCode)
-    : placeholder;
+  const initialRender = hasContent ? (renderMarkdownHtml(initialCode) || placeholder) : placeholder;
   const wrapperClass = startRendered ? MARKDOWN_RENDER_WRAPPER : MARKDOWN_EDIT_WRAPPER;
 
   return `
@@ -705,7 +856,7 @@ function buildMarkdownCellHtml(cellId, initialCode, opts) {
             </div>
         </div>
         <div id="${cellId}-render" title="Double-click to edit"
-            class="markdown-rendered prose prose-slate max-w-none text-sm cursor-text min-h-[24px] px-1 ${startRendered ? '' : 'hidden'}">${initialRender}</div>
+            class="markdown-rendered prose prose-sm prose-slate max-w-none cursor-text min-h-[24px] px-1 ${startRendered ? '' : 'hidden'}">${initialRender}</div>
         <div id="${cellId}-output" class="hidden"></div>
     </div>`;
 }
@@ -737,13 +888,14 @@ function updateMarkdownRender(cellId) {
   const cell = cells[cellId];
   if (!cell?.renderEl) return;
 
-  const raw = cell.editor ? (cell.editor.getValue() || '').trim() : '';
-  if (!raw) {
+  const raw = cell.editor ? (cell.editor.getValue() || '') : '';
+  if (!raw.trim()) {
     cell.renderEl.innerHTML = '<em class="text-slate-300 not-italic">Double-click to edit…</em>';
     return;
   }
-  if (typeof marked !== 'undefined') {
-    cell.renderEl.innerHTML = marked.parse(raw);
+  const html = renderMarkdownHtml(raw);
+  if (html) {
+    cell.renderEl.innerHTML = html;
   } else {
     cell.renderEl.textContent = raw;
   }
@@ -901,7 +1053,7 @@ function undoDeleteCell() {
   else addCell(d.type, d.code, opts);
 }
 
-function runCell(cellId, advance = false) {
+async function runCell(cellId, advance = false) {
   const cell = cells[cellId];
   if (!cell || cell.type !== 'python' || !cell.editor) return false;
 
@@ -921,7 +1073,21 @@ function runCell(cellId, advance = false) {
   cell.outputEl.innerHTML = '';
   cell.outputs = [];
   cell.outputEl.classList.remove('hidden');
+  cell.countEl.textContent = 'In [*] — Queued...';
+
+  try {
+    await ensureSocketConnected();
+  } catch (err) {
+    cell.countEl.textContent = 'In [!] — Error';
+    const errPre = document.createElement('pre');
+    errPre.className = 'nb-cell-error';
+    errPre.textContent = String(err.message || err);
+    cell.outputEl.appendChild(errPre);
+    return false;
+  }
+
   cell.countEl.textContent = 'In [*] — Running...';
+  clearKernelError();
   setCellExecuting(cellId, true);
   bumpKernelPending(1);
 
@@ -938,7 +1104,7 @@ function runCell(cellId, advance = false) {
 async function runAllCells() {
   if (runAllInProgress) return;
   runAllInProgress = true;
-  setKernelStatus('busy');
+  refreshKernelStatus();
 
   const runAllBtn = document.getElementById('run-all-cells');
   if (runAllBtn) {
@@ -955,8 +1121,8 @@ async function runAllCells() {
         const code = cell.editor?.getValue().trim();
         if (!code || code.includes('Materialize a SQL cell first') || executingCells.has(cellId)) continue;
         const waitPromise = waitForKernelCell(cellId);
-        runCell(cellId, false);
-        await waitPromise;
+        const started = await runCell(cellId, false);
+        if (started) await waitPromise;
       } else if (cell.type === 'sql') {
         const sql = cell.editor?.getValue().trim();
         const dbId = cell.connEl?.value;
@@ -973,7 +1139,7 @@ async function runAllCells() {
       runAllBtn.disabled = false;
       runAllBtn.classList.remove('opacity-50', 'pointer-events-none');
     }
-    if (kernelPendingCount === 0) setKernelStatus('idle');
+    if (kernelPendingCount === 0) refreshKernelStatus();
   }
 }
 
@@ -1247,6 +1413,17 @@ function handleKernelOutput(chunk) {
       out.appendChild(streamEl);
     }
     streamEl.textContent += chunk.content;
+    const streamText = streamEl.textContent || '';
+    if (
+      /Successfully installed/i.test(streamText)
+      && !out.querySelector('.nb-pip-hint')
+      && (/%pip|pip install/i.test(streamText))
+    ) {
+      const hint = document.createElement('p');
+      hint.className = 'nb-pip-hint text-[10px] text-slate-500 font-mono px-3 py-2 border-t border-slate-100';
+      hint.textContent = 'Package installed in this kernel session. Restart kernel if import still fails.';
+      out.appendChild(hint);
+    }
   } else if (chunk.type === 'display' || chunk.type === 'result') {
     recordCellOutput(cell, chunk);
     renderMimeBundle(chunk.data, out);
@@ -1265,6 +1442,7 @@ function handleKernelOutput(chunk) {
     out.appendChild(errPre);
     cell.countEl.textContent = 'In [!] — Error';
     setCellExecuting(chunk.cell_id, false);
+    setKernelError(clean || fallback);
     bumpKernelPending(-1);
   } else if (chunk.type === 'done') {
     if (cell.countEl.textContent.includes('*')) {
@@ -1634,10 +1812,17 @@ window.undoDeleteCell = undoDeleteCell;
 // ── Notebook export (.ipynb + HTML) ─────────────────────────────────────────
 
 function sourceToLines(code) {
-  const text = code == null ? '' : String(code);
+  const text = (code == null ? '' : String(code)).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   if (!text) return [];
-  const lines = text.split('\n');
-  if (text.endsWith('\n')) lines.push('');
+  const parts = text.split('\n');
+  const lines = [];
+  for (let i = 0; i < parts.length - 1; i++) {
+    lines.push(parts[i] + '\n');
+  }
+  const last = parts[parts.length - 1];
+  if (last.length || text.endsWith('\n')) {
+    lines.push(last + (text.endsWith('\n') ? '\n' : ''));
+  }
   return lines;
 }
 

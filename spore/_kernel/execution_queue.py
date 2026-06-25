@@ -66,10 +66,30 @@ class _SessionQueue:
                     to=self.session_id,
                 )
 
-    def clear(self):
+    def clear(self, socketio=None, reason: str = "cancelled"):
+        in_flight = None
         with self._lock:
+            in_flight = self._current_cell_id
             self._pending.clear()
             self._current_cell_id = None
+
+        if socketio is not None and in_flight:
+            socketio.emit(
+                "kernel_output",
+                {
+                    **format_kernel_error(
+                        "KernelInterrupted",
+                        reason,
+                    ),
+                    "cell_id": in_flight,
+                },
+                to=self.session_id,
+            )
+            socketio.emit(
+                "kernel_output",
+                {"type": "done", "cell_id": in_flight},
+                to=self.session_id,
+            )
 
 
 def _get_queue(session_id: str) -> _SessionQueue:
@@ -84,9 +104,18 @@ def submit_execution(socketio, session_id, cell_id, code, run_fn):
     _get_queue(session_id).submit(socketio, cell_id, code, run_fn)
 
 
-def clear_queue(session_id: str):
-    """Drop pending executions for a session (disconnect/restart)."""
+def clear_queue(session_id: str, socketio=None, reason: str = "cancelled"):
+    """Drop pending executions for a session (disconnect/restart/invalidation)."""
     with _registry_lock:
         queue = _queues.pop(session_id, None)
     if queue:
-        queue.clear()
+        queue.clear(socketio=socketio, reason=reason)
+
+
+def clear_all_queues(socketio=None, reason: str = "config_changed"):
+    """Abort all pending/in-flight executions across sessions."""
+    with _registry_lock:
+        queues = list(_queues.values())
+        _queues.clear()
+    for queue in queues:
+        queue.clear(socketio=socketio, reason=reason)

@@ -6,7 +6,7 @@ import time
 from spore._connectors import SourceConnector
 from spore._engine.model_manager import get_engine
 from spore._engine.query_executor import run_query
-from spore._utils import file_size_fmt, decrypt_creds, downloadable_json, downloadable_excel, downloadable_csv, load_settings, context_limit_info, get_connection_by_id
+from spore._utils import file_size_fmt, decrypt_creds, downloadable_json, downloadable_excel, downloadable_csv, load_settings, context_limit_info, get_connection_by_id, kernel_runtime
 from spore._routes.utils import generate_blueprint
 from spore._workspace.store import get_workspace_store
 from spore._compute.query import query_stream
@@ -84,6 +84,7 @@ def chat():
         asset_version=int(time.time()),
         context_limit=ctx_info["effective"],
         context_show=ctx_info["show"],
+        kernel_runtime=kernel_runtime(settings),
     )
 
 @workspace_blueprint.route('/chat/ask', methods=['POST'])

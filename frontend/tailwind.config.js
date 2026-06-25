@@ -4,6 +4,7 @@ module.exports = {
   content: [
     './src/templates/pages/**/*.html',
     './src/templates/partials/**/*.html',
+    './src/templates/pages/static/js/**/*.js',
   ],
   theme: {
     extend: {
@@ -38,10 +39,19 @@ module.exports = {
           '0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04)',
         'header-nav': '0 10px 15px -3px rgba(0, 163, 108, 0.05)',
       },
+      typography: (theme) => ({
+        DEFAULT: {
+          css: {
+            '--tw-prose-links': theme('colors.primary'),
+            '--tw-prose-invert-links': theme('colors.primary'),
+          },
+        },
+      }),
     },
   },
   plugins: [
     require('@tailwindcss/forms'),
     require('@tailwindcss/container-queries'),
+    require('@tailwindcss/typography'),
   ],
 };

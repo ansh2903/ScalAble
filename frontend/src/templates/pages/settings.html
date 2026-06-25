@@ -655,7 +655,7 @@
                         </div>
                         <div>
                             <h3 class="font-black text-slate-900 text-sm">Package Registry (Image Builder)</h3>
-                            <p class="text-[11px] text-slate-400 font-medium">Search PyPI and pin packages for reproducible kernel images (rebuild + restart). For quick local experiments, run <code class="font-mono">%pip install &lt;package&gt;</code> in a notebook cell — kernels have outbound network by default.</p>
+                            <p class="text-[11px] text-slate-400 font-medium">Search PyPI and pin packages for reproducible kernel images, then rebuild — pinned packages are baked into the image (pip cache speeds up rebuilds). Running notebook kernels restart automatically after rebuild. For quick experiments use <code class="font-mono">%pip install &lt;package&gt;</code> in a cell (session-only; restart kernel if import fails).</p>
                         </div>
                     </div>
 
@@ -1017,7 +1017,7 @@
                 security: {
                     mem_limit_mb: SECURITY_RUNTIME.mem_limit_mb || 1024,
                     pids_limit: SECURITY_RUNTIME.pids_limit || 256,
-                    exec_timeout: SECURITY_RUNTIME.exec_timeout ?? 30,
+                    exec_timeout: SECURITY_RUNTIME.exec_timeout ?? 0,
                 },
                 securitySaving: false,
 
@@ -1271,7 +1271,10 @@
                         });
                         const data = await res.json();
                         if (!res.ok) throw new Error(data.error || 'Save failed');
-                        alert('Kernel settings saved. Restart notebook kernels to apply.');
+                        if (data.kernel_generation != null) {
+                            sessionStorage.setItem('spore_kernel_generation', String(data.kernel_generation));
+                        }
+                        alert('Kernel settings saved. Running notebook kernels will restart automatically on next execution.');
                     } catch (e) {
                         alert(e.message);
                     } finally {
@@ -1305,6 +1308,12 @@
                                     this.rebuildLogs.push('ERROR: ' + payload.content);
                                 } else if (payload.type === 'done') {
                                     this.rebuildLogs.push('Build complete: ' + payload.tag);
+                                    if (payload.kernel_generation != null) {
+                                        sessionStorage.setItem('spore_kernel_generation', String(payload.kernel_generation));
+                                    }
+                                    if (payload.build_epoch != null) {
+                                        sessionStorage.setItem('spore_kernel_build_epoch', String(payload.build_epoch));
+                                    }
                                 }
                             }
                         }

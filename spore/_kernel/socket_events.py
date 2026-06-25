@@ -1,7 +1,8 @@
 from flask_socketio import emit
 from flask import request, session, copy_current_request_context
-from spore._kernel.store import get_kernel, destroy_kernel
+from spore._kernel.store import get_kernel, destroy_kernel, kernel_generation
 from spore._kernel.execution_queue import clear_queue, submit_execution
+from spore._kernel.manager import format_kernel_error
 from spore._logger import logging
 from spore._engine.agent import WorkspaceAgent
 from spore._engine.agent_history import clear_agent_history
@@ -27,7 +28,11 @@ def register_kernel_events(socketio):
     def on_connect():
         session_id = request.sid
         logging.info(f"Client connected: {session_id}")
-        emit('kernel_status', {'status': 'connected', 'session_id': session_id})
+        emit('kernel_status', {
+            'status': 'connected',
+            'session_id': session_id,
+            'kernel_generation': kernel_generation(),
+        })
     
     @socketio.on('disconnect')
     def on_disconnect():
@@ -56,10 +61,28 @@ def register_kernel_events(socketio):
     @socketio.on('kernel_restart')
     def on_restart(data):
         session_id = request.sid
-        clear_queue(session_id)
+        clear_queue(session_id, socketio=socketio, reason="Kernel restart")
         destroy_kernel(session_id)
-        _safe_get_kernel(session_id)
-        emit('kernel_status', {'status': 'restarted'})
+        emit('kernel_status', {'status': 'restarting'})
+
+        @copy_current_request_context
+        def warm_start():
+            try:
+                get_kernel(session_id)
+                socketio.emit(
+                    'kernel_status',
+                    {'status': 'restarted', 'kernel_generation': kernel_generation()},
+                    to=session_id,
+                )
+            except Exception as exc:
+                logging.error("Kernel restart failed for %s: %s", session_id, exc, exc_info=True)
+                socketio.emit(
+                    'kernel_status',
+                    {'status': 'error', 'content': str(exc)},
+                    to=session_id,
+                )
+
+        socketio.start_background_task(warm_start)
 
     @socketio.on('kernel_list')
     def on_list():
@@ -148,7 +171,36 @@ def _run_agent(socketio, session_id, workspace_id, message, context):
 
 
 def _run_execution(socketio, session_id, cell_id, code):
-    kernel = get_kernel(session_id)
-    for chunk in kernel.execute(code):
-        chunk['cell_id'] = cell_id
-        socketio.emit('kernel_output', chunk, to=session_id)
+    done_emitted = False
+    try:
+        kernel = get_kernel(session_id)
+    except Exception as exc:
+        logging.error(
+            "Failed to start kernel for session %s cell %s: %s",
+            session_id,
+            cell_id,
+            exc,
+            exc_info=True,
+        )
+        socketio.emit(
+            'kernel_status',
+            {'status': 'error', 'content': str(exc)},
+            to=session_id,
+        )
+        socketio.emit(
+            'kernel_output',
+            {**format_kernel_error("KernelError", str(exc)), 'cell_id': cell_id},
+            to=session_id,
+        )
+        socketio.emit('kernel_output', {'type': 'done', 'cell_id': cell_id}, to=session_id)
+        return
+
+    try:
+        for chunk in kernel.execute(code):
+            chunk['cell_id'] = cell_id
+            if chunk.get('type') == 'done':
+                done_emitted = True
+            socketio.emit('kernel_output', chunk, to=session_id)
+    finally:
+        if not done_emitted:
+            socketio.emit('kernel_output', {'type': 'done', 'cell_id': cell_id}, to=session_id)

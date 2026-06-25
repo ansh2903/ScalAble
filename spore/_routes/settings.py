@@ -5,10 +5,19 @@ import os
 import shutil
 from pathlib import Path
 
+from docker.errors import ImageNotFound
 from flask import render_template, jsonify, request, redirect, url_for, flash, Response, stream_with_context
 
 from spore._engine.model_manager import reset_engine
+from spore._kernel.image_build import (
+    ALLOWED_PYTHON_VERSIONS,
+    cleanup_kernel_storage,
+    iter_kernel_image_build,
+    kernel_image_tag,
+    package_specs,
+)
 from spore._kernel.manager import get_docker_client
+from spore._kernel.store import invalidate_kernels, kernel_generation
 from spore._workspace.store import get_workspace_store
 from spore._utils import (
     model_ls,
@@ -32,8 +41,6 @@ from spore._logger import logging
 
 
 settings_blueprint = generate_blueprint('settings')
-
-ALLOWED_PYTHON_VERSIONS = ("3.11", "3.12", "3.13")
 
 
 def _active_stream_names() -> set[str]:
@@ -137,7 +144,8 @@ def save_kernel_settings():
             "startup_code": startup_code,
             "python_version": python_version,
         })
-        return jsonify({"status": "ok", "kernel": kernel_runtime()})
+        gen = invalidate_kernels("Kernel settings changed")
+        return jsonify({"status": "ok", "kernel": kernel_runtime(), "kernel_generation": gen})
     except Exception as e:
         logging.error("save_kernel_settings failed: %s", e)
         return jsonify({"error": str(e)}), 500
@@ -152,6 +160,10 @@ def _image_installed_versions(image: str) -> dict[str, str]:
     """
     try:
         client = get_docker_client()
+        try:
+            client.images.get(image)
+        except ImageNotFound:
+            return {}
         output = client.containers.run(
             image,
             entrypoint=["python", "-m", "pip", "list", "--format=json"],
@@ -261,7 +273,8 @@ def add_kernel_package():
         kernel["packages"] = packages
         data["kernel"] = kernel
         save_settings(data)
-        return jsonify({"status": "ok", "packages": packages})
+        gen = invalidate_kernels("Kernel packages changed")
+        return jsonify({"status": "ok", "packages": packages, "kernel_generation": gen})
     except Exception as e:
         logging.error("add_kernel_package failed: %s", e)
         return jsonify({"error": str(e)}), 500
@@ -279,63 +292,59 @@ def remove_kernel_package(package_name: str):
         kernel["packages"] = packages
         data["kernel"] = kernel
         save_settings(data)
-        return jsonify({"status": "ok", "packages": packages})
+        gen = invalidate_kernels("Kernel packages changed")
+        return jsonify({"status": "ok", "packages": packages, "kernel_generation": gen})
     except Exception as e:
         logging.error("remove_kernel_package failed: %s", e)
         return jsonify({"error": str(e)}), 500
 
 
-@settings_blueprint.route('/settings/kernel/rebuild')
+@settings_blueprint.route('/settings/kernel/rebuild', methods=['POST', 'GET'])
 def rebuild_kernel_image():
     python_version = request.args.get("python_version") or kernel_runtime()["python_version"]
     if python_version not in ALLOWED_PYTHON_VERSIONS:
         return jsonify({"error": f"Unsupported Python version: {python_version}"}), 400
 
-    def _package_specs() -> str:
-        specs = []
-        for pkg in kernel_runtime().get("packages") or []:
-            name = (pkg.get("name") or "").strip()
-            if not name:
-                continue
-            version = (pkg.get("version") or "").strip()
-            specs.append(f"{name}=={version}" if version else name)
-        return " ".join(specs)
+    def _sse_chunk(event: dict) -> str:
+        return f"data: {json.dumps(event)}\n\n"
 
     def generate():
-        tag = f"spore-kernel:{python_version}"
-        build_path = str(repo_root())
-        extra_packages = _package_specs()
+        tag = kernel_image_tag(python_version)
         try:
             client = get_docker_client()
-            yield f"data: {json.dumps({'type': 'start', 'tag': tag})}\n\n"
-            for line in client.api.build(
-                path=build_path,
-                dockerfile="docker/Dockerfile.kernel",
-                tag=tag,
-                buildargs={
-                    "KERNEL_BASE_IMAGE": f"python:{python_version}-slim",
-                    "EXTRA_PACKAGES": extra_packages,
-                },
-                decode=True,
-            ):
+            yield _sse_chunk({"type": "start", "tag": tag})
+
+            for line in iter_kernel_image_build(client, python_version, package_specs()):
                 if "stream" in line:
-                    chunk = {"type": "log", "content": line["stream"].rstrip()}
-                    yield f"data: {json.dumps(chunk)}\n\n"
+                    yield _sse_chunk({"type": "log", "content": line["stream"].rstrip()})
                 elif "status" in line:
                     chunk = {"type": "status", "content": line["status"]}
                     if line.get("progress"):
                         chunk["progress"] = line["progress"]
-                    yield f"data: {json.dumps(chunk)}\n\n"
-                elif "error" in line:
-                    chunk = {"type": "error", "content": line["error"]}
-                    yield f"data: {json.dumps(chunk)}\n\n"
-                    return
-            yield f"data: {json.dumps({'type': 'done', 'tag': tag})}\n\n"
+                    yield _sse_chunk(chunk)
+                elif line.get("type") == "cleanup":
+                    yield _sse_chunk(line)
+
+            gen = invalidate_kernels("Kernel image rebuilt")
+            yield _sse_chunk({"type": "done", "tag": tag, "kernel_generation": gen})
         except Exception as e:
             logging.error("rebuild_kernel_image failed: %s", e)
-            yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+            yield _sse_chunk({"type": "error", "content": str(e)})
 
     return Response(stream_with_context(generate()), mimetype="text/event-stream")
+
+
+@settings_blueprint.route('/settings/kernel/cleanup', methods=['POST'])
+def cleanup_kernel_images():
+    """Remove dangling kernel images and stopped kernel containers in DinD."""
+    try:
+        client = get_docker_client()
+        python_version = request.args.get("python_version") or kernel_runtime()["python_version"]
+        stats = cleanup_kernel_storage(client, keep_tags={kernel_image_tag(python_version)})
+        return jsonify({"status": "ok", **stats})
+    except Exception as e:
+        logging.error("cleanup_kernel_images failed: %s", e)
+        return jsonify({"error": str(e)}), 500
 
 
 # ----------------------------------------------------------------------------------------------------
@@ -347,7 +356,7 @@ def save_security_settings():
         body = request.get_json(silent=True) or {}
         mem_limit_mb = int(body.get("mem_limit_mb", 1024))
         pids_limit = int(body.get("pids_limit", 256))
-        exec_timeout = int(body.get("exec_timeout", 30))
+        exec_timeout = int(body.get("exec_timeout", 0))
         mem_limit_mb = max(250, min(4096, mem_limit_mb))
         pids_limit = max(16, min(1024, pids_limit))
         exec_timeout = max(0, min(3600, exec_timeout))

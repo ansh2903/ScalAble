@@ -52,8 +52,16 @@ function nbUpdateCurrentMeta() {
 }
 
 function nbJoinSource(source) {
-  if (Array.isArray(source)) return source.join('');
-  return source == null ? '' : String(source);
+  if (Array.isArray(source)) {
+    const parts = source.map((s) => String(s ?? '').replace(/\r\n/g, '\n').replace(/\r/g, '\n'));
+    const joined = parts.join('');
+    if (parts.length > 1 && !joined.includes('\n')) {
+      return parts.join('\n');
+    }
+    return joined;
+  }
+  const text = source == null ? '' : String(source);
+  return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 }
 
 function nbParseSqlFence(text) {
@@ -302,8 +310,8 @@ async function nbOpen(name) {
       window.hydrateNotebookFromWorkspace(state);
     }
 
-    if (typeof window.saveWorkspaceStatePatch === 'function' && typeof window.serializeNotebookState === 'function') {
-      await window.saveWorkspaceStatePatch({ notebook: window.serializeNotebookState() }, true);
+    if (typeof window.saveWorkspaceStatePatch === 'function') {
+      await window.saveWorkspaceStatePatch({ notebook: state }, true);
     }
 
     nbState.lastSavedName = name;

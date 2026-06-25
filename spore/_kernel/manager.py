@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import queue
 import re
 import secrets
 import time
@@ -240,25 +241,35 @@ class DockerKernel:
     def execute(self, code, enforce_timeout: bool = True):
         """Yield structured output chunks as the kernel produces them."""
         msg_id = self.kc.execute(code)
-        exec_timeout = self._security.get("exec_timeout", 30)
+        exec_timeout = self._security.get("exec_timeout", 0)
         started = time.time()
-        poll_timeout = 30
+        poll_timeout = 2.0
+        finished = False
 
-        while True:
-            try:
-                if enforce_timeout and exec_timeout > 0:
-                    elapsed = time.time() - started
-                    if elapsed >= exec_timeout:
-                        self.interrupt()
-                        yield format_kernel_error(
-                            "KernelTimeout",
-                            f"Execution exceeded {exec_timeout}s limit",
-                        )
-                        yield {"type": "done"}
-                        break
-                    poll_timeout = min(30, max(0.5, exec_timeout - elapsed))
+        try:
+            while True:
+                try:
+                    if enforce_timeout and exec_timeout > 0:
+                        elapsed = time.time() - started
+                        if elapsed >= exec_timeout:
+                            self.interrupt()
+                            yield format_kernel_error(
+                                "KernelTimeout",
+                                f"Execution exceeded {exec_timeout}s limit",
+                            )
+                            finished = True
+                            break
+                        poll_timeout = min(2.0, max(0.5, exec_timeout - elapsed))
 
-                msg = self.kc.get_iopub_msg(timeout=poll_timeout)
+                    msg = self.kc.get_iopub_msg(timeout=poll_timeout)
+                except queue.Empty:
+                    continue
+                except Exception as exc:
+                    detail = str(exc).strip() or type(exc).__name__
+                    yield format_kernel_error("KernelError", detail)
+                    finished = True
+                    break
+
                 msg_type = msg["header"]["msg_type"]
                 content = msg["content"]
 
@@ -294,12 +305,15 @@ class DockerKernel:
 
                 elif msg_type == "status":
                     if content["execution_state"] == "idle":
-                        yield {"type": "done"}
+                        finished = True
                         break
-
-            except Exception as e:
-                yield format_kernel_error("KernelError", str(e))
-                break
+        finally:
+            if not finished:
+                yield format_kernel_error(
+                    "KernelError",
+                    "Kernel channel closed before execution completed",
+                )
+            yield {"type": "done"}
 
     def interrupt(self):
         try:

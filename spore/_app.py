@@ -83,7 +83,10 @@ def register_blueprints(app: Flask) -> None:
 
 def register_sockets(app: Flask) -> None:
     """Register Spore SocketIO (WebSockets) Events"""
+    from spore._kernel.store import register_socketio
+
     socketio.init_app(app)
+    register_socketio(socketio)
     register_kernel_events(socketio)
 
 # Entry point for Spore

@@ -257,7 +257,7 @@ def security_runtime(settings_data: dict | None = None) -> dict:
     default_mb = _parse_mem_limit_mb(env.KERNEL_MEM_LIMIT)
     mem_limit_mb = int(security.get("mem_limit_mb", default_mb))
     pids_limit = int(security.get("pids_limit", env.KERNEL_PIDS_LIMIT))
-    exec_timeout = int(security.get("exec_timeout", 30))
+    exec_timeout = int(security.get("exec_timeout", 0))
     return {
         "mem_limit_mb": mem_limit_mb,
         "mem_limit": _format_mem_limit_mb(mem_limit_mb),
