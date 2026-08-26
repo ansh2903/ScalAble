@@ -7,7 +7,7 @@
 
 **Spore** is a lightweight web based platform for interacting with a verity of data sources ranging from DB/warehousing to local files. Query remote databases to filter, preprocess, sample data from SQL/NoSQL sources, materialize data to local files via DuckDB using batching to counter memory bottlenecks, analyze it instantly in a rich Python notebook—all while keeping your data strictly under your control and create interactive shareable reports at the end (including full support for local LLMs).
 
-**Spore is still under development and some extra helping would be appriciated, the platform is completely open-source and free of cost**
+**Spore is still under development and some extra helping would be appriciated, the platform is completely open-source and free of cost.**
 
 ---
 
@@ -46,7 +46,7 @@ Build and share interactive reports from your analysis.
 - **Rich Visual Execution** — Real-time Jupyter kernels running securely in sandboxed Docker containers, communicating over WebSockets. Native MIME-type rendering for Plotly charts, Pandas DataFrames, JSON, and LaTeX.
 - **Multi-Database Support** — PostgreSQL (fully wired); MySQL, BigQuery, Snowflake, and more in progress.
 - **Local & Cloud AI** — Natural language generation via Ollama, LM Studio, plus OpenAI, Anthropic, and Gemini.
-- **Smart Metadata** — Automatic schema inspection, keys, types, and sample stats for better LLM context.
+- **Smart Metadata** — Automatic schema inspection, keys, types, and sample stats for better LLM context. 
 - **Session-Based Security** — Encrypted credentials in Redis/KeyDB-backed sessions.
 
 ---
